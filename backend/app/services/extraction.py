@@ -93,7 +93,12 @@ EXTRACTION_PROMPT = """\
   ถ้าไม่ตรงกับสินค้าในตาราง ให้ใส่ null
   ถ้าไม่แน่ใจ ให้ใส่ชื่อที่คิดว่าใกล้เคียงที่สุดและเพิ่ม field ใน needs_review_fields
 - category ต้องเป็นหนึ่งใน: """ + ", ".join(PRODUCT_CATEGORIES) + """
-  ใช้หมวดจากตาราง PRODUCT_CATALOG ถ้า match ได้
+  วิธีเลือก category:
+  1. ดูจาก product_name_normalized ที่ match กับ PRODUCT_CATALOG → ใช้หมวดจากตาราง
+  2. ดูจากรายการสินค้าทั้งหมด → ถ้าส่วนใหญ่เป็นเครื่องดื่มแอลกอฮอล์ ให้ใช้ "เบียร์" หรือ "สุรา"
+  3. ดูจากชื่อร้านค้า → ถ้ามีคำว่า สุรา, เหล้า, เบียร์, พาณิชย์, เบเวอเรจ, Beverage → น่าจะเป็น เบียร์/สุรา
+  4. ถ้าเป็นน้ำดื่ม, น้ำเปล่า, น้ำแร่ → ใช้หมวด น้ำดื่ม/น้ำแร่
+  5. ใช้ "อื่นๆ" เฉพาะเมื่อไม่เข้าหมวดใดเลยจริงๆ (ไม่ใช่ default)
 - ถ้าเอกสารใช้ปี พ.ศ. ให้แปลงเป็น ค.ศ. (พ.ศ. - 543 = ค.ศ.)
 - ถ้าเจอวันที่เช่น 3 เม.ย. 69 ให้แปลงเป็น 2026-04-03
 - ถ้าอ่านไม่ออกหรือไม่แน่ใจ ให้ใส่ null และเพิ่มชื่อ field ใน needs_review_fields
@@ -108,14 +113,6 @@ EXTRACTION_PROMPT = """\
 - ตอบเป็น JSON เท่านั้น ห้ามมี markdown code fence หรือข้อความอื่น
 """
 
-OCR_CONTEXT_TEMPLATE = """
-ข้อมูลจาก OCR (ข้อความที่อ่านได้จากเอกสาร — ใช้เป็น reference เพิ่มเติม):
----
-{ocr_text}
----
-ให้ใช้ข้อมูล OCR ด้านบนร่วมกับรูปเอกสาร เพื่อให้ได้ผลลัพธ์ที่แม่นยำที่สุด
-ถ้า OCR กับรูปขัดแย้งกัน ให้เชื่อรูปเป็นหลัก
-"""
 
 _MIME_MAP = {
     ".jpg": "image/jpeg",
@@ -209,39 +206,21 @@ def _call_gemini_with_retry(contents: list, config: types.GenerateContentConfig)
     )
 
 
-def extract_receipt(file_path: str, ocr_text: str | None = None) -> ExtractionResult:
-    """
-    Extract structured data from a receipt image/PDF using Gemini.
-
-    Args:
-        file_path: Path to the image or PDF file.
-        ocr_text: Pre-extracted OCR text to include as additional context.
-    """
+def extract_receipt(file_path: str) -> ExtractionResult:
+    """Extract structured data from a receipt image/PDF using Gemini Vision."""
     path = Path(file_path)
     mime_type = _MIME_MAP.get(path.suffix.lower(), "image/jpeg")
     file_data = path.read_bytes()
 
-    # Build prompt with optional OCR context
-    prompt = EXTRACTION_PROMPT
-    if ocr_text:
-        prompt += OCR_CONTEXT_TEMPLATE.format(ocr_text=ocr_text)
-
-    # Build contents: [prompt_text, image_part]
     image_part = types.Part.from_bytes(data=file_data, mime_type=mime_type)
-    contents = [prompt, image_part]
+    contents = [EXTRACTION_PROMPT, image_part]
 
     config = types.GenerateContentConfig(
         temperature=0.1,
         response_mime_type="application/json",
     )
 
-    logger.info(
-        "Extracting receipt: %s (%s, %d bytes, ocr_context=%s)",
-        path.name,
-        mime_type,
-        len(file_data),
-        "yes" if ocr_text else "no",
-    )
+    logger.info("Extracting receipt: %s (%s, %d bytes)", path.name, mime_type, len(file_data))
 
     raw_text = _call_gemini_with_retry(contents, config)
 

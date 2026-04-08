@@ -49,7 +49,6 @@ class DocumentResponse(BaseModel):
     confidence: Optional[float] = None
     needs_review: bool = True
     error_message: Optional[str] = None
-    ocr_text: Optional[str] = None
     merchant_name: Optional[str] = None
     document_number: Optional[str] = None
     document_date: Optional[str] = None

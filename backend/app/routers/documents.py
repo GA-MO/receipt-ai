@@ -35,7 +35,7 @@ _processing_lock = threading.Semaphore(1)
 
 
 def _process_document(doc_id: str, file_path: str) -> None:
-    """Background task: OCR → extract receipt data → update the document."""
+    """Background task: extract receipt data with Gemini Vision → update the document."""
     _processing_lock.acquire()
     db = SessionLocal()
     try:
@@ -44,40 +44,8 @@ def _process_document(doc_id: str, file_path: str) -> None:
             logger.error("Document %s not found for processing", doc_id)
             return
 
-        # Step 1: Extract text context
-        # - PDF: always try PyMuPDF text extraction (fast, no OCR needed)
-        # - Images: only run PaddleOCR if OCR_ENABLED=true
-        ocr_text: str | None = None
-        if file_path.lower().endswith(".pdf"):
-            try:
-                from ..services.ocr import _extract_pdf_text
-
-                pdf_text = _extract_pdf_text(file_path)
-                if pdf_text:
-                    ocr_text = pdf_text
-                    doc.ocr_text = pdf_text
-                    logger.info("PDF text extracted for %s: %d chars", doc_id, len(pdf_text))
-            except Exception as exc:
-                logger.warning("PDF text extraction failed for %s: %s", doc_id, exc)
-
-        if settings.ocr_enabled and not ocr_text:
-            try:
-                from ..services.ocr import run_ocr
-
-                ocr_result = run_ocr(file_path)
-                ocr_text = ocr_result["full_text"]
-                doc.ocr_text = ocr_text
-                logger.info(
-                    "OCR for %s: %d chars, avg confidence %.2f",
-                    doc_id,
-                    len(ocr_text),
-                    ocr_result["avg_confidence"],
-                )
-            except Exception as ocr_exc:
-                logger.warning("OCR failed for %s, continuing without: %s", doc_id, ocr_exc)
-
-        # Step 2: Extract with Gemini (pass OCR text as context)
-        result = extract_receipt(file_path, ocr_text=ocr_text)
+        # Step 1: Extract with Gemini Vision
+        result = extract_receipt(file_path)
         warnings = validate_extraction(result)
 
         doc.merchant_name = result.merchant_name

@@ -13,9 +13,6 @@ dependencies = [
     "google-genai>=1.14.0",
     "google-auth>=2.38.0",
     "pillow>=11.0.0",
-    "paddlepaddle>=3.0.0",
-    "paddleocr>=2.9.0",
-    "PyMuPDF>=1.25.0",
 ]
 
 [project.optional-dependencies]

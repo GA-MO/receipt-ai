@@ -186,7 +186,6 @@ export interface DocumentResponse {
   confidence: number | null;
   needs_review: boolean;
   error_message: string | null;
-  ocr_text: string | null;
   merchant_name: string | null;
   document_number: string | null;
   document_date: string | null;

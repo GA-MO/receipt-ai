@@ -26,10 +26,6 @@ class Settings(BaseSettings):
     gemini_max_retries: int = 3
     gemini_retry_delay: float = 1.0
 
-    # OCR (off by default — Gemini vision is more accurate and 4x faster)
-    ocr_enabled: bool = False
-    ocr_lang: str = "th"
-
     model_config = {"env_file": ".env"}
 
     @property

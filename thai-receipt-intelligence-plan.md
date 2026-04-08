@@ -3,7 +3,7 @@
 ## Project Summary
 `Thai Receipt Intelligence` คือระบบ AI ที่แปลงใบเสร็จและเอกสารการขายภาษาไทยให้เป็นข้อมูลยอดขายพร้อมใช้งาน โดยใช้ `pre-trained models only` และไม่เทรนโมเดลใหม่
 
-ระบบจะรับรูปภาพหรือ PDF ของเอกสารภาษาไทย แล้วประมวลผลผ่าน OCR, LLM extraction, validation rules, และ human review เพื่อให้ได้ข้อมูล structured สำหรับ export หรือแสดงผลบน dashboard
+ระบบจะรับรูปภาพหรือ PDF ของเอกสารภาษาไทย แล้วประมวลผลผ่าน Gemini Vision (LLM multimodal), validation rules, และ human review เพื่อให้ได้ข้อมูล structured สำหรับ export หรือแสดงผลบน dashboard
 
 ## Why This Project
 - ลดเวลาการคีย์ข้อมูลจากเอกสารขายด้วยมือ
@@ -36,11 +36,10 @@
 ระบบจะทำงานตาม flow นี้:
 
 1. ผู้ใช้อัปโหลดรูปหรือ PDF ของเอกสารการขายภาษาไทย
-2. OCR อ่านข้อความจากเอกสาร
-3. LLM แยกและตีความ field สำคัญจากข้อความ OCR
-4. Validation layer ตรวจสอบความถูกต้องของข้อมูล
-5. ระบบแสดงผลให้ผู้ใช้ review เฉพาะจุดที่ AI ไม่มั่นใจ
-6. บันทึกผลและส่งออกเป็น CSV หรือ dashboard
+2. Gemini Vision อ่านเอกสารต้นฉบับและแยก field สำคัญเป็น JSON
+3. Validation layer ตรวจสอบความถูกต้องของข้อมูล
+4. ระบบแสดงผลให้ผู้ใช้ review เฉพาะจุดที่ AI ไม่มั่นใจ
+5. บันทึกผลและส่งออกเป็น CSV หรือ dashboard
 
 ## Thai-First Requirements
 เพื่อให้ระบบโดดเด่นเรื่องภาษาไทย ควรรองรับ:
@@ -88,8 +87,7 @@ MVP ควรจำกัดให้แคบพอที่จะเดโม�
 - รองรับการอัปโหลดทีละไฟล์หรือ batch เล็กๆ
 
 ### AI Extraction
-- เรียก OCR เพื่ออ่านข้อความ
-- ใช้ LLM แยกข้อมูลเป็น JSON มาตรฐาน
+- ส่งรูป/PDF ต้นฉบับให้ Gemini Vision แยกข้อมูลเป็น JSON มาตรฐาน
 - แสดง confidence หรือ uncertainty field
 
 ### Validation
@@ -119,13 +117,12 @@ MVP ควรจำกัดให้แคบพอที่จะเดโม�
 
 ## Backend API
 - รับไฟล์
-- orchestrate OCR และ LLM
+- orchestrate Gemini Vision และบันทึกผล
 - validate และ normalize ข้อมูล
 - บันทึกลงฐานข้อมูล
 
 ## AI Services
-- OCR pre-trained service
-- LLM pre-trained service
+- Gemini (vision-language) pre-trained service
 - optional embedding/search สำหรับช่วย map ชื่อสินค้า
 
 ## Data Layer
@@ -140,18 +137,14 @@ MVP ควรจำกัดให้แคบพอที่จะเดโม�
 - Backend: `Next.js API routes` หรือ `FastAPI`
 - Database: `Postgres` หรือ `Supabase`
 - Storage: `Supabase Storage` หรือ object storage
-- OCR: `Google Vision`, `Azure Document Intelligence`, หรือ `Mistral OCR`
-- LLM: `OpenAI`, `Claude`, หรือ `Gemini`
+- Vision + LLM: `Gemini` (อ่านเอกสารและ structured extraction ในขั้นตอนเดียว)
 
 ## Model Usage Plan
 ใช้เฉพาะ pre-trained services และ orchestration logic
 
-### OCR Model Responsibilities
-- อ่านข้อความไทยจากเอกสาร
-- ตรวจจับ text block หรือ line item
-
-### LLM Responsibilities
-- แยก field สำคัญจาก OCR text
+### Gemini Vision Responsibilities
+- อ่านเอกสารไทยจากรูป/PDF โดยตรง
+- แยก field สำคัญและ line item เป็น JSON
 - ตีความคำไทยที่หลากหลาย
 - normalize วันที่ พ.ศ. เป็น format มาตรฐาน
 - สรุปผลให้อยู่ใน JSON schema เดียวกัน
@@ -190,11 +183,10 @@ MVP ควรจำกัดให้แคบพอที่จะเดโม�
 
 ## UX Flow
 1. User uploads receipt image or PDF
-2. System extracts OCR text
-3. System runs LLM extraction and normalization
-4. System shows extracted fields with confidence highlights
-5. User reviews only flagged fields
-6. User confirms and exports sales data
+2. System runs Gemini Vision extraction and normalization
+3. System shows extracted fields with confidence highlights
+4. User reviews only flagged fields
+5. User confirms and exports sales data
 
 ## Delivery Plan
 ## Week 1: Discovery and Setup
@@ -202,12 +194,11 @@ MVP ควรจำกัดให้แคบพอที่จะเดโม�
 - collect sample Thai receipts and documents
 - define extraction schema
 - set up project repo and app skeleton
-- integrate one OCR provider and one LLM provider
+- integrate Gemini (vision) for extraction
 
 ## Week 2: Core Extraction
 - build upload flow
-- implement OCR pipeline
-- implement LLM extraction prompt and parser
+- implement Gemini Vision extraction prompt and parser
 - support Thai date normalization
 - support key financial fields
 
@@ -231,7 +222,7 @@ MVP ควรจำกัดให้แคบพอที่จะเดโม�
 - Product/Business: define use case, KPI, pitch
 - Frontend: upload flow, review UI, dashboard
 - Backend: orchestration API, validation, persistence
-- AI/Integration: OCR, prompt engineering, schema extraction
+- AI/Integration: Gemini Vision, prompt engineering, schema extraction
 - QA/Demo: sample data, testing, demo scenario
 
 ## Demo Plan
@@ -249,8 +240,8 @@ MVP ควรจำกัดให้แคบพอที่จะเดโม�
 - จำนวนเอกสารที่รองรับใน MVP
 
 ## Risks and Mitigations
-### Risk: OCR อ่านใบเสร็จจางไม่ดี
-Mitigation: ใช้ image preprocessing และให้ user review
+### Risk: เอกสารจางหรือภาพเบลอ อ่านยาก
+Mitigation: ให้ user ถ่าย/อัปโหลดคมชัด และใช้ review step
 
 ### Risk: เอกสารหลากหลายเกินไป
 Mitigation: จำกัดเอกสาร 2-3 format ใน MVP
@@ -258,11 +249,11 @@ Mitigation: จำกัดเอกสาร 2-3 format ใน MVP
 ### Risk: ชื่อสินค้าไม่ตรง master
 Mitigation: ใช้ product alias mapping และ review step
 
-### Risk: ยอดรวมไม่ตรงจาก OCR error
+### Risk: ยอดรวมไม่ตรงจากการอ่านเอกสารผิดพลาด
 Mitigation: ใช้ validation rules และ highlight mismatch
 
 ## Judging-Oriented Pitch Points
-- ใช้ AI เพื่อแก้ปัญหางานจริง ไม่ใช่แค่ demo OCR
+- ใช้ AI เพื่อแก้ปัญหางานจริง ไม่ใช่แค่ demo อ่านเอกสาร
 - โฟกัสภาษาไทยซึ่งมีความซับซ้อนและเป็น pain point ชัด
 - ใช้ pre-trained models only จึงทำ MVP ได้เร็วและ deploy ได้จริง
 - วัด impact เชิงธุรกิจได้ชัด เช่น เวลาและความถูกต้อง
@@ -273,6 +264,6 @@ Mitigation: ใช้ validation rules และ highlight mismatch
 
 ## Next Steps
 1. รวบรวมตัวอย่างเอกสารไทยจริง 20-30 ใบ
-2. เลือก OCR provider และ LLM provider สำหรับ MVP
+2. กำหนดโมเดล vision (เช่น Gemini) และขอบเขต extraction สำหรับ MVP
 3. นิยาม extraction schema และ KPI ที่จะใช้วัดผล
 4. เริ่มพัฒนา upload -> extract -> review -> export flow

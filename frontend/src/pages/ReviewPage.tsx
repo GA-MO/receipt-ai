@@ -4,7 +4,6 @@ import {
   AlertTriangle,
   ArrowLeft,
   CheckCircle2,
-  FileText,
   ImageIcon,
   Loader2,
   RotateCcw,
@@ -274,34 +273,19 @@ export default function ReviewPage() {
   );
 
   const imageSection = (
-    <Tabs defaultValue="image">
-      <Tabs.List>
-        <Tabs.Tab value="image" leftSection={<ImageIcon size={14} />}>เอกสาร</Tabs.Tab>
-        {doc.ocr_text && <Tabs.Tab value="ocr" leftSection={<FileText size={14} />}>OCR Text</Tabs.Tab>}
-      </Tabs.List>
-      <Tabs.Panel value="image" pt="sm">
-        {doc.file_type === "pdf" ? (
-          <iframe src={getDocumentImageUrl(doc.id)} className="w-full h-[600px] rounded-lg" title="PDF" />
-        ) : (
-          <div className="h-[600px] rounded-lg overflow-hidden">
-            <ImageCanvas
-              src={getDocumentImageUrl(doc.id)}
-              alt={doc.filename}
-              downloadFilename={doc.filename}
-            />
-          </div>
-        )}
-      </Tabs.Panel>
-      {doc.ocr_text && (
-        <Tabs.Panel value="ocr" pt="sm">
-          <Paper withBorder p="sm" className="max-h-[600px] overflow-auto">
-            <pre className="text-xs whitespace-pre-wrap font-mono">
-              {doc.ocr_text}
-            </pre>
-          </Paper>
-        </Tabs.Panel>
+    <div>
+      {doc.file_type === "pdf" ? (
+        <iframe src={getDocumentImageUrl(doc.id)} className="w-full h-[600px] rounded-lg" title="PDF" />
+      ) : (
+        <div className="h-[600px] rounded-lg overflow-hidden">
+          <ImageCanvas
+            src={getDocumentImageUrl(doc.id)}
+            alt={doc.filename}
+            downloadFilename={doc.filename}
+          />
+        </div>
       )}
-    </Tabs>
+    </div>
   );
 
   const formSection = (

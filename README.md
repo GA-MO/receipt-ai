@@ -4,7 +4,7 @@ AI-powered Thai receipt and sales document extraction system. Upload Thai receip
 
 ## Features
 
-- **PaddleOCR + Gemini AI** — Hybrid pipeline: OCR reads text first, then Gemini extracts structured data with OCR context for higher accuracy
+- **Gemini Vision** — Multimodal extraction: Gemini 3 Flash reads receipt images/PDFs directly and returns structured data
 - **Thai-first design** — Handles Thai dates (พ.ศ.), Thai abbreviations, mixed Thai-English text
 - **Human-in-the-loop** — Confidence scoring, validation warnings, side-by-side review
 - **Dashboard** — Sales charts, top merchants, date range filtering, CSV export
@@ -69,8 +69,7 @@ receipt-ai/
 │   │   │   ├── documents.py     # Upload, CRUD, approve, re-extract
 │   │   │   └── dashboard.py     # Stats, charts, CSV export
 │   │   └── services/
-│   │       ├── ocr.py           # PaddleOCR service
-│   │       ├── extraction.py    # Gemini AI extraction
+│   │       ├── extraction.py    # Gemini Vision extraction
 │   │       └── validation.py    # Business rule validation
 │   ├── alembic/                 # Database migrations
 │   ├── tests/                   # pytest (33 tests)
@@ -96,9 +95,9 @@ receipt-ai/
 ## Processing Pipeline
 
 ```
-Upload → [PaddleOCR] → OCR text → [Gemini + image + OCR context] → JSON
-                                         ↓
-                              Validation → Store → Review → Approve → Export
+Upload → [Gemini Vision] → JSON
+              ↓
+   Validation → Store → Review → Approve → Export
 ```
 
 ## API Documentation
@@ -112,7 +111,7 @@ FastAPI auto-generated docs: http://localhost:8000/docs
 | POST | `/api/documents/upload` | Upload receipt |
 | GET | `/api/documents` | List with search/filter/pagination |
 | GET | `/api/documents/{id}` | Get document details |
-| POST | `/api/documents/{id}/reextract` | Re-run OCR + AI |
+| POST | `/api/documents/{id}/reextract` | Re-run AI extraction |
 | POST | `/api/documents/{id}/approve` | Approve document |
 | GET | `/api/dashboard/stats` | Summary statistics |
 | GET | `/api/dashboard/daily-sales` | Sales by date |
@@ -128,7 +127,6 @@ See `backend/.env.example` for all options:
 | `GEMINI_API_KEY` | Gemini API key (option 1) | - |
 | `GCP_CREDENTIALS_PATH` | GCP service account JSON (option 2) | - |
 | `GEMINI_MODEL` | Gemini model | `gemini-3-flash-preview` |
-| `OCR_ENABLED` | Enable PaddleOCR preprocessing (off by default) | `false` |
 | `MAX_FILE_SIZE_MB` | Upload size limit | `20` |
 | `CORS_ORIGINS` | Allowed origins (comma-separated) | `http://localhost:5173` |
 
