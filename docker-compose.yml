@@ -1,0 +1,27 @@
+services:
+  backend:
+    build: ./backend
+    env_file: ./backend/.env
+    environment:
+      - DATABASE_URL=sqlite:///./data/receipts.db
+      - UPLOAD_DIR=./uploads
+      - CORS_ORIGINS=http://localhost
+    volumes:
+      - backend-data:/app/data
+      - backend-uploads:/app/uploads
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE: /api
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  backend-data:
+  backend-uploads:
