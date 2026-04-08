@@ -1,16 +1,21 @@
 import csv
 import io
 import json
+import logging
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
+from google.genai import types
 from sqlalchemy import cast, func, String
 from sqlalchemy.orm import Session
 
+from ..config import settings
 from ..database import get_db
 from ..models import Document
 from ..schemas import DashboardStats
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -322,6 +327,130 @@ def spending_heatmap(
         current += timedelta(days=1)
 
     return result
+
+
+AI_INSIGHT_PROMPT = """\
+คุณเป็นนักวิเคราะห์ธุรกิจ วิเคราะห์ข้อมูลยอดขายต่อไปนี้และสรุปเป็นภาษาไทย:
+
+วันที่วันนี้: {today}
+
+## สถิติรวม
+- เอกสารทั้งหมด: {total_docs} ฉบับ
+- ตรวจสอบแล้ว: {reviewed} ฉบับ
+- ยอดขายรวม: ฿{total_sales:,.2f}
+
+## ยอดขายรายวัน (10 วันล่าสุด)
+{daily_sales}
+
+## ร้านค้ายอดสูงสุด
+{top_merchants}
+
+## สัดส่วนหมวดสินค้า
+{categories}
+
+## Fraud Summary
+- เอกสารที่ถูก flag: {fraud_count} ฉบับ
+
+กรุณาตอบเป็น JSON:
+{{
+  "headline": "สรุปสั้นๆ 1 บรรทัด เช่น 'ยอดขายสัปดาห์นี้เติบโต 20% จากร้านค้าเบียร์'",
+  "insights": [
+    "insight 1 — ข้อสังเกตจากข้อมูล",
+    "insight 2 — แนวโน้มหรือ pattern ที่น่าสนใจ",
+    "insight 3 — ข้อเสนอแนะสำหรับธุรกิจ"
+  ],
+  "risks": [
+    "ความเสี่ยง/จุดที่ควรระวัง (ถ้ามี)"
+  ],
+  "opportunities": [
+    "โอกาสทางธุรกิจที่เห็นจากข้อมูล (ถ้ามี)"
+  ]
+}}
+
+ตอบเป็น JSON เท่านั้น เน้นข้อมูลเชิงลึกที่เป็นประโยชน์ต่อการตัดสินใจ
+"""
+
+
+@router.get("/ai-insight")
+def ai_insight(db: Session = Depends(get_db)):
+    """Generate AI-powered business insight from current data."""
+    from ..services.extraction import _get_client
+
+    total = db.query(func.count(Document.id)).scalar() or 0
+    reviewed = db.query(func.count(Document.id)).filter(Document.status == "reviewed").scalar() or 0
+    total_sales = float(
+        db.query(func.sum(Document.grand_total))
+        .filter(Document.grand_total.isnot(None))
+        .scalar() or 0
+    )
+
+    daily = (
+        db.query(Document.document_date, func.sum(Document.grand_total).label("total"), func.count(Document.id).label("count"))
+        .filter(Document.document_date.isnot(None), Document.grand_total.isnot(None))
+        .group_by(Document.document_date)
+        .order_by(Document.document_date.desc())
+        .limit(10)
+        .all()
+    )
+    daily_str = "\n".join(f"- {r.document_date}: ฿{float(r.total):,.2f} ({r.count} เอกสาร)" for r in reversed(daily)) or "ไม่มีข้อมูล"
+
+    merchants = (
+        db.query(Document.merchant_name, func.sum(Document.grand_total).label("total"), func.count(Document.id).label("count"))
+        .filter(Document.merchant_name.isnot(None), Document.grand_total.isnot(None))
+        .group_by(Document.merchant_name)
+        .order_by(func.sum(Document.grand_total).desc())
+        .limit(5)
+        .all()
+    )
+    merchants_str = "\n".join(f"- {r.merchant_name}: ฿{float(r.total):,.2f} ({r.count} เอกสาร)" for r in merchants) or "ไม่มีข้อมูล"
+
+    cats = (
+        db.query(Document.category, func.sum(Document.grand_total).label("total"), func.count(Document.id).label("count"))
+        .filter(Document.category.isnot(None), Document.grand_total.isnot(None))
+        .group_by(Document.category)
+        .order_by(func.sum(Document.grand_total).desc())
+        .all()
+    )
+    cats_str = "\n".join(f"- {r.category}: ฿{float(r.total):,.2f} ({r.count} เอกสาร)" for r in cats) or "ไม่มีข้อมูล"
+
+    fraud_count = (
+        db.query(func.count(Document.id))
+        .filter(Document.fraud_flags.isnot(None), Document.fraud_flags != "null", Document.fraud_flags != "[]")
+        .scalar() or 0
+    )
+
+    prompt = AI_INSIGHT_PROMPT.format(
+        today=datetime.now(UTC).strftime("%Y-%m-%d"),
+        total_docs=total,
+        reviewed=reviewed,
+        total_sales=total_sales,
+        daily_sales=daily_str,
+        top_merchants=merchants_str,
+        categories=cats_str,
+        fraud_count=fraud_count,
+    )
+
+    try:
+        client = _get_client()
+        response = client.models.generate_content(
+            model=settings.gemini_model,
+            contents=[prompt],
+            config=types.GenerateContentConfig(
+                temperature=0.3,
+                response_mime_type="application/json",
+            ),
+        )
+        data = json.loads(response.text.strip())
+        logger.info("AI insight generated successfully")
+        return data
+    except Exception as exc:
+        logger.warning("AI insight failed: %s", exc)
+        return {
+            "headline": "ไม่สามารถสร้าง insight ได้ในขณะนี้",
+            "insights": [],
+            "risks": [],
+            "opportunities": [],
+        }
 
 
 @router.get("/export")

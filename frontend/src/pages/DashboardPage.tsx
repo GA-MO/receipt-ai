@@ -28,6 +28,7 @@ import { DatePickerInput } from "@mantine/dates";
 import { BarChart } from "@mantine/charts";
 import "dayjs/locale/th";
 import {
+  type AiInsightResponse,
   type CategoryBreakdown,
   type DailySales,
   type DashboardStats,
@@ -36,6 +37,7 @@ import {
   type HeatmapDay,
   type TopMerchant,
   type VatSummaryResponse,
+  getAiInsight,
   getCategoryBreakdown,
   getDailySales,
   getDashboardStats,
@@ -80,9 +82,23 @@ export default function DashboardPage() {
   const [heatmapData, setHeatmapData] = useState<HeatmapDay[]>([]);
   const [loading, setLoading] = useState(true);
   const [exportDateRange, setExportDateRange] = useState<[Date | null, Date | null]>([null, null]);
+  const [aiInsight, setAiInsight] = useState<AiInsightResponse | null>(null);
+  const [insightLoading, setInsightLoading] = useState(false);
 
   const exportDateFrom = exportDateRange[0] ? format(exportDateRange[0], "yyyy-MM-dd") : "";
   const exportDateTo = exportDateRange[1] ? format(exportDateRange[1], "yyyy-MM-dd") : "";
+
+  const handleAiInsight = async () => {
+    setInsightLoading(true);
+    try {
+      const data = await getAiInsight();
+      setAiInsight(data);
+    } catch {
+      setAiInsight({ headline: "ไม่สามารถสร้าง insight ได้", insights: [], risks: [], opportunities: [] });
+    } finally {
+      setInsightLoading(false);
+    }
+  };
 
   useEffect(() => {
     Promise.allSettled([
@@ -199,6 +215,75 @@ export default function DashboardPage() {
           );
         })}
       </SimpleGrid>
+
+      {/* AI Business Insight */}
+      <Paper withBorder p="md" mb="lg" radius="md" style={{ background: "linear-gradient(135deg, var(--mantine-color-indigo-0) 0%, var(--mantine-color-violet-0) 100%)" }}>
+        <Group justify="space-between" mb={aiInsight ? "md" : 0}>
+          <Group gap="xs">
+            <ThemeIcon size="lg" radius="md" variant="gradient" gradient={{ from: "indigo", to: "violet" }}>
+              <TrendingUp size={20} />
+            </ThemeIcon>
+            <div>
+              <Text fw={700} size="sm">AI Business Insight</Text>
+              <Text size="xs" c="dimmed">วิเคราะห์ภาพรวมธุรกิจด้วย AI</Text>
+            </div>
+          </Group>
+          <Button
+            variant="gradient"
+            gradient={{ from: "indigo", to: "violet" }}
+            size="sm"
+            onClick={handleAiInsight}
+            loading={insightLoading}
+          >
+            {aiInsight ? "วิเคราะห์ใหม่" : "วิเคราะห์"}
+          </Button>
+        </Group>
+
+        {aiInsight && (
+          <Stack gap="md">
+            <Paper p="md" radius="md" withBorder>
+              <Text fw={700} size="lg" mb="xs">{aiInsight.headline}</Text>
+              {aiInsight.insights.length > 0 && (
+                <Stack gap={4}>
+                  {aiInsight.insights.map((text, i) => (
+                    <Group key={i} gap="xs" wrap="nowrap" align="flex-start">
+                      <Text c="indigo" fw={700} size="sm" style={{ flexShrink: 0 }}>•</Text>
+                      <Text size="sm">{text}</Text>
+                    </Group>
+                  ))}
+                </Stack>
+              )}
+            </Paper>
+
+            {(aiInsight.risks.length > 0 || aiInsight.opportunities.length > 0) && (
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                {aiInsight.risks.length > 0 && (
+                  <Paper p="sm" radius="md" withBorder style={{ borderColor: "var(--mantine-color-red-3)" }}>
+                    <Group gap="xs" mb="xs">
+                      <ShieldAlert size={14} color="var(--mantine-color-red-6)" />
+                      <Text fw={600} size="xs" c="red">ความเสี่ยง</Text>
+                    </Group>
+                    {aiInsight.risks.map((text, i) => (
+                      <Text key={i} size="xs" c="dimmed" mb={2}>• {text}</Text>
+                    ))}
+                  </Paper>
+                )}
+                {aiInsight.opportunities.length > 0 && (
+                  <Paper p="sm" radius="md" withBorder style={{ borderColor: "var(--mantine-color-green-3)" }}>
+                    <Group gap="xs" mb="xs">
+                      <TrendingUp size={14} color="var(--mantine-color-green-6)" />
+                      <Text fw={600} size="xs" c="green">โอกาส</Text>
+                    </Group>
+                    {aiInsight.opportunities.map((text, i) => (
+                      <Text key={i} size="xs" c="dimmed" mb={2}>• {text}</Text>
+                    ))}
+                  </Paper>
+                )}
+              </SimpleGrid>
+            )}
+          </Stack>
+        )}
+      </Paper>
 
       {/* Charts row 1: daily sales + top merchants */}
       <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md" mb="lg">

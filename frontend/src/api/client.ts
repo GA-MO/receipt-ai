@@ -148,6 +148,10 @@ export function getSpendingHeatmap(days = 90) {
   return request<HeatmapDay[]>(`/dashboard/spending-heatmap?days=${days}`);
 }
 
+export function getAiInsight() {
+  return request<AiInsightResponse>("/dashboard/ai-insight");
+}
+
 export function getDocumentImageUrl(id: string) {
   return `${API_BASE}/documents/${id}/image`;
 }
@@ -298,4 +302,11 @@ export interface HeatmapDay {
   date: string;
   total: number;
   count: number;
+}
+
+export interface AiInsightResponse {
+  headline: string;
+  insights: string[];
+  risks: string[];
+  opportunities: string[];
 }
