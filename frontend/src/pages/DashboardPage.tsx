@@ -218,68 +218,54 @@ export default function DashboardPage() {
 
       {/* AI Business Insight */}
       <Paper withBorder p="md" mb="lg" radius="md" style={{ background: "linear-gradient(135deg, var(--mantine-color-indigo-0) 0%, var(--mantine-color-violet-0) 100%)" }}>
-        <Group justify="space-between" mb={aiInsight ? "md" : 0}>
-          <Group gap="xs">
-            <ThemeIcon size="lg" radius="md" variant="gradient" gradient={{ from: "indigo", to: "violet" }}>
-              <TrendingUp size={20} />
-            </ThemeIcon>
-            <div>
+        {!aiInsight ? (
+          <Group justify="space-between">
+            <Group gap="xs">
+              <ThemeIcon size="lg" radius="md" variant="gradient" gradient={{ from: "indigo", to: "violet" }}>
+                <TrendingUp size={20} />
+              </ThemeIcon>
               <Text fw={700} size="sm">AI Business Insight</Text>
-              <Text size="xs" c="dimmed">วิเคราะห์ภาพรวมธุรกิจด้วย AI</Text>
-            </div>
+            </Group>
+            <Button
+              variant="gradient"
+              gradient={{ from: "indigo", to: "violet" }}
+              size="sm"
+              onClick={handleAiInsight}
+              loading={insightLoading}
+            >
+              วิเคราะห์
+            </Button>
           </Group>
-          <Button
-            variant="gradient"
-            gradient={{ from: "indigo", to: "violet" }}
-            size="sm"
-            onClick={handleAiInsight}
-            loading={insightLoading}
-          >
-            {aiInsight ? "วิเคราะห์ใหม่" : "วิเคราะห์"}
-          </Button>
-        </Group>
+        ) : (
+          <Stack gap="sm">
+            <Group justify="space-between">
+              <Text fw={700}>{aiInsight.headline}</Text>
+              <Button variant="subtle" size="xs" color="indigo" onClick={handleAiInsight} loading={insightLoading}>
+                วิเคราะห์ใหม่
+              </Button>
+            </Group>
 
-        {aiInsight && (
-          <Stack gap="md">
-            <Paper p="md" radius="md" withBorder>
-              <Text fw={700} size="lg" mb="xs">{aiInsight.headline}</Text>
-              {aiInsight.insights.length > 0 && (
-                <Stack gap={4}>
-                  {aiInsight.insights.map((text, i) => (
-                    <Group key={i} gap="xs" wrap="nowrap" align="flex-start">
-                      <Text c="indigo" fw={700} size="sm" style={{ flexShrink: 0 }}>•</Text>
-                      <Text size="sm">{text}</Text>
-                    </Group>
-                  ))}
-                </Stack>
-              )}
-            </Paper>
+            <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="xs">
+              {aiInsight.insights.slice(0, 3).map((text, i) => (
+                <Paper key={i} p="xs" radius="sm" withBorder>
+                  <Text size="xs" lineClamp={2}>{text}</Text>
+                </Paper>
+              ))}
+            </SimpleGrid>
 
             {(aiInsight.risks.length > 0 || aiInsight.opportunities.length > 0) && (
-              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-                {aiInsight.risks.length > 0 && (
-                  <Paper p="sm" radius="md" withBorder style={{ borderColor: "var(--mantine-color-red-3)" }}>
-                    <Group gap="xs" mb="xs">
-                      <ShieldAlert size={14} color="var(--mantine-color-red-6)" />
-                      <Text fw={600} size="xs" c="red">ความเสี่ยง</Text>
-                    </Group>
-                    {aiInsight.risks.map((text, i) => (
-                      <Text key={i} size="xs" c="dimmed" mb={2}>• {text}</Text>
-                    ))}
-                  </Paper>
-                )}
-                {aiInsight.opportunities.length > 0 && (
-                  <Paper p="sm" radius="md" withBorder style={{ borderColor: "var(--mantine-color-green-3)" }}>
-                    <Group gap="xs" mb="xs">
-                      <TrendingUp size={14} color="var(--mantine-color-green-6)" />
-                      <Text fw={600} size="xs" c="green">โอกาส</Text>
-                    </Group>
-                    {aiInsight.opportunities.map((text, i) => (
-                      <Text key={i} size="xs" c="dimmed" mb={2}>• {text}</Text>
-                    ))}
-                  </Paper>
-                )}
-              </SimpleGrid>
+              <Group gap="md">
+                {aiInsight.risks.slice(0, 2).map((text, i) => (
+                  <Badge key={i} color="red" variant="light" size="sm" style={{ maxWidth: "48%" }}>
+                    ⚠ {text.length > 50 ? text.slice(0, 50) + "…" : text}
+                  </Badge>
+                ))}
+                {aiInsight.opportunities.slice(0, 2).map((text, i) => (
+                  <Badge key={i} color="green" variant="light" size="sm" style={{ maxWidth: "48%" }}>
+                    ✦ {text.length > 50 ? text.slice(0, 50) + "…" : text}
+                  </Badge>
+                ))}
+              </Group>
             )}
           </Stack>
         )}
