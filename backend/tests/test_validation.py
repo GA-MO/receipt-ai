@@ -6,7 +6,7 @@ from app.services.validation import validate_extraction
 
 def _make_item(**overrides) -> DocumentItemBase:
     defaults = {
-        "product_name_raw": "สินค้า A",
+        "product_name_normalized": "สินค้า A",
         "quantity": 2,
         "unit": "ชิ้น",
         "unit_price": 50.0,
@@ -116,7 +116,7 @@ class TestValidateExtraction:
         assert not any("VAT" in w for w in warnings)
 
     def test_item_missing_product_name(self):
-        item = _make_item(product_name_raw=None)
+        item = _make_item(product_name_normalized=None)
         result = _make_result(items=[item])
         warnings = validate_extraction(result)
         assert any("ไม่มีชื่อสินค้า" in w for w in warnings)

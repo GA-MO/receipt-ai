@@ -1,38 +1,36 @@
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel
-
 
 # ---------- Items ----------
 
 
 class DocumentItemBase(BaseModel):
-    product_name_raw: Optional[str] = None
-    product_name_normalized: Optional[str] = None
-    quantity: Optional[float] = None
-    unit: Optional[str] = None
-    unit_price: Optional[float] = None
-    line_total: Optional[float] = None
+    product_name_normalized: str | None = None
+    category: str | None = None
+    quantity: float | None = None
+    unit: str | None = None
+    unit_price: float | None = None
+    line_total: float | None = None
 
 
 class DocumentItemResponse(DocumentItemBase):
     id: str
     document_id: str
-    confidence: Optional[float] = None
+    confidence: float | None = None
     needs_review: bool = False
 
     model_config = {"from_attributes": True}
 
 
 class DocumentItemUpdate(BaseModel):
-    product_name_raw: Optional[str] = None
-    product_name_normalized: Optional[str] = None
-    quantity: Optional[float] = None
-    unit: Optional[str] = None
-    unit_price: Optional[float] = None
-    line_total: Optional[float] = None
-    needs_review: Optional[bool] = None
+    product_name_normalized: str | None = None
+    category: str | None = None
+    quantity: float | None = None
+    unit: str | None = None
+    unit_price: float | None = None
+    line_total: float | None = None
+    needs_review: bool | None = None
 
 
 # ---------- Documents ----------
@@ -44,36 +42,38 @@ class DocumentResponse(BaseModel):
     file_type: str = "image"
     status: str
     uploaded_at: datetime
-    processed_at: Optional[datetime] = None
-    reviewed_at: Optional[datetime] = None
-    confidence: Optional[float] = None
+    processed_at: datetime | None = None
+    reviewed_at: datetime | None = None
+    confidence: float | None = None
     needs_review: bool = True
-    error_message: Optional[str] = None
-    merchant_name: Optional[str] = None
-    document_number: Optional[str] = None
-    document_date: Optional[str] = None
-    subtotal: Optional[float] = None
-    discount: Optional[float] = None
-    vat: Optional[float] = None
-    grand_total: Optional[float] = None
-    category: Optional[str] = None
-    notes: Optional[str] = None
-    fraud_flags: Optional[str] = None
+    error_message: str | None = None
+    merchant_name: str | None = None
+    merchant_normalized: str | None = None
+    document_number: str | None = None
+    document_date: str | None = None
+    subtotal: float | None = None
+    discount: float | None = None
+    vat: float | None = None
+    grand_total: float | None = None
+    category: str | None = None
+    notes: str | None = None
+    fraud_flags: str | None = None
     items: list[DocumentItemResponse] = []
 
     model_config = {"from_attributes": True}
 
 
 class DocumentUpdate(BaseModel):
-    merchant_name: Optional[str] = None
-    document_number: Optional[str] = None
-    document_date: Optional[str] = None
-    subtotal: Optional[float] = None
-    discount: Optional[float] = None
-    vat: Optional[float] = None
-    grand_total: Optional[float] = None
-    category: Optional[str] = None
-    notes: Optional[str] = None
+    merchant_name: str | None = None
+    merchant_normalized: str | None = None
+    document_number: str | None = None
+    document_date: str | None = None
+    subtotal: float | None = None
+    discount: float | None = None
+    vat: float | None = None
+    grand_total: float | None = None
+    category: str | None = None
+    notes: str | None = None
 
 
 class DocumentListItem(BaseModel):
@@ -81,13 +81,14 @@ class DocumentListItem(BaseModel):
     filename: str
     status: str
     uploaded_at: datetime
-    merchant_name: Optional[str] = None
-    grand_total: Optional[float] = None
-    category: Optional[str] = None
-    confidence: Optional[float] = None
+    merchant_name: str | None = None
+    merchant_normalized: str | None = None
+    grand_total: float | None = None
+    category: str | None = None
+    confidence: float | None = None
     needs_review: bool = True
     item_count: int = 0
-    fraud_flags: Optional[str] = None
+    fraud_flags: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -108,15 +109,16 @@ class DashboardStats(BaseModel):
 
 
 class ExtractionResult(BaseModel):
-    merchant_name: Optional[str] = None
-    document_number: Optional[str] = None
-    document_date: Optional[str] = None
-    category: Optional[str] = None
+    merchant_name: str | None = None
+    merchant_normalized: str | None = None
+    document_number: str | None = None
+    document_date: str | None = None
+    category: str | None = None
     items: list[DocumentItemBase] = []
-    subtotal: Optional[float] = None
-    discount: Optional[float] = None
-    vat: Optional[float] = None
-    grand_total: Optional[float] = None
+    subtotal: float | None = None
+    discount: float | None = None
+    vat: float | None = None
+    grand_total: float | None = None
     confidence: float = 0.0
-    notes: Optional[str] = None
+    notes: str | None = None
     needs_review_fields: list[str] = []

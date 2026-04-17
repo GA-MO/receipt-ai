@@ -77,7 +77,7 @@ def _format_doc_for_ai(doc: Document) -> str:
         lines = []
         for it in doc.items:
             lines.append(
-                f"  - {it.product_name_raw or '?'}: "
+                f"  - {it.product_name_normalized or '?'}: "
                 f"{it.quantity or '?'} {it.unit or ''} × ฿{float(it.unit_price or 0):,.2f} = ฿{float(it.line_total or 0):,.2f}"
             )
         items_str = "\n".join(lines)

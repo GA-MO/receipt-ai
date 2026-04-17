@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import {
@@ -28,11 +28,7 @@ import {
 } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import "dayjs/locale/th";
-import {
-  type DocumentListItem,
-  getDocumentCount,
-  getDocuments,
-} from "../api/client";
+import { useDocumentCount, useDocuments } from "../api/queries";
 import { parseFraudFlags } from "@/lib/fraud";
 
 const STATUS_OPTIONS = [
@@ -66,9 +62,6 @@ const CATEGORY_OPTIONS = [
 const PAGE_SIZE = 20;
 
 export default function DocumentsPage() {
-  const [docs, setDocs] = useState<DocumentListItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(0);
   const [statusFilter, setStatusFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
@@ -79,30 +72,22 @@ export default function DocumentsPage() {
   const dateFrom = dateRange?.[0] ? format(dateRange[0], "yyyy-MM-dd") : "";
   const dateTo = dateRange?.[1] ? format(dateRange[1], "yyyy-MM-dd") : "";
 
-  const fetchDocs = useCallback(async () => {
-    setLoading(true);
-    try {
-      const filters = {
-        status: statusFilter || undefined,
-        category: categoryFilter || undefined,
-        search: searchQuery || undefined,
-        date_from: dateFrom || undefined,
-        date_to: dateTo || undefined,
-      };
-      const [docList, countResult] = await Promise.all([
-        getDocuments({ skip: page * PAGE_SIZE, limit: PAGE_SIZE, ...filters }),
-        getDocumentCount(filters),
-      ]);
-      setDocs(docList);
-      setTotalCount(countResult.count);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, statusFilter, categoryFilter, searchQuery, dateFrom, dateTo]);
+  const filters = {
+    status: statusFilter || undefined,
+    category: categoryFilter || undefined,
+    search: searchQuery || undefined,
+    date_from: dateFrom || undefined,
+    date_to: dateTo || undefined,
+  };
 
-  useEffect(() => {
-    fetchDocs();
-  }, [fetchDocs]);
+  const { data: docs = [], isPending: docsLoading } = useDocuments({
+    skip: page * PAGE_SIZE,
+    limit: PAGE_SIZE,
+    ...filters,
+  });
+  const { data: countResult } = useDocumentCount(filters);
+  const totalCount = countResult?.count ?? 0;
+  const loading = docsLoading;
 
   const handleSearch = () => {
     setPage(0);

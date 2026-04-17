@@ -1,10 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   AlertTriangle,
   ArrowLeft,
   CheckCircle2,
-  ImageIcon,
   Loader2,
   RotateCcw,
   Save,
@@ -36,15 +35,18 @@ import "dayjs/locale/th";
 import {
   type DocumentItemData,
   type DocumentResponse,
-  approveDocument,
-  deleteDocument,
-  deleteItem,
-  getDocument,
   getDocumentImageUrl,
-  reextractDocument,
-  updateDocument,
-  updateItem,
 } from "../api/client";
+import {
+  useApproveDocument,
+  useDeleteDocument,
+  useDeleteItem,
+  useDocument,
+  useReextractDocument,
+  useUpdateDocument,
+  useUpdateItem,
+} from "../api/queries";
+import { useDocumentStream } from "@/hooks/useDocumentStream";
 import { parseFraudData, riskScoreColor, riskScoreLabel } from "@/lib/fraud";
 import { useToast } from "@/components/Toast";
 import { ImageCanvas } from "@/components/ImageCanvas";
@@ -71,9 +73,15 @@ export default function ReviewPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [doc, setDoc] = useState<DocumentResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+
+  const { data: doc, isPending, error } = useDocument(id);
+  const updateDoc = useUpdateDocument(id ?? "");
+  const updateItemMut = useUpdateItem(id ?? "");
+  const deleteItemMut = useDeleteItem(id ?? "");
+  const approveMut = useApproveDocument();
+  const deleteMut = useDeleteDocument();
+  const reextractMut = useReextractDocument();
+
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [reextractModalOpen, setReextractModalOpen] = useState(false);
   const [mobileTab, setMobileTab] = useState<"doc" | "form">("doc");
@@ -82,102 +90,70 @@ export default function ReviewPage() {
     document_number: "",
     document_date: "",
     category: "",
-    subtotal: "" as string | number,
-    discount: "" as string | number,
-    vat: "" as string | number,
-    grand_total: "" as string | number,
+    subtotal: null as number | null,
+    discount: null as number | null,
+    vat: null as number | null,
+    grand_total: null as number | null,
     notes: "",
   });
 
-  const pollRef = useRef<ReturnType<typeof setInterval>>(undefined);
-  const pollCountRef = useRef(0);
-  const toastRef = useRef(toast);
-  toastRef.current = toast;
-
-  const MAX_POLL_ATTEMPTS = 90;
-
-  const syncForm = (d: DocumentResponse) => {
-    setDoc(d);
+  // Sync form state with the current document whenever it changes.
+  useEffect(() => {
+    if (!doc) return;
     setForm({
-      merchant_name: d.merchant_name ?? "",
-      document_number: d.document_number ?? "",
-      document_date: d.document_date ?? "",
-      category: d.category ?? "",
-      subtotal: d.subtotal ?? "",
-      discount: d.discount ?? "",
-      vat: d.vat ?? "",
-      grand_total: d.grand_total ?? "",
-      notes: d.notes ?? "",
+      merchant_name: doc.merchant_name ?? "",
+      document_number: doc.document_number ?? "",
+      document_date: doc.document_date ?? "",
+      category: doc.category ?? "",
+      subtotal: doc.subtotal ?? null,
+      discount: doc.discount ?? null,
+      vat: doc.vat ?? null,
+      grand_total: doc.grand_total ?? null,
+      notes: doc.notes ?? "",
     });
-  };
+  }, [doc]);
 
   useEffect(() => {
-    if (!id) return;
-    let cancelled = false;
-    getDocument(id)
-      .then((d) => { if (!cancelled) syncForm(d); })
-      .catch(() => toastRef.current("error", "ไม่สามารถโหลดเอกสารได้"))
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [id]);
+    if (error) toast("error", "ไม่สามารถโหลดเอกสารได้");
+  }, [error, toast]);
 
-  useEffect(() => {
-    if (doc?.status !== "processing" || !id) return;
-
-    pollCountRef.current = 0;
-    pollRef.current = setInterval(async () => {
-      pollCountRef.current += 1;
-      if (pollCountRef.current > MAX_POLL_ATTEMPTS) {
-        clearInterval(pollRef.current);
-        toastRef.current("warning", "รอนานเกินไป กรุณารีเฟรชหน้าเว็บ");
-        return;
-      }
-      try {
-        const updated = await getDocument(id);
-        if (updated.status !== "processing") {
-          clearInterval(pollRef.current);
-          syncForm(updated);
-          if (updated.status === "extracted") toastRef.current("success", "AI ดึงข้อมูลเสร็จแล้ว");
-          else if (updated.status === "error") toastRef.current("error", updated.error_message || "เกิดข้อผิดพลาด");
-        }
-      } catch { /* ignore */ }
-    }, 2000);
-
-    return () => clearInterval(pollRef.current);
-  }, [doc?.status, id]);
+  // Subscribe to SSE stream whenever the document is still processing.
+  useDocumentStream(id, {
+    enabled: doc?.status === "processing",
+    onEvent: (ev) => {
+      if (ev.status === "extracted") toast("success", "AI ดึงข้อมูลเสร็จแล้ว");
+      else if (ev.status === "error") toast("error", ev.error_message || "เกิดข้อผิดพลาด");
+    },
+  });
 
   const handleSaveHeader = async () => {
     if (!id) return;
-    setSaving(true);
     try {
-      const toNum = (v: string | number) => (v === "" ? null : Number(v));
-      const updated = await updateDocument(id, {
+      await updateDoc.mutateAsync({
         merchant_name: form.merchant_name || null,
         document_number: form.document_number || null,
         document_date: form.document_date || null,
         category: form.category || null,
-        subtotal: toNum(form.subtotal),
-        discount: toNum(form.discount),
-        vat: toNum(form.vat),
-        grand_total: toNum(form.grand_total),
+        subtotal: form.subtotal,
+        discount: form.discount,
+        vat: form.vat,
+        grand_total: form.grand_total,
         notes: form.notes || null,
       });
-      syncForm(updated);
       toast("success", "บันทึกเรียบร้อย");
     } catch {
       toast("error", "ไม่สามารถบันทึกได้");
-    } finally {
-      setSaving(false);
     }
   };
 
   const handleSaveItem = async (item: DocumentItemData, field: string, value: string) => {
     if (!id) return;
     const numFields = ["quantity", "unit_price", "line_total"];
-    const val = numFields.includes(field) ? (value === "" ? null : Number(value)) : value;
+    const val = numFields.includes(field)
+      ? value === "" ? null : Number(value)
+      : value;
     try {
-      const updated = await updateItem(id, item.id, { [field]: val });
-      syncForm(updated);
+      await updateItemMut.mutateAsync({ itemId: item.id, data: { [field]: val } });
     } catch {
       toast("error", "ไม่สามารถบันทึกรายการได้");
     }
@@ -186,8 +162,7 @@ export default function ReviewPage() {
   const handleDeleteItem = async (item: DocumentItemData) => {
     if (!id) return;
     try {
-      const updated = await deleteItem(id, item.id);
-      syncForm(updated);
+      await deleteItemMut.mutateAsync(item.id);
       toast("success", "ลบรายการเรียบร้อย");
     } catch {
       toast("error", "ไม่สามารถลบรายการได้");
@@ -196,25 +171,39 @@ export default function ReviewPage() {
 
   const handleApprove = async () => {
     if (!id) return;
-    try { const u = await approveDocument(id); syncForm(u); toast("success", "อนุมัติเรียบร้อย"); }
-    catch { toast("error", "ไม่สามารถอนุมัติได้"); }
+    try {
+      await approveMut.mutateAsync(id);
+      toast("success", "อนุมัติเรียบร้อย");
+    } catch {
+      toast("error", "ไม่สามารถอนุมัติได้");
+    }
   };
 
   const handleDelete = async () => {
     if (!id) return;
-    try { await deleteDocument(id); toast("success", "ลบเรียบร้อย"); navigate("/documents"); }
-    catch { toast("error", "ไม่สามารถลบได้"); }
+    try {
+      await deleteMut.mutateAsync(id);
+      toast("success", "ลบเรียบร้อย");
+      navigate("/documents");
+    } catch {
+      toast("error", "ไม่สามารถลบได้");
+    }
   };
 
   const handleReextract = async () => {
     if (!id) return;
-    try { const u = await reextractDocument(id); syncForm(u); toast("info", "กำลังประมวลผลใหม่..."); }
-    catch { toast("error", "ไม่สามารถประมวลผลใหม่ได้"); }
+    try {
+      await reextractMut.mutateAsync(id);
+      toast("info", "กำลังประมวลผลใหม่...");
+    } catch {
+      toast("error", "ไม่สามารถประมวลผลใหม่ได้");
+    }
   };
 
-  if (loading) return <div className="flex items-center justify-center h-64"><Loader size="lg" /></div>;
+  if (isPending) return <div className="flex items-center justify-center h-64"><Loader size="lg" /></div>;
   if (!doc) return <div className="p-8 text-center"><Text c="dimmed">ไม่พบเอกสาร</Text></div>;
 
+  const saving = updateDoc.isPending;
   const isProcessing = doc.status === "processing";
   const confColor = (doc.confidence ?? 0) >= 0.9 ? "green" : (doc.confidence ?? 0) >= 0.7 ? "yellow" : "red";
   const { flags: fraudFlags, ai_analysis: aiAnalysis } = parseFraudData(doc.fraud_flags);
@@ -324,8 +313,8 @@ export default function ReviewPage() {
           prefix="฿"
           thousandSeparator=","
           decimalScale={2}
-          value={form.subtotal === "" ? "" : Number(form.subtotal)}
-          onChange={(v) => setForm({ ...form, subtotal: v === "" ? "" : v })}
+          value={form.subtotal ?? ""}
+          onChange={(v) => setForm({ ...form, subtotal: v === "" ? null : Number(v) })}
           disabled={isProcessing}
         />
         <NumberInput
@@ -333,8 +322,8 @@ export default function ReviewPage() {
           prefix="฿"
           thousandSeparator=","
           decimalScale={2}
-          value={form.discount === "" ? "" : Number(form.discount)}
-          onChange={(v) => setForm({ ...form, discount: v === "" ? "" : v })}
+          value={form.discount ?? ""}
+          onChange={(v) => setForm({ ...form, discount: v === "" ? null : Number(v) })}
           disabled={isProcessing}
         />
         <NumberInput
@@ -342,8 +331,8 @@ export default function ReviewPage() {
           prefix="฿"
           thousandSeparator=","
           decimalScale={2}
-          value={form.vat === "" ? "" : Number(form.vat)}
-          onChange={(v) => setForm({ ...form, vat: v === "" ? "" : v })}
+          value={form.vat ?? ""}
+          onChange={(v) => setForm({ ...form, vat: v === "" ? null : Number(v) })}
           disabled={isProcessing}
         />
         <div className="col-span-2">
@@ -352,8 +341,8 @@ export default function ReviewPage() {
             prefix="฿"
             thousandSeparator=","
             decimalScale={2}
-            value={form.grand_total === "" ? "" : Number(form.grand_total)}
-            onChange={(v) => setForm({ ...form, grand_total: v === "" ? "" : v })}
+            value={form.grand_total ?? ""}
+            onChange={(v) => setForm({ ...form, grand_total: v === "" ? null : Number(v) })}
             disabled={isProcessing}
             size="lg"
             styles={{ input: { fontWeight: 600 } }}
@@ -580,7 +569,7 @@ export default function ReviewPage() {
 
 function ItemRow({ item, onSave, onDelete }: { item: DocumentItemData; onSave: (item: DocumentItemData, field: string, value: string) => void; onDelete: (item: DocumentItemData) => void }) {
   const [values, setValues] = useState({
-    product_name_raw: item.product_name_raw ?? "",
+    product_name_normalized: item.product_name_normalized ?? "",
     quantity: item.quantity ?? "",
     unit: item.unit ?? "",
     unit_price: item.unit_price ?? "",
@@ -588,7 +577,13 @@ function ItemRow({ item, onSave, onDelete }: { item: DocumentItemData; onSave: (
   });
 
   useEffect(() => {
-    setValues({ product_name_raw: item.product_name_raw ?? "", quantity: item.quantity ?? "", unit: item.unit ?? "", unit_price: item.unit_price ?? "", line_total: item.line_total ?? "" });
+    setValues({
+      product_name_normalized: item.product_name_normalized ?? "",
+      quantity: item.quantity ?? "",
+      unit: item.unit ?? "",
+      unit_price: item.unit_price ?? "",
+      line_total: item.line_total ?? "",
+    });
   }, [item]);
 
   const handleChange = (field: string, val: string) => {
@@ -614,10 +609,18 @@ function ItemRow({ item, onSave, onDelete }: { item: DocumentItemData; onSave: (
         <TextInput
           size="xs"
           variant="unstyled"
-          value={values.product_name_raw}
-          onChange={(e) => handleChange("product_name_raw", e.currentTarget.value)}
-          onBlur={() => handleBlur("product_name_raw")}
-          styles={{ input: { padding: "2px 6px", border: "1px solid transparent", borderRadius: 4, "&:hover": { borderColor: "var(--mantine-color-default-border)" }, "&:focus": { borderColor: "var(--mantine-color-indigo-5)" } } }}
+          value={values.product_name_normalized}
+          onChange={(e) => handleChange("product_name_normalized", e.currentTarget.value)}
+          onBlur={() => handleBlur("product_name_normalized")}
+          styles={{
+            input: {
+              padding: "2px 6px",
+              border: "1px solid transparent",
+              borderRadius: 4,
+              "&:hover": { borderColor: "var(--mantine-color-default-border)" },
+              "&:focus": { borderColor: "var(--mantine-color-indigo-5)" },
+            },
+          }}
         />
       </Table.Td>
       <Table.Td p={4}>

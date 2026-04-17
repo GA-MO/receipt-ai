@@ -1,0 +1,124 @@
+"""Tests for app.services.extraction.parse_extraction_payload.
+
+Covers the edge cases Gemini sometimes produces: array-instead-of-object,
+nested item lists, invalid categories, and missing fields.
+"""
+
+from app.services.extraction import PRODUCT_CATEGORIES, parse_extraction_payload
+
+
+class TestParseExtractionPayload:
+    def test_happy_path(self):
+        payload = {
+            "merchant_name": "ร้านสมชาย",
+            "merchant_normalized": "สมชาย",
+            "document_number": "INV-001",
+            "document_date": "2026-04-01",
+            "category": "เบียร์",
+            "items": [
+                {
+                    "product_name_normalized": "เบียร์สิงห์ขวดใหญ่",
+                    "category": "เบียร์",
+                    "quantity": 2,
+                    "unit": "ขวด",
+                    "unit_price": 85.0,
+                    "line_total": 170.0,
+                },
+            ],
+            "subtotal": 170.0,
+            "vat": 11.9,
+            "grand_total": 181.9,
+            "confidence": 0.95,
+        }
+        result = parse_extraction_payload(payload)
+        assert result.merchant_name == "ร้านสมชาย"
+        assert result.merchant_normalized == "สมชาย"
+        assert result.category == "เบียร์"
+        assert len(result.items) == 1
+        assert result.items[0].category == "เบียร์"
+        assert result.items[0].product_name_normalized == "เบียร์สิงห์ขวดใหญ่"
+
+    def test_accepts_legacy_product_name_raw_field(self):
+        """Old Gemini fixtures / cached responses may still send product_name_raw."""
+        payload = {
+            "category": "เบียร์",
+            "items": [
+                {"product_name_raw": "สห์ใหญ่", "category": "เบียร์", "quantity": 1},
+            ],
+        }
+        result = parse_extraction_payload(payload)
+        assert result.items[0].product_name_normalized == "สห์ใหญ่"
+
+    def test_array_response_takes_first_element(self):
+        """Gemini sometimes returns a JSON array instead of an object."""
+        payload = [
+            {"merchant_name": "ร้าน A", "items": [], "category": "อาหาร"},
+            {"merchant_name": "ร้าน B"},
+        ]
+        result = parse_extraction_payload(payload)
+        assert result.merchant_name == "ร้าน A"
+        assert result.category == "อาหาร"
+
+    def test_empty_array_response_returns_empty_result(self):
+        result = parse_extraction_payload([])
+        assert result.merchant_name is None
+        assert result.items == []
+        assert result.category == "อื่นๆ"
+
+    def test_nested_item_list(self):
+        """Gemini sometimes wraps items in an outer list: items = [[…]]."""
+        payload = {
+            "category": "เบียร์",
+            "items": [
+                [
+                    {"product_name_normalized": "A", "quantity": 1},
+                    {"product_name_normalized": "B", "quantity": 2},
+                ]
+            ],
+        }
+        result = parse_extraction_payload(payload)
+        assert [i.product_name_normalized for i in result.items] == ["A", "B"]
+
+    def test_invalid_category_falls_back_to_other(self):
+        payload = {"category": "หมวดแปลกๆ", "items": []}
+        result = parse_extraction_payload(payload)
+        assert result.category == "อื่นๆ"
+
+    def test_all_categories_are_accepted(self):
+        for cat in PRODUCT_CATEGORIES:
+            payload = {"category": cat, "items": []}
+            assert parse_extraction_payload(payload).category == cat
+
+    def test_item_category_defaults_to_document_category(self):
+        """Items missing ``category`` inherit the document category."""
+        payload = {
+            "category": "เบียร์",
+            "items": [
+                {"product_name_normalized": "A", "quantity": 1},  # no category
+                {"product_name_normalized": "B", "quantity": 1, "category": "สุรา"},
+                {"product_name_normalized": "C", "quantity": 1, "category": "BOGUS"},
+            ],
+        }
+        result = parse_extraction_payload(payload)
+        assert result.items[0].category == "เบียร์"
+        assert result.items[1].category == "สุรา"
+        # BOGUS is not in the allowed list → falls back to document category
+        assert result.items[2].category == "เบียร์"
+
+    def test_non_dict_items_are_skipped(self):
+        payload = {
+            "items": [
+                {"product_name_normalized": "A", "quantity": 1},
+                "garbage",
+                None,
+                42,
+            ],
+        }
+        result = parse_extraction_payload(payload)
+        assert len(result.items) == 1
+
+    def test_missing_all_fields(self):
+        result = parse_extraction_payload({})
+        assert result.merchant_name is None
+        assert result.items == []
+        assert result.confidence == 0.0

@@ -1,18 +1,28 @@
-import hashlib
+import asyncio
+import json
 import logging
 import os
-import shutil
 import threading
 import uuid
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    HTTPException,
+    Request,
+    UploadFile,
+)
 from fastapi.responses import FileResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+from sse_starlette.sse import EventSourceResponse
 
 from ..config import settings
 from ..database import SessionLocal, get_db
+from ..events import event_bus
 from ..models import Document, DocumentItem
 from ..schemas import (
     DocumentItemUpdate,
@@ -21,22 +31,54 @@ from ..schemas import (
     DocumentUpdate,
 )
 from ..services.extraction import extract_receipt
+from ..services.extraction_agentic import extract_agentic
+from ..services.extraction_combined import (
+    compute_history_fraud_checks,
+    extract_with_fraud,
+    merge_fraud_results,
+)
 from ..services.fraud import run_fraud_detection
+from ..services.merchants import assign_normalized_merchant
+
+
+def _resolve_extraction_mode() -> str:
+    """Resolve the active extraction mode, honouring the legacy boolean flag."""
+    mode = (settings.extraction_mode or "legacy").lower()
+    if mode not in {"legacy", "combined", "agentic"}:
+        logger.warning("Unknown extraction_mode %r — falling back to legacy", mode)
+        mode = "legacy"
+    if settings.use_combined_extraction and mode == "legacy":
+        mode = "combined"
+    return mode
+from ..services.storage import save_bytes, validate_and_hash
 from ..services.validation import validate_extraction
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-_ALLOWED_EXT = {".jpg", ".jpeg", ".png", ".webp", ".pdf"}
-
-# Limit concurrent OCR+extraction to 1 to prevent memory exhaustion
+# Limit concurrent OCR+extraction to 1 to prevent memory exhaustion when using
+# FastAPI BackgroundTasks. The arq worker (see worker.py) handles its own
+# concurrency via the queue.
 _processing_lock = threading.Semaphore(1)
 
 
 def _process_document(doc_id: str, file_path: str) -> None:
-    """Background task: extract receipt data with Gemini Vision → update the document."""
+    """Background task: extract receipt data with Gemini Vision → update the document.
+
+    Used as the in-process fallback when ``USE_ARQ`` is disabled. The arq worker
+    calls :func:`process_document_sync` directly (same body), sharing logic via
+    ``_run_processing``.
+    """
     _processing_lock.acquire()
+    try:
+        _run_processing(doc_id, file_path)
+    finally:
+        _processing_lock.release()
+
+
+def _run_processing(doc_id: str, file_path: str) -> None:
+    """Core processing logic, shared between BackgroundTasks and arq worker."""
     db = SessionLocal()
     try:
         doc = db.query(Document).filter(Document.id == doc_id).first()
@@ -44,8 +86,26 @@ def _process_document(doc_id: str, file_path: str) -> None:
             logger.error("Document %s not found for processing", doc_id)
             return
 
-        # Step 1: Extract with Gemini Vision
-        result = extract_receipt(file_path)
+        mode = _resolve_extraction_mode()
+        gemini_fraud_block: dict | None = None
+        agentic_fraud_payload: dict | None = None
+
+        if mode == "combined":
+            combined = extract_with_fraud(file_path)
+            result = combined.extraction
+            gemini_fraud_block = combined.fraud_payload
+        elif mode == "agentic":
+            agentic = extract_agentic(file_path, db)
+            result = agentic.extraction
+            agentic_fraud_payload = agentic.fraud_payload
+            logger.info(
+                "Agentic used %d iterations, tools=%s",
+                agentic.iterations,
+                agentic.tool_calls,
+            )
+        else:
+            result = extract_receipt(file_path)
+
         warnings = validate_extraction(result)
 
         doc.merchant_name = result.merchant_name
@@ -60,10 +120,12 @@ def _process_document(doc_id: str, file_path: str) -> None:
         doc.notes = result.notes
         doc.raw_extraction = result.model_dump_json()
         doc.needs_review = (
-            result.confidence < 0.9 or len(result.needs_review_fields) > 0
+            result.confidence < settings.review_confidence_threshold
+            or len(result.needs_review_fields) > 0
         )
         doc.status = "extracted"
         doc.processed_at = datetime.now(UTC)
+        assign_normalized_merchant(doc, db)
 
         if warnings:
             existing = doc.notes or ""
@@ -74,21 +136,31 @@ def _process_document(doc_id: str, file_path: str) -> None:
             item = DocumentItem(
                 id=str(uuid.uuid4()),
                 document_id=doc_id,
-                product_name_raw=item_data.product_name_raw,
                 product_name_normalized=item_data.product_name_normalized,
                 quantity=item_data.quantity,
                 unit=item_data.unit,
                 unit_price=item_data.unit_price,
                 line_total=item_data.line_total,
+                category=item_data.category,
                 confidence=result.confidence,
             )
             db.add(item)
 
-        # Step 3: Fraud detection (flush first so doc.items is visible)
         db.flush()
         db.refresh(doc)
         try:
-            doc.fraud_flags = run_fraud_detection(doc, db)
+            if mode == "combined":
+                # Gemini already did self-contained fraud; Python adds
+                # history-based flags (duplicate, unusual amount).
+                history_flags = compute_history_fraud_checks(doc, db)
+                doc.fraud_flags = merge_fraud_results(gemini_fraud_block, history_flags)
+            elif mode == "agentic":
+                # Gemini already consulted history inline via tool call, so its
+                # fraud_analysis output is final. Still merge with zero extra
+                # flags to get consistent serialization.
+                doc.fraud_flags = merge_fraud_results(agentic_fraud_payload, [])
+            else:
+                doc.fraud_flags = run_fraud_detection(doc, db)
             if doc.fraud_flags:
                 logger.info("Document %s flagged for fraud: %s", doc_id, doc.fraud_flags[:200])
         except Exception as fraud_exc:
@@ -96,6 +168,7 @@ def _process_document(doc_id: str, file_path: str) -> None:
 
         db.commit()
         logger.info("Document %s processed successfully", doc_id)
+        event_bus.publish(doc_id, {"status": doc.status, "needs_review": doc.needs_review})
     except Exception as exc:
         logger.error("Failed to process document %s: %s", doc_id, exc)
         db.rollback()
@@ -104,18 +177,29 @@ def _process_document(doc_id: str, file_path: str) -> None:
             doc.status = "error"
             doc.error_message = str(exc)
             db.commit()
+            event_bus.publish(doc_id, {"status": "error", "error_message": str(exc)})
     finally:
         db.close()
-        _processing_lock.release()
 
 
-def _compute_file_hash(file_path: str) -> str:
-    """Compute SHA-256 hash of a file."""
-    h = hashlib.sha256()
-    with open(file_path, "rb") as f:
-        for chunk in iter(lambda: f.read(8192), b""):
-            h.update(chunk)
-    return h.hexdigest()
+def _enqueue_processing(
+    doc_id: str,
+    file_path: str,
+    background_tasks: BackgroundTasks,
+) -> None:
+    """Enqueue processing to arq if configured, otherwise schedule as BackgroundTask."""
+    if settings.use_arq:
+        from ..worker import enqueue_process_document
+
+        try:
+            enqueue_process_document(doc_id, file_path)
+            return
+        except Exception as exc:
+            logger.warning(
+                "Failed to enqueue arq job, falling back to BackgroundTasks: %s",
+                exc,
+            )
+    background_tasks.add_task(_process_document, doc_id, file_path)
 
 
 @router.post("/upload", response_model=DocumentResponse)
@@ -124,62 +208,46 @@ def upload_document(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
 ):
-    # Validate extension
-    ext = os.path.splitext(file.filename or "")[1].lower()
-    if ext not in _ALLOWED_EXT:
-        raise HTTPException(400, f"ไฟล์ไม่รองรับ: {ext}")
+    validated = validate_and_hash(file, max_bytes=settings.max_file_size_bytes)
 
-    # Validate file size
-    file.file.seek(0, 2)
-    size = file.file.tell()
-    file.file.seek(0)
-    if size > settings.max_file_size_bytes:
-        raise HTTPException(
-            413,
-            f"ไฟล์ใหญ่เกิน {settings.max_file_size_mb} MB "
-            f"(ขนาดไฟล์: {size / 1024 / 1024:.1f} MB)",
-        )
-
-    # Save file
-    doc_id = str(uuid.uuid4())
-    filename = f"{doc_id}{ext}"
-    file_path = os.path.join(settings.upload_dir, filename)
-
-    os.makedirs(settings.upload_dir, exist_ok=True)
-    with open(file_path, "wb") as f:
-        shutil.copyfileobj(file.file, f)
-
-    # Check for duplicates
-    file_hash = _compute_file_hash(file_path)
     existing = (
         db.query(Document)
-        .filter(Document.file_hash == file_hash)
+        .filter(Document.file_hash == validated.file_hash)
         .first()
     )
     if existing:
-        os.remove(file_path)
         raise HTTPException(
             409,
             f"เอกสารนี้เคยอัปโหลดแล้ว (ชื่อไฟล์เดิม: {existing.filename})",
         )
 
-    # Create document record
+    doc_id = str(uuid.uuid4())
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    filename = f"{doc_id}{ext}"
+    file_path = os.path.join(settings.upload_dir, filename)
+    save_bytes(file_path, validated.data)
+
     doc = Document(
         id=doc_id,
         filename=file.filename or filename,
         file_path=file_path,
-        file_type="pdf" if ext == ".pdf" else "image",
-        file_hash=file_hash,
+        file_type=validated.file_type,
+        file_hash=validated.file_hash,
         status="processing",
     )
     db.add(doc)
     db.commit()
     db.refresh(doc)
 
-    logger.info("Document %s uploaded: %s (%d bytes)", doc_id, file.filename, size)
+    logger.info(
+        "Document %s uploaded: %s (%d bytes, %s)",
+        doc_id,
+        file.filename,
+        validated.size,
+        validated.file_type,
+    )
 
-    # Process in background
-    background_tasks.add_task(_process_document, doc_id, file_path)
+    _enqueue_processing(doc_id, file_path, background_tasks)
 
     return doc
 
@@ -242,6 +310,7 @@ def list_documents(
             status=d.status,
             uploaded_at=d.uploaded_at,
             merchant_name=d.merchant_name,
+            merchant_normalized=d.merchant_normalized,
             grand_total=float(d.grand_total) if d.grand_total is not None else None,
             category=d.category,
             confidence=d.confidence,
@@ -356,7 +425,7 @@ def reextract_document(
     db.refresh(doc)
 
     logger.info("Document %s queued for re-extraction", doc_id)
-    background_tasks.add_task(_process_document, doc_id, doc.file_path)
+    _enqueue_processing(doc_id, doc.file_path, background_tasks)
     return doc
 
 
@@ -395,3 +464,79 @@ def get_document_image(doc_id: str, db: Session = Depends(get_db)):
     if not os.path.exists(doc.file_path):
         raise HTTPException(404, "ไม่พบไฟล์")
     return FileResponse(doc.file_path)
+
+
+@router.get("/{doc_id}/events")
+async def stream_document_events(
+    doc_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Server-Sent Events stream for a document's processing status.
+
+    Emits the initial status immediately, then pushes updates as ``_run_processing``
+    publishes them. The client closes the connection when it sees a terminal
+    status (``extracted``, ``reviewed``, ``error``).
+    """
+    doc = db.query(Document).filter(Document.id == doc_id).first()
+    if not doc:
+        raise HTTPException(404, "ไม่พบเอกสาร")
+
+    initial_payload = {
+        "status": doc.status,
+        "needs_review": doc.needs_review,
+        "error_message": doc.error_message,
+    }
+
+    async def event_generator():
+        yield {"event": "status", "data": json.dumps(initial_payload, ensure_ascii=False)}
+
+        # If already terminal, close the stream.
+        if doc.status in ("reviewed", "extracted", "error"):
+            return
+
+        subscription = event_bus.subscribe(doc_id)
+        try:
+            # Heartbeat task so proxies don't time out
+            keepalive_task = asyncio.create_task(_sse_keepalive())
+            anext_task = asyncio.create_task(subscription.__anext__())
+
+            try:
+                while True:
+                    if await request.is_disconnected():
+                        break
+
+                    done, _pending = await asyncio.wait(
+                        {anext_task, keepalive_task},
+                        timeout=30,
+                        return_when=asyncio.FIRST_COMPLETED,
+                    )
+
+                    if anext_task in done:
+                        try:
+                            payload = anext_task.result()
+                        except StopAsyncIteration:
+                            break
+                        yield {
+                            "event": "status",
+                            "data": json.dumps(payload, ensure_ascii=False),
+                        }
+                        if payload.get("status") in ("extracted", "reviewed", "error"):
+                            break
+                        anext_task = asyncio.create_task(subscription.__anext__())
+                    else:
+                        # Timeout or keepalive — emit comment to keep connection alive.
+                        yield {"event": "ping", "data": ""}
+                        if keepalive_task.done():
+                            keepalive_task = asyncio.create_task(_sse_keepalive())
+            finally:
+                anext_task.cancel()
+                keepalive_task.cancel()
+        finally:
+            await subscription.aclose()
+
+    return EventSourceResponse(event_generator())
+
+
+async def _sse_keepalive() -> None:
+    await asyncio.sleep(25)

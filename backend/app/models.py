@@ -1,7 +1,16 @@
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Numeric, String, Text
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Numeric,
+    String,
+    Text,
+)
 from sqlalchemy.orm import relationship
 
 from .database import Base
@@ -35,6 +44,7 @@ class Document(Base):
     error_message = Column(Text, nullable=True)
 
     merchant_name = Column(String, nullable=True)
+    merchant_normalized = Column(String, nullable=True, index=True)
     document_number = Column(String, nullable=True, index=True)
     document_date = Column(String, nullable=True)
     subtotal = Column(Numeric(12, 2), nullable=True)
@@ -55,8 +65,12 @@ class DocumentItem(Base):
 
     id = Column(String, primary_key=True, default=_gen_id)
     document_id = Column(String, ForeignKey("documents.id"), nullable=False)
-    product_name_raw = Column(String, nullable=True)
+    # Single product name column. Populated from the catalog match when the
+    # item matches PRODUCT_CATALOG; otherwise holds the as-written text from
+    # the receipt. Audit of the original Gemini response lives in
+    # ``Document.raw_extraction``.
     product_name_normalized = Column(String, nullable=True)
+    category = Column(String, nullable=True, index=True)
     quantity = Column(Float, nullable=True)
     unit = Column(String, nullable=True)
     unit_price = Column(Numeric(12, 2), nullable=True)

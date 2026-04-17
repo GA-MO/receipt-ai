@@ -7,12 +7,12 @@ from datetime import UTC, datetime, timedelta
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 from google.genai import types
-from sqlalchemy import cast, func, String
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from ..config import settings
 from ..database import get_db
-from ..models import Document
+from ..models import Document, DocumentItem
 from ..schemas import DashboardStats
 
 logger = logging.getLogger(__name__)
@@ -99,10 +99,16 @@ def top_merchants(
     limit: int = Query(10, ge=1, le=50),
     db: Session = Depends(get_db),
 ):
-    """Top merchants by total sales amount."""
+    """Top merchants by total sales amount (grouped by normalized merchant name)."""
+    # Use normalized name when available, falling back to the raw name so older
+    # records pre-normalization still show up.
+    group_name = func.coalesce(
+        Document.merchant_normalized, Document.merchant_name
+    ).label("merchant")
+
     rows = (
         db.query(
-            Document.merchant_name,
+            group_name,
             func.sum(Document.grand_total).label("total"),
             func.count(Document.id).label("count"),
         )
@@ -110,36 +116,65 @@ def top_merchants(
             Document.status == "reviewed",
             Document.merchant_name.isnot(None),
         )
-        .group_by(Document.merchant_name)
+        .group_by(group_name)
         .order_by(func.sum(Document.grand_total).desc())
         .limit(limit)
         .all()
     )
     return [
-        {"merchant": r.merchant_name, "total": round(float(r.total), 2), "count": r.count}
+        {"merchant": r.merchant, "total": round(float(r.total), 2), "count": r.count}
         for r in rows
     ]
 
 
 @router.get("/category-breakdown")
-def category_breakdown(db: Session = Depends(get_db)):
-    """Spending breakdown by category."""
-    rows = (
-        db.query(
-            Document.category,
-            func.sum(Document.grand_total).label("total"),
-            func.count(Document.id).label("count"),
+def category_breakdown(
+    mode: str = Query("item", pattern="^(item|document)$"),
+    db: Session = Depends(get_db),
+):
+    """Spending breakdown by category.
+
+    ``mode=item`` (default) aggregates ``DocumentItem.line_total`` per
+    ``DocumentItem.category`` — more accurate when a single receipt mixes
+    categories (e.g. beer + food).
+
+    ``mode=document`` aggregates ``Document.grand_total`` per
+    ``Document.category`` — legacy behavior, one category per receipt.
+    """
+    if mode == "document":
+        rows = (
+            db.query(
+                Document.category,
+                func.sum(Document.grand_total).label("total"),
+                func.count(Document.id).label("count"),
+            )
+            .filter(
+                Document.status == "reviewed",
+                Document.category.isnot(None),
+            )
+            .group_by(Document.category)
+            .order_by(func.sum(Document.grand_total).desc())
+            .all()
         )
-        .filter(
-            Document.status == "reviewed",
-            Document.category.isnot(None),
+    else:
+        rows = (
+            db.query(
+                DocumentItem.category,
+                func.sum(DocumentItem.line_total).label("total"),
+                func.count(DocumentItem.id).label("count"),
+            )
+            .join(Document, DocumentItem.document_id == Document.id)
+            .filter(
+                Document.status == "reviewed",
+                DocumentItem.category.isnot(None),
+                DocumentItem.line_total.isnot(None),
+            )
+            .group_by(DocumentItem.category)
+            .order_by(func.sum(DocumentItem.line_total).desc())
+            .all()
         )
-        .group_by(Document.category)
-        .order_by(func.sum(Document.grand_total).desc())
-        .all()
-    )
     return [
-        {"category": r.category, "total": round(float(r.total), 2), "count": r.count}
+        {"category": r.category, "total": round(float(r.total or 0), 2), "count": r.count}
         for r in rows
     ]
 
@@ -480,8 +515,10 @@ def export_csv(
             "เลขที่เอกสาร",
             "วันที่",
             "ร้านค้า",
-            "หมวดหมู่",
+            "ร้านค้า (canonical)",
+            "หมวดเอกสาร",
             "ชื่อสินค้า",
+            "หมวดสินค้า",
             "จำนวน",
             "หน่วย",
             "ราคาต่อหน่วย",
@@ -500,8 +537,10 @@ def export_csv(
                     doc.document_number or "",
                     doc.document_date or "",
                     doc.merchant_name or "",
+                    doc.merchant_normalized or "",
                     doc.category or "",
-                    item.product_name_raw or "",
+                    item.product_name_normalized or "",
+                    item.category or "",
                     item.quantity or "",
                     item.unit or "",
                     item.unit_price or "",

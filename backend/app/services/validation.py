@@ -27,7 +27,7 @@ def validate_extraction(result: ExtractionResult) -> list[str]:
         warnings.append("ไม่พบรายการสินค้า")
 
     for i, item in enumerate(result.items, 1):
-        if not item.product_name_raw:
+        if not item.product_name_normalized:
             warnings.append(f"รายการที่ {i}: ไม่มีชื่อสินค้า")
         if item.quantity is None or item.quantity <= 0:
             warnings.append(f"รายการที่ {i}: จำนวนสินค้าไม่ถูกต้อง")

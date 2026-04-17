@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import {
@@ -29,25 +29,20 @@ import { BarChart } from "@mantine/charts";
 import "dayjs/locale/th";
 import {
   type AiInsightResponse,
-  type CategoryBreakdown,
-  type DailySales,
-  type DashboardStats,
-  type DocumentListItem,
-  type FraudSummary,
   type HeatmapDay,
-  type TopMerchant,
-  type VatSummaryResponse,
-  getAiInsight,
-  getCategoryBreakdown,
-  getDailySales,
-  getDashboardStats,
-  getDocuments,
   getExportUrl,
-  getFraudSummary,
-  getSpendingHeatmap,
-  getTopMerchants,
-  getVatSummary,
 } from "../api/client";
+import {
+  useAiInsight,
+  useCategoryBreakdown,
+  useDailySales,
+  useDashboardStats,
+  useDocuments,
+  useFraudSummary,
+  useSpendingHeatmap,
+  useTopMerchants,
+  useVatSummary,
+} from "../api/queries";
 
 const CATEGORY_COLORS: Record<string, string> = {
   "เบียร์": "yellow",
@@ -72,57 +67,47 @@ const CATEGORY_TW_COLORS: Record<string, string> = {
 };
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [recent, setRecent] = useState<DocumentListItem[]>([]);
-  const [dailySales, setDailySales] = useState<DailySales[]>([]);
-  const [topMerchants, setTopMerchants] = useState<TopMerchant[]>([]);
-  const [categories, setCategories] = useState<CategoryBreakdown[]>([]);
-  const [vatSummary, setVatSummary] = useState<VatSummaryResponse | null>(null);
-  const [fraudSummary, setFraudSummary] = useState<FraudSummary | null>(null);
-  const [heatmapData, setHeatmapData] = useState<HeatmapDay[]>([]);
-  const [loading, setLoading] = useState(true);
   const [exportDateRange, setExportDateRange] = useState<[Date | null, Date | null]>([null, null]);
   const [aiInsight, setAiInsight] = useState<AiInsightResponse | null>(null);
-  const [insightLoading, setInsightLoading] = useState(false);
 
   const exportDateFrom = exportDateRange[0] ? format(exportDateRange[0], "yyyy-MM-dd") : "";
   const exportDateTo = exportDateRange[1] ? format(exportDateRange[1], "yyyy-MM-dd") : "";
 
+  const statsQuery = useDashboardStats();
+  const recentQuery = useDocuments({ limit: 5 });
+  const dailyQuery = useDailySales(30);
+  const topMerchantsQuery = useTopMerchants(5);
+  const categoriesQuery = useCategoryBreakdown();
+  const vatQuery = useVatSummary();
+  const fraudQuery = useFraudSummary();
+  const heatmapQuery = useSpendingHeatmap(90);
+  const aiInsightMut = useAiInsight();
+
+  const loading =
+    statsQuery.isPending ||
+    recentQuery.isPending ||
+    dailyQuery.isPending ||
+    topMerchantsQuery.isPending ||
+    categoriesQuery.isPending;
+
+  const stats = statsQuery.data ?? null;
+  const recent = recentQuery.data ?? [];
+  const dailySales = dailyQuery.data ?? [];
+  const topMerchants = topMerchantsQuery.data ?? [];
+  const categories = categoriesQuery.data ?? [];
+  const vatSummary = vatQuery.data ?? null;
+  const fraudSummary = fraudQuery.data ?? null;
+  const heatmapData = heatmapQuery.data ?? [];
+
   const handleAiInsight = async () => {
-    setInsightLoading(true);
     try {
-      const data = await getAiInsight();
+      const data = await aiInsightMut.mutateAsync();
       setAiInsight(data);
     } catch {
       setAiInsight({ headline: "ไม่สามารถสร้าง insight ได้", insights: [], risks: [], opportunities: [] });
-    } finally {
-      setInsightLoading(false);
     }
   };
-
-  useEffect(() => {
-    Promise.allSettled([
-      getDashboardStats(),
-      getDocuments({ limit: 5 }),
-      getDailySales(30),
-      getTopMerchants(5),
-      getCategoryBreakdown(),
-      getVatSummary(),
-      getFraudSummary(),
-      getSpendingHeatmap(90),
-    ])
-      .then(([s, d, ds, tm, cat, vat, fraud, heatmap]) => {
-        if (s.status === "fulfilled") setStats(s.value);
-        if (d.status === "fulfilled") setRecent(d.value.slice(0, 5));
-        if (ds.status === "fulfilled") setDailySales(ds.value);
-        if (tm.status === "fulfilled") setTopMerchants(tm.value);
-        if (cat.status === "fulfilled") setCategories(cat.value);
-        if (vat.status === "fulfilled") setVatSummary(vat.value);
-        if (fraud.status === "fulfilled") setFraudSummary(fraud.value);
-        if (heatmap.status === "fulfilled") setHeatmapData(heatmap.value);
-      })
-      .finally(() => setLoading(false));
-  }, []);
+  const insightLoading = aiInsightMut.isPending;
 
   if (loading) {
     return (

@@ -8,7 +8,8 @@ import {
   XCircle,
 } from "lucide-react";
 import { Button, Group, Loader, Paper, Stack, Text, ThemeIcon, Title } from "@mantine/core";
-import { ApiError, uploadDocument } from "../api/client";
+import { ApiError } from "../api/client";
+import { useUploadDocument } from "../api/queries";
 import { useToast } from "@/components/Toast";
 
 type Status = "uploading" | "success" | "error";
@@ -26,6 +27,7 @@ export default function UploadPage() {
   const [uploads, setUploads] = useState<UploadEntry[]>([]);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const uploadMut = useUploadDocument();
 
   const onDrop = useCallback(
     async (accepted: File[], rejected: readonly { file: File; errors: readonly { message: string }[] }[]) => {
@@ -53,7 +55,7 @@ export default function UploadPage() {
 
       for (const file of valid) {
         try {
-          const result = await uploadDocument(file);
+          const result = await uploadMut.mutateAsync(file);
           setUploads((prev) =>
             prev.map((u) =>
               u.file === file
@@ -82,7 +84,7 @@ export default function UploadPage() {
         }
       }
     },
-    [toast],
+    [toast, uploadMut],
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({

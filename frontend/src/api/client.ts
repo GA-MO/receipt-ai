@@ -169,8 +169,8 @@ export function getExportUrl(params?: {
 export interface DocumentItemData {
   id: string;
   document_id: string;
-  product_name_raw: string | null;
   product_name_normalized: string | null;
+  category: string | null;
   quantity: number | null;
   unit: string | null;
   unit_price: number | null;
@@ -191,6 +191,7 @@ export interface DocumentResponse {
   needs_review: boolean;
   error_message: string | null;
   merchant_name: string | null;
+  merchant_normalized: string | null;
   document_number: string | null;
   document_date: string | null;
   subtotal: number | null;
@@ -209,6 +210,7 @@ export interface DocumentListItem {
   status: string;
   uploaded_at: string;
   merchant_name: string | null;
+  merchant_normalized: string | null;
   grand_total: number | null;
   category: string | null;
   confidence: number | null;

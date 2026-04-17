@@ -5,8 +5,6 @@ import struct
 import zlib
 from unittest.mock import patch
 
-from app.schemas import DocumentItemBase, ExtractionResult
-
 
 def _make_tiny_png() -> bytes:
     """Create a minimal valid 1x1 pixel PNG in memory."""

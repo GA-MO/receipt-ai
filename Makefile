@@ -12,6 +12,12 @@ dev-backend: ## Run backend dev server
 dev-frontend: ## Run frontend dev server
 	cd frontend && bun dev
 
+worker: ## Run arq worker (requires Redis + USE_ARQ=true)
+	cd backend && .venv/bin/arq app.worker.WorkerSettings
+
+redis: ## Run a local Redis via Docker for the worker
+	docker run -d --name receipt-redis -p 6379:6379 redis:7-alpine || docker start receipt-redis
+
 stop: ## Stop dev servers (kill processes on :8000 and :5173)
 	@echo "Stopping dev servers..."
 	@lsof -ti :8000 | xargs kill -9 2>/dev/null || true

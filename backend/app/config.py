@@ -25,6 +25,27 @@ class Settings(BaseSettings):
     # Retry
     gemini_max_retries: int = 3
     gemini_retry_delay: float = 1.0
+    gemini_request_timeout: float = 60.0
+
+    # Review thresholds
+    review_confidence_threshold: float = 0.9
+
+    # Merchant normalization
+    merchant_fuzzy_threshold: int = 88  # 0-100; RapidFuzz token_set_ratio cutoff
+
+    # Background worker (arq/Redis). If false, falls back to FastAPI BackgroundTasks.
+    use_arq: bool = False
+    redis_url: str = "redis://localhost:6379/0"
+
+    # Extraction pipeline selector:
+    #   "legacy"   — extract_receipt + run_fraud_detection (2 Gemini calls)
+    #   "combined" — single Gemini call with self-contained fraud + Python post-check
+    #                (DEFAULT: ~15% faster and ~23% cheaper than legacy with equivalent quality)
+    #   "agentic"  — multi-turn tool-calling loop (catalog lookup + merchant history)
+    extraction_mode: str = "combined"
+
+    # Deprecated shortcut for extraction_mode='combined' — kept for backward compat.
+    use_combined_extraction: bool = False
 
     model_config = {"env_file": ".env"}
 

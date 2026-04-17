@@ -1,4 +1,14 @@
 services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
   backend:
     build: ./backend
     env_file: ./backend/.env
@@ -6,11 +16,32 @@ services:
       - DATABASE_URL=sqlite:///./data/receipts.db
       - UPLOAD_DIR=./uploads
       - CORS_ORIGINS=http://localhost
+      - USE_ARQ=true
+      - REDIS_URL=redis://redis:6379/0
     volumes:
       - backend-data:/app/data
       - backend-uploads:/app/uploads
     ports:
       - "8000:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  worker:
+    build: ./backend
+    command: ["arq", "app.worker.WorkerSettings"]
+    env_file: ./backend/.env
+    environment:
+      - DATABASE_URL=sqlite:///./data/receipts.db
+      - UPLOAD_DIR=./uploads
+      - USE_ARQ=true
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - backend-data:/app/data
+      - backend-uploads:/app/uploads
+    depends_on:
+      redis:
+        condition: service_healthy
 
   frontend:
     build:

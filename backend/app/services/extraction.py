@@ -24,6 +24,8 @@ PRODUCT_CATEGORIES = [
     "อื่นๆ",
 ]
 
+_CATEGORY_SET = set(PRODUCT_CATEGORIES)
+
 # Boonrawd product catalog with aliases for matching handwritten/abbreviated names
 PRODUCT_CATALOG = """
 ## สินค้าเครือบุญรอด — ใช้ตารางนี้ map ชื่อย่อ/ลายมือ → ชื่อทางการ
@@ -42,7 +44,7 @@ PRODUCT_CATALOG = """
 | น้ำดื่มสิงห์ | น้ำสิงห์, นส, SINGHA WATER, สห์น้ำ, น้ำเปล่าสิงห์ | น้ำดื่ม |
 | น้ำดื่มสิงห์ 600ml | น้ำสิงห์ 600, สห์600 | น้ำดื่ม |
 | น้ำดื่มสิงห์ 1.5L | น้ำสิงห์ 1500, สห์1500 | น้ำดื่ม |
-| โซดาสิงห์ | โซดาสห์, SINGHA SODA, โซดา, โซดาขวด | โซดาและน้ำอัดลม |
+| โซดาสิงห์ | โซดาสห์, SINGHA SODA, SODAPP, โซดา, โซคา, โซดาขวด, โซดาเปลี่ยน, โซดาถาด, โซดาเปลี่ยน/ถาด, โซดาเปล่า/ถาด | โซดาและน้ำอัดลม |
 | น้ำแร่เพอริเอ้ | เพอริเอ้, PERRIER, Perrier | น้ำแร่ |
 | น้ำแร่ออร่า | ออร่า, AURA | น้ำแร่ |
 | สุราแสงโสม | แสงโสม, SS, Saeng Som, แสง | สุรา |
@@ -54,24 +56,24 @@ PRODUCT_CATALOG = """
 | สิงห์เลมอนโซดา | เลมอนโซดา, LEMON SODA | โซดาและน้ำอัดลม |
 """
 
-EXTRACTION_PROMPT = """\
+SYSTEM_INSTRUCTION = """\
 คุณเป็น AI ผู้เชี่ยวชาญในการอ่านและวิเคราะห์เอกสารการขายภาษาไทย
 เช่น ใบเสร็จรับเงิน บิลเงินสด ใบกำกับภาษี และใบส่งของ
 รวมถึงเอกสารที่เขียนด้วยลายมือ
 
 """ + PRODUCT_CATALOG + """
 
-จากรูปเอกสารที่ให้มา กรุณาดึงข้อมูลและตอบเป็น JSON ตาม schema นี้เท่านั้น:
-
+## JSON Schema ที่ต้องตอบกลับ (เท่านั้น ห้ามเพิ่ม markdown/fence)
 {
   "merchant_name": "ชื่อร้านค้าหรือบริษัท (string | null)",
+  "merchant_normalized": "ชื่อร้านแบบสะอาด ตัด prefix/suffix เช่น 'ร้าน', 'บริษัท', 'จำกัด', 'หจก.' ออก (string | null)",
   "document_number": "เลขที่เอกสาร (string | null)",
   "document_date": "วันที่เอกสาร YYYY-MM-DD (string | null)",
-  "category": "หมวดหมู่สินค้า (string)",
+  "category": "หมวดหมู่สินค้ารวมของเอกสาร (string)",
   "items": [
     {
-      "product_name_raw": "ชื่อสินค้าตามที่ปรากฏในเอกสาร (ลายมือ/ตัวย่อเดิม)",
-      "product_name_normalized": "ชื่อทางการจากตาราง PRODUCT_CATALOG (ถ้า match ได้) หรือ null",
+      "product_name_normalized": "ชื่อสินค้า — ถ้า match กับตาราง PRODUCT_CATALOG ให้ใช้ 'ชื่อทางการ' จากตาราง; ถ้าไม่ match ให้ใช้ชื่อที่อ่านได้จากเอกสาร (ตัด unit/suffix อย่าง 'ลัง'/'เปลี่ยน/ถาด' ออก)",
+      "category": "หมวดหมู่ของรายการนี้ (string จาก allowed categories)",
       "quantity": 0,
       "unit": "หน่วย เช่น ขวด ลัง แพ็ค กระป๋อง",
       "unit_price": 0.00,
@@ -87,18 +89,49 @@ EXTRACTION_PROMPT = """\
   "needs_review_fields": ["field ที่ไม่มั่นใจ"]
 }
 
-กฎสำคัญ:
-- product_name_raw: เก็บชื่อตามที่เห็นในเอกสาร (ลายมือ/ตัวย่อ/คำย่อ ตามต้นฉบับ)
-- product_name_normalized: map เข้ากับ "ชื่อทางการ" จากตาราง PRODUCT_CATALOG ข้างบน
-  ถ้าไม่ตรงกับสินค้าในตาราง ให้ใส่ null
-  ถ้าไม่แน่ใจ ให้ใส่ชื่อที่คิดว่าใกล้เคียงที่สุดและเพิ่ม field ใน needs_review_fields
-- category ต้องเป็นหนึ่งใน: """ + ", ".join(PRODUCT_CATEGORIES) + """
-  วิธีเลือก category:
-  1. ดูจาก product_name_normalized ที่ match กับ PRODUCT_CATALOG → ใช้หมวดจากตาราง
-  2. ดูจากรายการสินค้าทั้งหมด → ถ้าส่วนใหญ่เป็นเครื่องดื่มแอลกอฮอล์ ให้ใช้ "เบียร์" หรือ "สุรา"
-  3. ดูจากชื่อร้านค้า → ถ้ามีคำว่า สุรา, เหล้า, เบียร์, พาณิชย์, เบเวอเรจ, Beverage → น่าจะเป็น เบียร์/สุรา
-  4. ถ้าเป็นน้ำดื่ม, น้ำเปล่า, น้ำแร่ → ใช้หมวด น้ำดื่ม/น้ำแร่
-  5. ใช้ "อื่นๆ" เฉพาะเมื่อไม่เข้าหมวดใดเลยจริงๆ (ไม่ใช่ default)
+## กฎสำคัญ
+- **ภาษาที่ใช้ตอบ** : ข้อความทุก field ที่เป็นคำอธิบาย/หมายเหตุ (`notes`, `needs_review_fields` ถ้าต้องอธิบาย)
+  **ต้องเป็นภาษาไทย 100% เท่านั้น** ห้ามใช้ภาษาอังกฤษในการอธิบาย
+  - ตัวเลข / ชื่อสินค้า / ชื่อร้าน สามารถคงภาษาอังกฤษได้ถ้าต้นฉบับเป็นภาษาอังกฤษ
+  - แต่ "คำอธิบาย" ต้องเขียนเป็นไทยเสมอ เช่น ถ้ายอดรวมลายมือไม่ตรงกับการคำนวณ ต้องเขียนแบบ
+    "ยอดรวมที่เขียนด้วยลายมือ (16,905) ไม่ตรงกับยอดคำนวณ (16,105) ใช้ยอดคำนวณแทน"
+    ห้ามเขียนเป็น "The handwritten grand total is inconsistent..."
+- `product_name_normalized` : ชื่อสินค้าที่จะแสดง **(field เดียวสำหรับชื่อ — ไม่มี raw แล้ว)**
+  - ลำดับความสำคัญ:
+    1. ถ้า match กับตาราง PRODUCT_CATALOG (หรือเพียงพอที่จะเดา) → ใช้ **ชื่อทางการ** จากตาราง เช่น "เบียร์สิงห์ขวดใหญ่", "โซดาสิงห์"
+    2. ถ้าไม่ match catalog → ใช้ชื่อที่อ่านได้จากเอกสาร แต่ **ตัด suffix/unit ที่ไม่ใช่ชื่อสินค้า** ออก (เช่น "เปลี่ยน/ถาด", "เปล่า", "/ลัง")
+    3. ห้าม null ตราบใดที่อ่านเอกสารออก — ถ้าอ่านไม่ออกจริง ๆ ให้ใส่ "?" และเพิ่ม `product_name_normalized` ใน `needs_review_fields`
+- **คำต่อท้ายสินค้าที่ไม่ใช่ส่วนของชื่อ** : คำเหล่านี้อธิบาย **รูปแบบการขาย/การบรรจุ** ไม่ใช่ชื่อสินค้า
+  ให้ละทิ้งคำเหล่านี้เวลา map ไป product_name_normalized และเวลาจัด category
+  - "เปลี่ยน" / "เปล่า" / "ถาด" / "เปลี่ยน/ถาด" / "เปล่า/ถาด" → หมายถึงขายแบบเปลี่ยนลัง/คืนลังเปล่า (returnable crate)
+  - "ลัง" / "กระป๋อง" / "ขวด" / "แพ็ค" → เป็น **unit** ให้ใส่ใน field `unit` ไม่ใช่ชื่อสินค้า
+  - ตัวอย่าง: "SODAPP โซดาเปลี่ยน/ถาด" = โซดาสิงห์ (ขายแบบเปลี่ยนถาด) → category "โซดาและน้ำอัดลม", normalized = "โซดาสิงห์"
+  - ตัวอย่าง: "เบียร์สิงห์เปลี่ยนขวด" = เบียร์สิงห์ (คืนขวดเปล่า) → category "เบียร์"
+- **Typo ที่พบบ่อย** (OCR/ลายมืออ่านผิด) — ให้ตีความเป็นคำที่ถูกต้อง:
+  - "โซคา" → "โซดา"
+  - "ลิโอ" → "ลีโอ"
+  - "สห์" → "สิงห์"
+  - "ดัง" (ในบริบทของหน่วยสินค้า) → "ลัง"
+- `merchant_normalized` : ชื่อร้านที่ตัด noise ออกแล้ว ต้องตัดคำต่อไปนี้ออก **ทั้งหมด**:
+  - prefix: "ร้าน", "บริษัท", "หจก.", "บจก.", "ห้างหุ้นส่วนจำกัด"
+  - suffix: "จำกัด", "จก.", "(มหาชน)", "Co., Ltd.", "Inc.", "LLC"
+  - ข้อมูลสาขา/สำนักงาน: "(สำนักงานใหญ่)", "(สนญ.)", "(HQ)", "สาขา..."
+  - เว้นวรรคส่วนเกิน
+  ตัวอย่าง:
+  - "บริษัท ก.เจริญ พาณิชย์ จำกัด" → "ก.เจริญ พาณิชย์"
+  - "บริษัท มิตรราชบุรีเทรดดิ้ง จำกัด (สำนักงานใหญ่)" → "มิตรราชบุรีเทรดดิ้ง"
+  - "ห้างหุ้นส่วนจำกัด รวยสุรา สาขาบางนา" → "รวยสุรา"
+- `items[].category` และ `category` (เอกสาร) ต้องเป็นหนึ่งใน: """ + ", ".join(PRODUCT_CATEGORIES) + """
+  วิธีเลือก category ของแต่ละรายการ (items[].category):
+    1. ดูจาก product_name_normalized ที่ match กับ PRODUCT_CATALOG → ใช้หมวดจากตาราง
+    2. ถ้าเป็นเบียร์/ลีโอ/ช้าง/สิงห์/U-Beer → "เบียร์"
+    3. ถ้าเป็นสุรา/แสงโสม/หงส์ทอง/เบลนด์/เหล้า → "สุรา"
+    4. ถ้าเป็นน้ำดื่ม/น้ำเปล่า → "น้ำดื่ม"
+    5. ถ้าเป็นโซดา/น้ำอัดลม → "โซดาและน้ำอัดลม"
+    6. ถ้าเป็นน้ำแร่/Perrier/Aura → "น้ำแร่"
+    7. ถ้าเป็นอาหาร → "อาหาร"
+    8. ใช้ "อื่นๆ" เฉพาะเมื่อไม่เข้าหมวดใดเลยจริงๆ (ไม่ใช่ default)
+  วิธีเลือก `category` (เอกสาร) : ใช้หมวดที่พบมากที่สุดใน items (by quantity หรือ line_total)
 - ถ้าเอกสารใช้ปี พ.ศ. ให้แปลงเป็น ค.ศ. (พ.ศ. - 543 = ค.ศ.)
 - ถ้าเจอวันที่เช่น 3 เม.ย. 69 ให้แปลงเป็น 2026-04-03
 - ถ้าอ่านไม่ออกหรือไม่แน่ใจ ให้ใส่ null และเพิ่มชื่อ field ใน needs_review_fields
@@ -107,11 +140,16 @@ EXTRACTION_PROMPT = """\
 - ถ้าเอกสารไม่ใช่ใบเสร็จ/บิลเงินสด/ใบกำกับภาษี/ใบส่งของ (เช่น เป็นรายงานสรุปยอด, สลิปโอนเงิน, เอกสารอื่น) ให้:
   * ยังคงพยายามดึงข้อมูลให้ได้มากที่สุด
   * ตั้ง confidence ต่ำ (0.3-0.6) ตามความเหมาะสม
-  * ระบุใน notes ว่าเอกสารนี้เป็นประเภทอะไร เช่น "เอกสารนี้เป็นรายงานสรุปยอดขาย ไม่ใช่ใบเสร็จรับเงิน"
+  * ระบุใน notes ว่าเอกสารนี้เป็นประเภทอะไร
   * เพิ่ม "document_type" ใน needs_review_fields
 - ถ้ามีหลายหน้าหรือหลายรายการที่เป็นสรุปรวม ให้ดึงรายการแต่ละบรรทัดเป็น item แยก
 - ตอบเป็น JSON เท่านั้น ห้ามมี markdown code fence หรือข้อความอื่น
 """
+
+EXTRACTION_PROMPT = (
+    "ดึงข้อมูลจากเอกสารในรูปนี้ตาม JSON schema และกฎที่กำหนดไว้ใน system instruction "
+    "แล้วตอบกลับเป็น JSON object เดียวเท่านั้น"
+)
 
 
 _MIME_MAP = {
@@ -206,6 +244,74 @@ def _call_gemini_with_retry(contents: list, config: types.GenerateContentConfig)
     )
 
 
+def _coerce_extracted_payload(data: object) -> dict:
+    """Normalize Gemini responses that sometimes come back as arrays or nested lists."""
+    if isinstance(data, list):
+        logger.warning("Gemini returned array instead of object, using first element")
+        data = data[0] if data and isinstance(data[0], dict) else {}
+    if not isinstance(data, dict):
+        return {}
+    return data
+
+
+def _parse_items(raw_items: object, default_category: str | None) -> list[DocumentItemBase]:
+    if not isinstance(raw_items, list):
+        return []
+    # Handle nested list e.g. [[item1, item2]]
+    if raw_items and isinstance(raw_items[0], list):
+        raw_items = raw_items[0]
+
+    items: list[DocumentItemBase] = []
+    for it in raw_items:
+        if not isinstance(it, dict):
+            continue
+        raw_cat = it.get("category")
+        cat = raw_cat if raw_cat in _CATEGORY_SET else default_category
+        # Backwards compatibility: some older prompts/fixtures return
+        # ``product_name_raw`` instead of / alongside ``product_name_normalized``.
+        name = it.get("product_name_normalized") or it.get("product_name_raw")
+        items.append(
+            DocumentItemBase(
+                product_name_normalized=name,
+                category=cat,
+                quantity=it.get("quantity"),
+                unit=it.get("unit"),
+                unit_price=it.get("unit_price"),
+                line_total=it.get("line_total"),
+            )
+        )
+    return items
+
+
+def parse_extraction_payload(data: object) -> ExtractionResult:
+    """Parse a raw JSON payload (already decoded) into an ExtractionResult.
+
+    Isolated from the Gemini call so unit tests can feed in fixture payloads
+    without mocking the SDK.
+    """
+    data = _coerce_extracted_payload(data)
+
+    raw_category = data.get("category")
+    category = raw_category if raw_category in _CATEGORY_SET else "อื่นๆ"
+    items = _parse_items(data.get("items", []), default_category=category)
+
+    return ExtractionResult(
+        merchant_name=data.get("merchant_name"),
+        merchant_normalized=data.get("merchant_normalized"),
+        document_number=data.get("document_number"),
+        document_date=data.get("document_date"),
+        category=category,
+        items=items,
+        subtotal=data.get("subtotal"),
+        discount=data.get("discount"),
+        vat=data.get("vat"),
+        grand_total=data.get("grand_total"),
+        confidence=data.get("confidence", 0.0),
+        notes=data.get("notes"),
+        needs_review_fields=data.get("needs_review_fields", []),
+    )
+
+
 def extract_receipt(file_path: str) -> ExtractionResult:
     """Extract structured data from a receipt image/PDF using Gemini Vision."""
     path = Path(file_path)
@@ -216,6 +322,7 @@ def extract_receipt(file_path: str) -> ExtractionResult:
     contents = [EXTRACTION_PROMPT, image_part]
 
     config = types.GenerateContentConfig(
+        system_instruction=SYSTEM_INSTRUCTION,
         temperature=0.1,
         response_mime_type="application/json",
     )
@@ -230,47 +337,7 @@ def extract_receipt(file_path: str) -> ExtractionResult:
         logger.error("Gemini returned invalid JSON: %s", raw_text[:500])
         raise RuntimeError(f"AI ตอบ JSON ไม่ถูกต้อง: {exc}") from exc
 
-    # Handle Gemini returning an array instead of an object
-    if isinstance(data, list):
-        data = data[0] if data and isinstance(data[0], dict) else {}
-        logger.warning("Gemini returned array instead of object, using first element")
-
-    raw_items = data.get("items", [])
-    # Handle nested list e.g. [[item1, item2]]
-    if raw_items and isinstance(raw_items[0], list):
-        raw_items = raw_items[0]
-
-    items = [
-        DocumentItemBase(
-            product_name_raw=it.get("product_name_raw"),
-            product_name_normalized=it.get("product_name_normalized"),
-            quantity=it.get("quantity"),
-            unit=it.get("unit"),
-            unit_price=it.get("unit_price"),
-            line_total=it.get("line_total"),
-        )
-        for it in raw_items
-        if isinstance(it, dict)
-    ]
-
-    # Validate category is one of the allowed values
-    raw_category = data.get("category")
-    category = raw_category if raw_category in PRODUCT_CATEGORIES else "อื่นๆ"
-
-    result = ExtractionResult(
-        merchant_name=data.get("merchant_name"),
-        document_number=data.get("document_number"),
-        document_date=data.get("document_date"),
-        category=category,
-        items=items,
-        subtotal=data.get("subtotal"),
-        discount=data.get("discount"),
-        vat=data.get("vat"),
-        grand_total=data.get("grand_total"),
-        confidence=data.get("confidence", 0.0),
-        notes=data.get("notes"),
-        needs_review_fields=data.get("needs_review_fields", []),
-    )
+    result = parse_extraction_payload(data)
 
     logger.info(
         "Extraction complete: merchant=%s, total=%s, confidence=%.2f, items=%d",
