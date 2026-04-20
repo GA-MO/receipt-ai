@@ -30,7 +30,7 @@ createRoot(document.getElementById("root")!).render(
         <Notifications position="top-right" autoClose={4000} />
         <App />
       </MantineProvider>
-      {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
+      {/* {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />} */}
     </QueryClientProvider>
   </StrictMode>,
 );
