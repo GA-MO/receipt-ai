@@ -79,6 +79,7 @@ class DocumentUpdate(BaseModel):
 class DocumentListItem(BaseModel):
     id: str
     filename: str
+    file_type: str = "image"
     status: str
     uploaded_at: datetime
     merchant_name: str | None = None

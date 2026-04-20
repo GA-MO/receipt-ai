@@ -29,6 +29,7 @@ import {
 import { DatePickerInput } from "@mantine/dates";
 import "dayjs/locale/th";
 import { useDocumentCount, useDocuments } from "../api/queries";
+import { getDocumentImageUrl } from "../api/client";
 import { parseFraudFlags } from "@/lib/fraud";
 
 const STATUS_OPTIONS = [
@@ -181,6 +182,7 @@ export default function DocumentsPage() {
             <Table highlightOnHover>
               <Table.Thead>
                 <Table.Tr>
+                  <Table.Th w={72}></Table.Th>
                   <Table.Th>เอกสาร</Table.Th>
                   <Table.Th>ร้านค้า</Table.Th>
                   <Table.Th>หมวดหมู่</Table.Th>
@@ -201,12 +203,32 @@ export default function DocumentsPage() {
                   return (
                     <Table.Tr key={doc.id}>
                       <Table.Td>
+                        <Link to={`/documents/${doc.id}`} className="block">
+                          {doc.file_type === "pdf" ? (
+                            <div className="w-14 h-14 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex items-center justify-center">
+                              <FileText className="w-6 h-6 text-gray-400" />
+                            </div>
+                          ) : (
+                            <img
+                              src={getDocumentImageUrl(doc.id)}
+                              alt=""
+                              loading="lazy"
+                              className="w-14 h-14 rounded-md border border-gray-200 dark:border-gray-700 object-cover bg-gray-50 dark:bg-gray-800 hover:opacity-80 transition-opacity"
+                              onError={(e) => {
+                                e.currentTarget.style.visibility = "hidden";
+                              }}
+                            />
+                          )}
+                        </Link>
+                      </Table.Td>
+                      <Table.Td>
                         <Text
                           component={Link}
                           to={`/documents/${doc.id}`}
                           fw={500}
                           c="indigo"
                           className="hover:underline"
+                          lineClamp={1}
                         >
                           {doc.filename}
                         </Text>

@@ -307,6 +307,7 @@ def list_documents(
         DocumentListItem(
             id=d.id,
             filename=d.filename,
+            file_type=d.file_type,
             status=d.status,
             uploaded_at=d.uploaded_at,
             merchant_name=d.merchant_name,

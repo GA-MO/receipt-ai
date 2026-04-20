@@ -5,7 +5,8 @@
       "Bash(grep -E \"^\\\\[|^  =>|^={10,}|^DONE|^Confidence|^Failures|^Categories|^OK\")",
       "Bash(grep -E \"^\\\\[|^  =>|^={10,}|^DONE|^Confid|^Fail|^Categ|^OK\")",
       "Bash(grep -E \"^\\\\[21|^  =>|^={5,}|^DONE|^OK|^Conf|^Cat\")",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "WebSearch"
     ],
     "additionalDirectories": [
       "/Users/sbpdigital/Development/receipt-ai/frontend/src/pages"

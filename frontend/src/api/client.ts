@@ -207,6 +207,7 @@ export interface DocumentResponse {
 export interface DocumentListItem {
   id: string;
   filename: string;
+  file_type: string;
   status: string;
   uploaded_at: string;
   merchant_name: string | null;
