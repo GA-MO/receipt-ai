@@ -4,7 +4,10 @@ import {
   AlertTriangle,
   ArrowLeft,
   CheckCircle2,
+  CircleDashed,
   Loader2,
+  PackageCheck,
+  Plus,
   RotateCcw,
   Save,
   ShieldAlert,
@@ -13,6 +16,7 @@ import {
 import {
   ActionIcon,
   Alert,
+  Autocomplete,
   Badge,
   Button,
   Group,
@@ -28,6 +32,7 @@ import {
   TextInput,
   Textarea,
   Title,
+  Tooltip,
 } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { format, parse } from "date-fns";
@@ -39,6 +44,8 @@ import {
 } from "../api/client";
 import {
   useApproveDocument,
+  useAutocomplete,
+  useCreateItem,
   useDeleteDocument,
   useDeleteItem,
   useDocument,
@@ -48,26 +55,17 @@ import {
 } from "../api/queries";
 import { useDocumentStream } from "@/hooks/useDocumentStream";
 import { parseFraudData, riskScoreColor, riskScoreLabel } from "@/lib/fraud";
+import { validateTotals } from "@/lib/validation";
+import { CATEGORY_OPTIONS_WITH_BLANK as CATEGORY_OPTIONS } from "@/lib/categories";
 import { useToast } from "@/components/Toast";
 import { ImageCanvas } from "@/components/ImageCanvas";
+import { DocumentHistory } from "@/components/DocumentHistory";
 
 const SEVERITY_COLOR: Record<string, string> = {
   high: "red",
   medium: "yellow",
   low: "orange",
 };
-
-const CATEGORY_OPTIONS = [
-  { value: "", label: "ไม่ระบุ" },
-  { value: "เบียร์", label: "เบียร์" },
-  { value: "น้ำดื่ม", label: "น้ำดื่ม" },
-  { value: "โซดาและน้ำอัดลม", label: "โซดาและน้ำอัดลม" },
-  { value: "น้ำแร่", label: "น้ำแร่" },
-  { value: "สุรา", label: "สุรา" },
-  { value: "เครื่องดื่มอื่นๆ", label: "เครื่องดื่มอื่นๆ" },
-  { value: "อาหาร", label: "อาหาร" },
-  { value: "อื่นๆ", label: "อื่นๆ" },
-];
 
 export default function ReviewPage() {
   const { id } = useParams<{ id: string }>();
@@ -78,12 +76,25 @@ export default function ReviewPage() {
   const updateDoc = useUpdateDocument(id ?? "");
   const updateItemMut = useUpdateItem(id ?? "");
   const deleteItemMut = useDeleteItem(id ?? "");
+  const createItemMut = useCreateItem(id ?? "");
   const approveMut = useApproveDocument();
   const deleteMut = useDeleteDocument();
   const reextractMut = useReextractDocument();
 
+  // Shared autocomplete pools; dedup'd by React Query key so multiple item
+  // rows each calling `useAutocomplete("product")` share one request.
+  // Product limit is set high enough to include the full catalog (~237
+  // SKUs + internal) so client-side filtering (Autocomplete substring)
+  // can surface any entry the user starts typing — otherwise lower-ranked
+  // SKUs like Silver Wolf / Silver Knight get cut off.
+  const { data: merchantOptions = [] } = useAutocomplete("merchant", "", 100);
+  const { data: productOptions = [] } = useAutocomplete("product", "", 500);
+  const merchantSuggestions = merchantOptions.map((o) => o.value);
+  const productSuggestions = productOptions.map((o) => o.value);
+
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [reextractModalOpen, setReextractModalOpen] = useState(false);
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
   const [mobileTab, setMobileTab] = useState<"doc" | "form">("doc");
   const [form, setForm] = useState({
     merchant_name: "",
@@ -169,14 +180,44 @@ export default function ReviewPage() {
     }
   };
 
-  const handleApprove = async () => {
+  const handleAddItem = async () => {
+    if (!id) return;
+    try {
+      await createItemMut.mutateAsync({
+        product_name_normalized: "",
+        quantity: 1,
+        unit: null,
+        unit_price: null,
+        line_total: null,
+      });
+      toast("success", "เพิ่มรายการใหม่");
+    } catch {
+      toast("error", "ไม่สามารถเพิ่มรายการได้");
+    }
+  };
+
+  const doApprove = async () => {
     if (!id) return;
     try {
       await approveMut.mutateAsync(id);
       toast("success", "อนุมัติเรียบร้อย");
+      setApproveModalOpen(false);
     } catch {
       toast("error", "ไม่สามารถอนุมัติได้");
+      setApproveModalOpen(false);
     }
+  };
+
+  const handleApprove = async () => {
+    if (!id || !doc) return;
+    const offCatalog = doc.items.filter(
+      (it) => !it.product_code && it.product_name_normalized,
+    );
+    if (offCatalog.length > 0) {
+      setApproveModalOpen(true);
+      return;
+    }
+    await doApprove();
   };
 
   const handleDelete = async () => {
@@ -208,6 +249,19 @@ export default function ReviewPage() {
   const confColor = (doc.confidence ?? 0) >= 0.9 ? "green" : (doc.confidence ?? 0) >= 0.7 ? "yellow" : "red";
   const { flags: fraudFlags, ai_analysis: aiAnalysis } = parseFraudData(doc.fraud_flags);
   const hasRisk = fraudFlags.length > 0 || (aiAnalysis && aiAnalysis.risk_score >= 0.3);
+
+  // Live validation on current form state + items sum.
+  const itemsTotal = doc.items.reduce(
+    (s, it) => s + (typeof it.line_total === "number" ? it.line_total : 0),
+    0,
+  );
+  const validationIssues = validateTotals({
+    subtotal: form.subtotal,
+    discount: form.discount,
+    vat: form.vat,
+    grand_total: form.grand_total,
+    items_total: itemsTotal || null,
+  });
 
   const fraudSection = hasRisk && (
     <Paper withBorder p="md" radius="md" style={{ borderColor: "var(--mantine-color-red-4)" }}>
@@ -277,14 +331,36 @@ export default function ReviewPage() {
     </div>
   );
 
+  const totalsIssue = validationIssues.find((i) => i.field === "totals");
+  const vatIssue = validationIssues.find((i) => i.field === "vat");
+  const itemsIssue = validationIssues.find((i) => i.field === "items");
+
   const formSection = (
     <Stack gap="md">
+      {validationIssues.length > 0 && (
+        <Stack gap={6}>
+          {validationIssues.map((issue, i) => (
+            <Alert
+              key={i}
+              color={issue.severity === "error" ? "red" : "yellow"}
+              icon={<AlertTriangle size={16} />}
+              py="xs"
+              variant="light"
+            >
+              <Text size="xs">{issue.message}</Text>
+            </Alert>
+          ))}
+        </Stack>
+      )}
       <div className="grid grid-cols-2 gap-3">
-        <TextInput
+        <Autocomplete
           label="ร้านค้า"
           value={form.merchant_name}
-          onChange={(e) => setForm({ ...form, merchant_name: e.currentTarget.value })}
+          onChange={(v) => setForm({ ...form, merchant_name: v })}
+          data={merchantSuggestions}
+          limit={10}
           disabled={isProcessing}
+          placeholder="พิมพ์เพื่อดูชื่อร้านที่เคยใช้..."
         />
         <TextInput
           label="เลขที่เอกสาร"
@@ -316,6 +392,7 @@ export default function ReviewPage() {
           value={form.subtotal ?? ""}
           onChange={(v) => setForm({ ...form, subtotal: v === "" ? null : Number(v) })}
           disabled={isProcessing}
+          error={itemsIssue ? "ไม่ตรงกับผลรวมสินค้า" : undefined}
         />
         <NumberInput
           label="ส่วนลด"
@@ -334,6 +411,7 @@ export default function ReviewPage() {
           value={form.vat ?? ""}
           onChange={(v) => setForm({ ...form, vat: v === "" ? null : Number(v) })}
           disabled={isProcessing}
+          error={vatIssue ? "VAT ไม่ใช่ 7%" : undefined}
         />
         <div className="col-span-2">
           <NumberInput
@@ -346,13 +424,67 @@ export default function ReviewPage() {
             disabled={isProcessing}
             size="lg"
             styles={{ input: { fontWeight: 600 } }}
+            error={totalsIssue ? "ยอดรวมไม่ตรง" : undefined}
           />
         </div>
       </div>
 
-      {doc.items.length > 0 && (
-        <div>
-          <Text fw={600} size="sm" mb="sm">รายการสินค้า ({doc.items.length})</Text>
+      <div>
+        <Group justify="space-between" mb="sm">
+          <Group gap="xs">
+            <Text fw={600} size="sm">รายการสินค้า ({doc.items.length})</Text>
+            {(() => {
+              const off = doc.items.filter((it) => !it.product_code);
+              const linked = doc.items.length - off.length;
+              if (doc.items.length === 0) return null;
+              return (
+                <Tooltip
+                  label={
+                    off.length === 0
+                      ? "ทุกรายการอยู่ใน catalog"
+                      : `${linked} รายการอยู่ใน catalog, ${off.length} รายการนอก catalog`
+                  }
+                >
+                  <Badge
+                    size="xs"
+                    color={off.length === 0 ? "green" : off.length === doc.items.length ? "gray" : "yellow"}
+                    variant="light"
+                  >
+                    catalog {linked}/{doc.items.length}
+                  </Badge>
+                </Tooltip>
+              );
+            })()}
+          </Group>
+          <Button
+            size="xs"
+            variant="light"
+            leftSection={<Plus size={14} />}
+            onClick={handleAddItem}
+            loading={createItemMut.isPending}
+            disabled={isProcessing}
+          >
+            เพิ่มรายการ
+          </Button>
+        </Group>
+        {(() => {
+          const off = doc.items.filter((it) => !it.product_code && it.product_name_normalized);
+          if (off.length === 0) return null;
+          return (
+            <Alert
+              color="yellow"
+              icon={<AlertTriangle size={14} />}
+              py="xs"
+              mb="sm"
+              variant="light"
+            >
+              <Text size="xs">
+                <b>{off.length} รายการ</b> ไม่อยู่ใน catalog
+              </Text>
+            </Alert>
+          );
+        })()}
+        {doc.items.length > 0 ? (
           <Paper withBorder className="overflow-x-auto">
             <Table>
               <Table.Thead>
@@ -366,12 +498,24 @@ export default function ReviewPage() {
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {doc.items.map((item) => <ItemRow key={item.id} item={item} onSave={handleSaveItem} onDelete={handleDeleteItem} />)}
+                {doc.items.map((item) => (
+                  <ItemRow
+                    key={item.id}
+                    item={item}
+                    onSave={handleSaveItem}
+                    onDelete={handleDeleteItem}
+                    suggestions={productSuggestions}
+                  />
+                ))}
               </Table.Tbody>
             </Table>
           </Paper>
-        </div>
-      )}
+        ) : (
+          <Paper withBorder p="md" ta="center">
+            <Text size="sm" c="dimmed">ยังไม่มีรายการสินค้า — กด "เพิ่มรายการ" เพื่อเริ่มต้น</Text>
+          </Paper>
+        )}
+      </div>
 
       <Textarea
         label="หมายเหตุ"
@@ -381,6 +525,8 @@ export default function ReviewPage() {
         disabled={isProcessing}
         placeholder="เพิ่มหมายเหตุ..."
       />
+
+      {id && <DocumentHistory documentId={id} />}
     </Stack>
   );
 
@@ -392,6 +538,36 @@ export default function ReviewPage() {
           <Button variant="outline" onClick={() => setReextractModalOpen(false)}>ยกเลิก</Button>
           <Button onClick={() => { setReextractModalOpen(false); handleReextract(); }}>ยืนยัน</Button>
         </Group>
+      </Modal>
+      <Modal opened={approveModalOpen} onClose={() => setApproveModalOpen(false)} title="ยืนยันการอนุมัติ" centered>
+        <Stack gap="sm">
+          <Alert color="yellow" icon={<AlertTriangle size={16} />} variant="light" py="xs">
+            <Text size="sm">
+              มี <b>{doc.items.filter((it) => !it.product_code && it.product_name_normalized).length} รายการ</b> ที่ไม่อยู่ใน catalog
+            </Text>
+          </Alert>
+          <Paper withBorder p="xs" style={{ maxHeight: 200, overflow: "auto" }}>
+            <Stack gap={4}>
+              {doc.items
+                .filter((it) => !it.product_code && it.product_name_normalized)
+                .slice(0, 20)
+                .map((it) => (
+                  <Group key={it.id} gap="xs">
+                    <CircleDashed size={12} style={{ color: "var(--mantine-color-gray-6)" }} />
+                    <Text size="xs">{it.product_name_normalized}</Text>
+                  </Group>
+                ))}
+            </Stack>
+          </Paper>
+          <Group justify="flex-end">
+            <Button variant="subtle" onClick={() => setApproveModalOpen(false)}>
+              ยกเลิก — แก้ก่อน
+            </Button>
+            <Button color="green" leftSection={<CheckCircle2 size={14} />} onClick={doApprove} loading={approveMut.isPending}>
+              อนุมัติเลย
+            </Button>
+          </Group>
+        </Stack>
       </Modal>
       <Modal opened={deleteModalOpen} onClose={() => setDeleteModalOpen(false)} title="ลบเอกสาร" centered>
         <Text size="sm" c="dimmed">ต้องการลบเอกสารนี้? การดำเนินการนี้ไม่สามารถย้อนกลับได้</Text>
@@ -567,7 +743,17 @@ export default function ReviewPage() {
   );
 }
 
-function ItemRow({ item, onSave, onDelete }: { item: DocumentItemData; onSave: (item: DocumentItemData, field: string, value: string) => void; onDelete: (item: DocumentItemData) => void }) {
+function ItemRow({
+  item,
+  onSave,
+  onDelete,
+  suggestions,
+}: {
+  item: DocumentItemData;
+  onSave: (item: DocumentItemData, field: string, value: string) => void;
+  onDelete: (item: DocumentItemData) => void;
+  suggestions: string[];
+}) {
   const [values, setValues] = useState({
     product_name_normalized: item.product_name_normalized ?? "",
     quantity: item.quantity ?? "",
@@ -606,22 +792,45 @@ function ItemRow({ item, onSave, onDelete }: { item: DocumentItemData; onSave: (
   return (
     <Table.Tr>
       <Table.Td p={4}>
-        <TextInput
-          size="xs"
-          variant="unstyled"
-          value={values.product_name_normalized}
-          onChange={(e) => handleChange("product_name_normalized", e.currentTarget.value)}
-          onBlur={() => handleBlur("product_name_normalized")}
-          styles={{
-            input: {
-              padding: "2px 6px",
-              border: "1px solid transparent",
-              borderRadius: 4,
-              "&:hover": { borderColor: "var(--mantine-color-default-border)" },
-              "&:focus": { borderColor: "var(--mantine-color-indigo-5)" },
-            },
-          }}
-        />
+        <Group gap={6} wrap="nowrap" align="center">
+          <Tooltip
+            label={
+              item.product_code
+                ? `อยู่ใน catalog (SKU ${item.product_code})`
+                : "ไม่อยู่ใน catalog"
+            }
+            withinPortal
+          >
+            {item.product_code ? (
+              <PackageCheck size={14} style={{ color: "var(--mantine-color-green-6)", flexShrink: 0 }} />
+            ) : (
+              <CircleDashed size={14} style={{ color: "var(--mantine-color-gray-5)", flexShrink: 0 }} />
+            )}
+          </Tooltip>
+          <Autocomplete
+            size="xs"
+            variant="unstyled"
+            value={values.product_name_normalized}
+            onChange={(v) => handleChange("product_name_normalized", v)}
+            onBlur={() => handleBlur("product_name_normalized")}
+            data={suggestions}
+            limit={8}
+            comboboxProps={{ withinPortal: true }}
+            title={
+              item.product_name_raw && item.product_name_raw !== values.product_name_normalized
+                ? `AI อ่านได้: ${item.product_name_raw}`
+                : undefined
+            }
+            style={{ flex: 1 }}
+            styles={{
+              input: {
+                padding: "2px 6px",
+                border: "1px solid transparent",
+                borderRadius: 4,
+              },
+            }}
+          />
+        </Group>
       </Table.Td>
       <Table.Td p={4}>
         <NumberInput

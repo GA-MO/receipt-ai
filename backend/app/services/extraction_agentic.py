@@ -62,8 +62,11 @@ _AGENTIC_SYSTEM_INSTRUCTION_TEMPLATE = """\
 - ข้อความคำอธิบายทั้งหมด (notes, summary, flags) ต้องเป็นภาษาไทย 100%
 - `product_name_normalized` ใช้ชื่อจาก `lookup_catalog` match ที่ดีที่สุด
   ถ้า score < 75 ใช้ชื่อจากเอกสาร (ตัด unit/suffix ออก)
-- `category` ของแต่ละ item: ใช้จาก lookup_catalog result ถ้า match;
-  ถ้าไม่ match ดูบริบท (โซดา→โซดาและน้ำอัดลม, น้ำดื่ม→น้ำดื่ม, ฯลฯ)
+- `category` ของแต่ละ item: ใช้ 1 ใน 4 หมวด Singha Online
+  * "เครื่องดื่ม" — เบียร์, น้ำดื่ม, โซดา, สุรา, น้ำแร่, น้ำอัดลม, ชา, กาแฟ
+  * "อาหาร และของว่าง" — อาหาร, ขนม, snack
+  * "สินค้าพรีเมียมสิงห์" — merchandise, ของสะสม
+  * "สินค้าอื่นๆ" — ไม่เข้าหมวดข้างบน (ไม่ใช่ default)
 - `category` ของเอกสาร: ใช้หมวดที่พบมากที่สุดใน items (by line_total)
 - ถ้าปี พ.ศ. ให้แปลงเป็น ค.ศ. (พ.ศ. - 543)
 - วันที่รูปแบบ YYYY-MM-DD

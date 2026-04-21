@@ -16,11 +16,18 @@ from typing import BinaryIO
 
 from fastapi import HTTPException, UploadFile
 from PIL import Image, UnidentifiedImageError
+from pillow_heif import register_heif_opener
+
+register_heif_opener()
 
 logger = logging.getLogger(__name__)
 
 
-ALLOWED_EXT = {".jpg", ".jpeg", ".png", ".webp", ".pdf"}
+ALLOWED_EXT = {".jpg", ".jpeg", ".png", ".webp", ".pdf", ".heic", ".heif"}
+
+# HEIC/HEIF use the ISO base media container: bytes 4-8 are "ftyp", then a brand
+# identifying HEIC/HEIF variants.
+_HEIC_FTYP_BRANDS = (b"heic", b"heix", b"hevc", b"heim", b"heis", b"heim", b"mif1", b"msf1", b"heif")
 
 # Extension → (expected file_type, list of accepted magic byte prefixes)
 _MAGIC_BYTES: dict[str, tuple[str, tuple[bytes, ...]]] = {
@@ -28,6 +35,8 @@ _MAGIC_BYTES: dict[str, tuple[str, tuple[bytes, ...]]] = {
     ".jpeg": ("image", (b"\xff\xd8\xff",)),
     ".png": ("image", (b"\x89PNG\r\n\x1a\n",)),
     ".webp": ("image", (b"RIFF",)),  # WebP: RIFF....WEBP
+    ".heic": ("image", ()),  # validated via _verify_heic
+    ".heif": ("image", ()),
     ".pdf": ("pdf", (b"%PDF-",)),
 }
 
@@ -42,6 +51,7 @@ class ValidatedUpload:
     file_type: str  # "image" | "pdf"
     size: int
     data: bytes  # full file content, already validated
+    extension: str = ""  # effective extension to save under (post-conversion)
 
 
 def _peek_magic(fp: BinaryIO, n: int) -> bytes:
@@ -55,6 +65,27 @@ def _peek_magic(fp: BinaryIO, n: int) -> bytes:
 def _verify_webp(head: bytes) -> bool:
     """WebP files start with RIFF<size>WEBP."""
     return len(head) >= 12 and head[:4] == b"RIFF" and head[8:12] == b"WEBP"
+
+
+def _verify_heic(head: bytes) -> bool:
+    """HEIC/HEIF files have 'ftyp' at offset 4, followed by a brand."""
+    if len(head) < 12 or head[4:8] != b"ftyp":
+        return False
+    brand = head[8:12]
+    return brand in _HEIC_FTYP_BRANDS
+
+
+def _convert_heic_to_jpeg(data: bytes) -> bytes:
+    """Decode HEIC bytes and re-encode as JPEG so downstream Gemini/PDF viewers
+    handle the file. Raises HTTPException on failure."""
+    try:
+        with Image.open(io.BytesIO(data)) as img:
+            rgb = img.convert("RGB")
+            out = io.BytesIO()
+            rgb.save(out, format="JPEG", quality=92)
+            return out.getvalue()
+    except (UnidentifiedImageError, OSError, ValueError) as exc:
+        raise HTTPException(400, "ไฟล์ HEIC/HEIF เสียหายหรือไม่รองรับ") from exc
 
 
 def _verify_image_content(data: bytes) -> None:
@@ -86,6 +117,8 @@ def validate_and_hash(
     head = _peek_magic(file.file, 16)
     if ext == ".webp":
         magic_ok = _verify_webp(head)
+    elif ext in (".heic", ".heif"):
+        magic_ok = _verify_heic(head)
     else:
         magic_ok = any(head.startswith(prefix) for prefix in magic_prefixes)
 
@@ -115,6 +148,15 @@ def validate_and_hash(
         raise HTTPException(400, "ไฟล์ว่างเปล่า")
 
     data = bytes(buf)
+    final_ext = ext
+
+    if ext in (".heic", ".heif"):
+        data = _convert_heic_to_jpeg(data)
+        final_ext = ".jpg"
+        # re-hash so duplicate detection works on the stored JPEG
+        hasher = hashlib.sha256()
+        hasher.update(data)
+        size = len(data)
 
     if expected_type == "image":
         _verify_image_content(data)
@@ -124,6 +166,7 @@ def validate_and_hash(
         file_type=expected_type,
         size=size,
         data=data,
+        extension=final_ext,
     )
 
 

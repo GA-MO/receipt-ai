@@ -98,7 +98,7 @@ export default function CapturePage() {
             <input
               ref={cameraInputRef}
               type="file"
-              accept="image/jpeg,image/png,image/webp,application/pdf"
+              accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf"
               capture="environment"
               onChange={handleCapture}
               className="hidden"
@@ -116,7 +116,7 @@ export default function CapturePage() {
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/jpeg,image/png,image/webp,application/pdf"
+              accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf"
               onChange={handleCapture}
               className="hidden"
             />

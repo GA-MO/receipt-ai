@@ -20,6 +20,93 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _period_bounds(period: str) -> tuple[str, str, str, str]:
+    """Return (this_start, this_end, prev_start, prev_end) as yyyy-mm-dd strings.
+
+    Period values:
+        - ``"7d"``  — last 7 days vs prior 7 days
+        - ``"30d"`` — last 30 days vs prior 30 days
+        - ``"month"`` — this calendar month vs last calendar month
+        - ``"year"``  — this year vs last year
+    """
+    today = datetime.now(UTC).date()
+    if period == "month":
+        this_start = today.replace(day=1)
+        # Last day of previous month
+        prev_end = this_start - timedelta(days=1)
+        prev_start = prev_end.replace(day=1)
+        this_end = today
+    elif period == "year":
+        this_start = today.replace(month=1, day=1)
+        prev_start = this_start.replace(year=this_start.year - 1)
+        prev_end = this_start - timedelta(days=1)
+        this_end = today
+    else:
+        # 7d / 30d / generic N-day window
+        n_days = 30 if period == "30d" else 7
+        this_start = today - timedelta(days=n_days - 1)
+        this_end = today
+        prev_end = this_start - timedelta(days=1)
+        prev_start = prev_end - timedelta(days=n_days - 1)
+
+    return (
+        this_start.isoformat(),
+        this_end.isoformat(),
+        prev_start.isoformat(),
+        prev_end.isoformat(),
+    )
+
+
+def _aggregate_period(
+    db: Session,
+    start: str,
+    end: str,
+) -> dict[str, float | int]:
+    """Sum grand_total + count documents in [start, end] inclusive."""
+    q = db.query(
+        func.coalesce(func.sum(Document.grand_total), 0).label("total"),
+        func.count(Document.id).label("count"),
+    ).filter(
+        Document.document_date.isnot(None),
+        Document.document_date >= start,
+        Document.document_date <= end,
+    )
+    row = q.one()
+    return {"total": round(float(row.total or 0), 2), "count": int(row.count or 0)}
+
+
+@router.get("/period-comparison")
+def period_comparison(
+    period: str = Query("month", pattern="^(7d|30d|month|year)$"),
+    db: Session = Depends(get_db),
+):
+    """Compare the current period vs the previous one.
+
+    Returns totals, counts, and deltas so the dashboard can render a clean
+    "this month vs last month" card without extra math on the client.
+    """
+    this_start, this_end, prev_start, prev_end = _period_bounds(period)
+    this_bucket = _aggregate_period(db, this_start, this_end)
+    prev_bucket = _aggregate_period(db, prev_start, prev_end)
+
+    def _pct(new: float, old: float) -> float | None:
+        if old == 0:
+            return None
+        return round((new - old) / old * 100, 1)
+
+    return {
+        "period": period,
+        "current": {"start": this_start, "end": this_end, **this_bucket},
+        "previous": {"start": prev_start, "end": prev_end, **prev_bucket},
+        "delta": {
+            "total_abs": round(this_bucket["total"] - prev_bucket["total"], 2),
+            "total_pct": _pct(this_bucket["total"], prev_bucket["total"]),
+            "count_abs": this_bucket["count"] - prev_bucket["count"],
+            "count_pct": _pct(this_bucket["count"], prev_bucket["count"]),
+        },
+    }
+
+
 @router.get("/stats", response_model=DashboardStats)
 def get_stats(db: Session = Depends(get_db)):
     total = db.query(func.count(Document.id)).scalar() or 0
@@ -91,6 +178,99 @@ def daily_sales(
     return [
         {"date": r.document_date, "total": round(float(r.total), 2), "count": r.count}
         for r in reversed(rows)
+    ]
+
+
+@router.get("/top-products")
+def top_products(
+    limit: int = Query(10, ge=1, le=50),
+    date_from: str | None = None,
+    date_to: str | None = None,
+    catalog_only: bool = False,
+    db: Session = Depends(get_db),
+):
+    """Top products by total revenue (sum of line_total).
+
+    Groups items by ``product_code`` when present (catalog SKU) so name
+    variations of the same product aggregate together; falls back to
+    ``product_name_normalized`` for items not linked to any catalog entry.
+
+    Pass ``catalog_only=true`` to exclude off-catalog items entirely.
+    """
+    # COALESCE(product_code, "free:" || name) gives us a stable grouping key
+    # that keeps catalog SKUs crisp while still surfacing popular free-text
+    # items. The ``free:`` prefix guarantees no collision with real codes.
+    group_key = func.coalesce(
+        DocumentItem.product_code,
+        func.concat("free:", DocumentItem.product_name_normalized),
+    ).label("key")
+
+    q = (
+        db.query(
+            group_key,
+            DocumentItem.product_code.label("product_code"),
+            func.max(DocumentItem.product_name_normalized).label("product"),
+            func.sum(DocumentItem.line_total).label("total"),
+            func.sum(DocumentItem.quantity).label("quantity"),
+            func.count(func.distinct(DocumentItem.document_id)).label("doc_count"),
+        )
+        .join(Document, DocumentItem.document_id == Document.id)
+        .filter(
+            Document.deleted_at.is_(None),
+            Document.status.in_(("reviewed", "extracted")),
+            DocumentItem.product_name_normalized.isnot(None),
+            DocumentItem.product_name_normalized != "",
+            DocumentItem.line_total.isnot(None),
+        )
+    )
+    if date_from:
+        q = q.filter(Document.document_date >= date_from)
+    if date_to:
+        q = q.filter(Document.document_date <= date_to)
+    if catalog_only:
+        q = q.filter(DocumentItem.product_code.isnot(None))
+
+    rows = (
+        q.group_by(group_key, DocumentItem.product_code)
+        .order_by(func.sum(DocumentItem.line_total).desc())
+        .limit(limit)
+        .all()
+    )
+
+    # For rows with a product_code, replace the "whatever users saved" product
+    # name with the canonical display_name from the catalog so the dashboard
+    # reads cleanly even if operators entered inconsistent spellings.
+    from ..models import Product  # local to avoid cycle
+
+    codes = {r.product_code for r in rows if r.product_code}
+    # {code: (display_name, manufacturer)}
+    catalog_meta: dict[str, tuple[str, str | None]] = {}
+    if codes:
+        lookup_rows = (
+            db.query(
+                Product.code,
+                Product.display_name,
+                Product.canonical_name,
+                Product.manufacturer,
+            )
+            .filter(Product.code.in_(codes))
+            .all()
+        )
+        for code, display, canon, mfg in lookup_rows:
+            catalog_meta[code] = (display or canon, mfg)
+
+    return [
+        {
+            "product": catalog_meta.get(r.product_code, (r.product, None))[0],
+            "product_code": r.product_code,
+            "manufacturer": catalog_meta.get(r.product_code, (None, None))[1],
+            "is_boonrawd": (catalog_meta.get(r.product_code, (None, None))[1] == "Boonrawd"),
+            "in_catalog": r.product_code is not None,
+            "total": round(float(r.total or 0), 2),
+            "quantity": round(float(r.quantity or 0), 2),
+            "doc_count": int(r.doc_count or 0),
+        }
+        for r in rows
     ]
 
 
@@ -489,27 +669,17 @@ def ai_insight(db: Session = Depends(get_db)):
         }
 
 
-@router.get("/export")
-def export_csv(
-    date_from: str | None = None,
-    date_to: str | None = None,
-    merchant: str | None = None,
-    db: Session = Depends(get_db),
-):
-    query = db.query(Document).filter(Document.status == "reviewed")
+def _fmt_num(v) -> str:
+    """Format Numeric/float for CSV; empty string for None."""
+    if v is None or v == "":
+        return ""
+    try:
+        return f"{float(v):.2f}"
+    except (TypeError, ValueError):
+        return str(v)
 
-    if date_from:
-        query = query.filter(Document.document_date >= date_from)
-    if date_to:
-        query = query.filter(Document.document_date <= date_to)
-    if merchant:
-        query = query.filter(Document.merchant_name.ilike(f"%{merchant}%"))
 
-    docs = query.order_by(Document.document_date).all()
-
-    buf = io.StringIO()
-    buf.write("\ufeff")  # BOM for Excel Thai support
-    writer = csv.writer(buf)
+def _write_line_items(writer: csv.writer, docs: list[Document]) -> None:
     writer.writerow(
         [
             "เลขที่เอกสาร",
@@ -529,8 +699,28 @@ def export_csv(
             "ยอดสุทธิ",
         ]
     )
-
     for doc in docs:
+        if not doc.items:
+            writer.writerow(
+                [
+                    doc.document_number or "",
+                    doc.document_date or "",
+                    doc.merchant_name or "",
+                    doc.merchant_normalized or "",
+                    doc.category or "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    _fmt_num(doc.subtotal),
+                    _fmt_num(doc.discount),
+                    _fmt_num(doc.vat),
+                    _fmt_num(doc.grand_total),
+                ]
+            )
+            continue
         for item in doc.items:
             writer.writerow(
                 [
@@ -541,20 +731,175 @@ def export_csv(
                     doc.category or "",
                     item.product_name_normalized or "",
                     item.category or "",
-                    item.quantity or "",
+                    _fmt_num(item.quantity),
                     item.unit or "",
-                    item.unit_price or "",
-                    item.line_total or "",
-                    doc.subtotal or "",
-                    doc.discount or "",
-                    doc.vat or "",
-                    doc.grand_total or "",
+                    _fmt_num(item.unit_price),
+                    _fmt_num(item.line_total),
+                    _fmt_num(doc.subtotal),
+                    _fmt_num(doc.discount),
+                    _fmt_num(doc.vat),
+                    _fmt_num(doc.grand_total),
                 ]
             )
 
+
+def _write_summary(writer: csv.writer, docs: list[Document]) -> None:
+    writer.writerow(
+        [
+            "เลขที่เอกสาร",
+            "วันที่",
+            "ร้านค้า",
+            "หมวดหมู่",
+            "จำนวนรายการ",
+            "ยอดก่อน VAT",
+            "ส่วนลด",
+            "VAT",
+            "ยอดสุทธิ",
+            "หมายเหตุ",
+        ]
+    )
+    for doc in docs:
+        writer.writerow(
+            [
+                doc.document_number or "",
+                doc.document_date or "",
+                doc.merchant_name or "",
+                doc.category or "",
+                len(doc.items or []),
+                _fmt_num(doc.subtotal),
+                _fmt_num(doc.discount),
+                _fmt_num(doc.vat),
+                _fmt_num(doc.grand_total),
+                (doc.notes or "").replace("\n", " / "),
+            ]
+        )
+
+
+def _write_purchase_journal(writer: csv.writer, docs: list[Document]) -> None:
+    """Thai purchase journal / สมุดซื้อ — one row per document."""
+    writer.writerow(
+        [
+            "ลำดับ",
+            "วันที่",
+            "เลขที่ใบกำกับ",
+            "ผู้ขาย (ร้านค้า)",
+            "รายการ",
+            "มูลค่าสินค้า (ก่อน VAT)",
+            "ภาษีซื้อ (VAT 7%)",
+            "รวมทั้งสิ้น",
+        ]
+    )
+    for idx, doc in enumerate(docs, start=1):
+        description = doc.category or (
+            f"{len(doc.items)} รายการ" if doc.items else "สินค้า/บริการ"
+        )
+        writer.writerow(
+            [
+                idx,
+                doc.document_date or "",
+                doc.document_number or "",
+                doc.merchant_name or "",
+                description,
+                _fmt_num(doc.subtotal),
+                _fmt_num(doc.vat),
+                _fmt_num(doc.grand_total),
+            ]
+        )
+
+
+def _write_journal_entries(writer: csv.writer, docs: list[Document]) -> None:
+    """Double-entry bookkeeping: Dr expense / Dr VAT receivable / Cr cash."""
+    writer.writerow(
+        [
+            "วันที่",
+            "เลขที่เอกสาร",
+            "คำอธิบายรายการ",
+            "เดบิต (บัญชี)",
+            "เดบิต (จำนวน)",
+            "เครดิต (บัญชี)",
+            "เครดิต (จำนวน)",
+        ]
+    )
+    for doc in docs:
+        desc_prefix = f"{doc.merchant_name or 'ผู้ขาย'} / {doc.document_number or '-'}"
+        subtotal = _fmt_num(doc.subtotal)
+        vat = _fmt_num(doc.vat)
+        grand = _fmt_num(doc.grand_total)
+        if subtotal:
+            writer.writerow(
+                [
+                    doc.document_date or "",
+                    doc.document_number or "",
+                    f"{desc_prefix} — ค่าใช้จ่าย",
+                    f"ค่าใช้จ่าย - {doc.category or 'สินค้าอื่นๆ'}",
+                    subtotal,
+                    "",
+                    "",
+                ]
+            )
+        if vat:
+            writer.writerow(
+                [
+                    doc.document_date or "",
+                    doc.document_number or "",
+                    f"{desc_prefix} — ภาษีซื้อ",
+                    "ภาษีซื้อ",
+                    vat,
+                    "",
+                    "",
+                ]
+            )
+        if grand:
+            writer.writerow(
+                [
+                    doc.document_date or "",
+                    doc.document_number or "",
+                    f"{desc_prefix} — จ่ายเงิน",
+                    "",
+                    "",
+                    "เงินสด/เงินฝากธนาคาร",
+                    grand,
+                ]
+            )
+
+
+_EXPORT_FORMATS = {
+    "line_items": ("sales_line_items.csv", _write_line_items),
+    "summary": ("sales_summary.csv", _write_summary),
+    "purchase_journal": ("purchase_journal.csv", _write_purchase_journal),
+    "journal_entries": ("journal_entries.csv", _write_journal_entries),
+}
+
+
+@router.get("/export")
+def export_csv(
+    date_from: str | None = None,
+    date_to: str | None = None,
+    merchant: str | None = None,
+    format: str = Query("line_items", pattern="^(line_items|summary|purchase_journal|journal_entries)$"),
+    db: Session = Depends(get_db),
+):
+    query = db.query(Document).filter(Document.status == "reviewed")
+
+    if date_from:
+        query = query.filter(Document.document_date >= date_from)
+    if date_to:
+        query = query.filter(Document.document_date <= date_to)
+    if merchant:
+        query = query.filter(Document.merchant_name.ilike(f"%{merchant}%"))
+
+    docs = query.order_by(Document.document_date).all()
+
+    filename, writer_fn = _EXPORT_FORMATS[format]
+
+    buf = io.StringIO()
+    buf.write("\ufeff")  # BOM so Excel opens Thai text correctly
+    writer = csv.writer(buf)
+    writer_fn(writer, docs)
     buf.seek(0)
+
     return StreamingResponse(
         io.BytesIO(buf.getvalue().encode("utf-8-sig")),
         media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=sales_export.csv"},
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )

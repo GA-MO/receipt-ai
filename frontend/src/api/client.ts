@@ -47,6 +47,8 @@ export function getDocuments(params?: {
   date_from?: string;
   date_to?: string;
   category?: string;
+  sort_by?: string;
+  sort_dir?: string;
 }) {
   return request<DocumentListItem[]>(
     `/documents${buildQs(params ?? {})}`,
@@ -89,6 +91,14 @@ export function updateItem(
   });
 }
 
+export function createItem(docId: string, data: Record<string, unknown>) {
+  return request<DocumentResponse>(`/documents/${docId}/items`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
 export function deleteItem(docId: string, itemId: string) {
   return request<DocumentResponse>(`/documents/${docId}/items/${itemId}`, {
     method: "DELETE",
@@ -113,6 +123,54 @@ export function deleteDocument(id: string) {
   });
 }
 
+export function bulkApproveDocuments(ids: string[]) {
+  return request<BulkActionResult>(`/documents/bulk/approve`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids }),
+  });
+}
+
+export function bulkDeleteDocuments(ids: string[]) {
+  return request<BulkActionResult>(`/documents/bulk/delete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids }),
+  });
+}
+
+export function bulkRestoreDocuments(ids: string[]) {
+  return request<BulkActionResult>(`/documents/bulk/restore`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids }),
+  });
+}
+
+export function bulkPurgeDocuments(ids: string[]) {
+  return request<BulkActionResult>(`/documents/bulk/purge`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids }),
+  });
+}
+
+export function restoreDocument(id: string) {
+  return request<DocumentResponse>(`/documents/${id}/restore`, { method: "POST" });
+}
+
+export function purgeDocument(id: string) {
+  return request<{ message: string }>(`/documents/${id}/purge`, { method: "POST" });
+}
+
+export function getTrash(params?: { skip?: number; limit?: number }) {
+  return request<DocumentListItem[]>(`/documents/trash${buildQs(params ?? {})}`);
+}
+
+export function getTrashCount() {
+  return request<{ count: number }>(`/documents/trash/count`);
+}
+
 // ---------- Dashboard ----------
 
 export function getDashboardStats() {
@@ -125,6 +183,17 @@ export function getDailySales(days = 30) {
 
 export function getTopMerchants(limit = 10) {
   return request<TopMerchant[]>(`/dashboard/top-merchants?limit=${limit}`);
+}
+
+export function getTopProducts(
+  limit = 10,
+  params?: { date_from?: string; date_to?: string; catalog_only?: boolean },
+) {
+  const qs: Record<string, string | number | undefined | null> = { limit };
+  if (params?.date_from) qs.date_from = params.date_from;
+  if (params?.date_to) qs.date_to = params.date_to;
+  if (params?.catalog_only) qs.catalog_only = "true";
+  return request<TopProduct[]>(`/dashboard/top-products${buildQs(qs)}`);
 }
 
 export function getCategoryBreakdown() {
@@ -152,16 +221,106 @@ export function getAiInsight() {
   return request<AiInsightResponse>("/dashboard/ai-insight");
 }
 
+export function getPeriodComparison(period: "7d" | "30d" | "month" | "year" = "month") {
+  return request<PeriodComparison>(
+    `/dashboard/period-comparison?period=${period}`,
+  );
+}
+
 export function getDocumentImageUrl(id: string) {
   return `${API_BASE}/documents/${id}/image`;
 }
+
+export function getDocumentHistory(id: string, limit = 200) {
+  return request<DocumentEventItem[]>(
+    `/documents/${id}/history?limit=${limit}`,
+  );
+}
+
+export type ExportFormat =
+  | "line_items"
+  | "summary"
+  | "purchase_journal"
+  | "journal_entries";
 
 export function getExportUrl(params?: {
   date_from?: string;
   date_to?: string;
   merchant?: string;
+  format?: ExportFormat;
 }) {
   return `${API_BASE}/dashboard/export${buildQs(params ?? {})}`;
+}
+
+// ---------- Web Push ----------
+
+export function getPushPublicKey() {
+  return request<{ public_key: string }>("/push/public-key");
+}
+
+export function subscribePush(sub: PushSubscriptionJSON) {
+  return request<{ id: string; status: string }>("/push/subscribe", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(sub),
+  });
+}
+
+export function unsubscribePush(endpoint: string) {
+  return request<{ status: string }>("/push/unsubscribe", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ endpoint }),
+  });
+}
+
+export function sendTestPush(payload?: { title?: string; body?: string; url?: string }) {
+  return request<{ delivered: number }>("/push/test", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload ?? {}),
+  });
+}
+
+// ---------- Learned aliases ----------
+
+export function getAliases(limit = 100) {
+  return request<MerchantAliasItem[]>(`/aliases?limit=${limit}`);
+}
+
+export function getProductAliases(limit = 100) {
+  return request<MerchantAliasItem[]>(`/aliases/products?limit=${limit}`);
+}
+
+export function getAliasStats() {
+  return request<AliasStats>("/aliases/stats");
+}
+
+export function deleteAlias(id: string) {
+  return request<{ status: string }>(`/aliases/${id}`, { method: "DELETE" });
+}
+
+export function deleteProductAlias(id: string) {
+  return request<{ status: string }>(`/aliases/products/${id}`, { method: "DELETE" });
+}
+
+// ---------- Autocomplete ----------
+
+export type AutocompleteKind = "merchant" | "product";
+
+export interface AutocompleteOption {
+  value: string;
+  score: number;
+}
+
+export function getAutocomplete(
+  kind: AutocompleteKind,
+  q: string = "",
+  limit: number = 20,
+) {
+  return request<AutocompleteOption[]>(
+    `/autocomplete${buildQs({ kind, q, limit })}`,
+  );
 }
 
 // ---------- Types ----------
@@ -169,7 +328,9 @@ export function getExportUrl(params?: {
 export interface DocumentItemData {
   id: string;
   document_id: string;
+  product_name_raw: string | null;
   product_name_normalized: string | null;
+  product_code: string | null;
   category: string | null;
   quantity: number | null;
   unit: string | null;
@@ -220,6 +381,40 @@ export interface DocumentListItem {
   fraud_flags: string | null;
 }
 
+export interface BulkActionResult {
+  succeeded: number;
+  failed: number;
+  failed_ids: string[];
+}
+
+export interface MerchantAliasItem {
+  id: string;
+  source_text: string;
+  canonical_name: string;
+  category: string | null;
+  hit_count: number;
+}
+
+export interface DocumentEventItem {
+  id: string;
+  event_type: string;
+  actor: string;
+  payload: Record<string, unknown> | null;
+  created_at: string | null;
+}
+
+export interface AliasKindStats {
+  total_aliases: number;
+  total_hits: number;
+}
+
+export interface AliasStats {
+  total_aliases: number;
+  total_hits: number;
+  merchants: AliasKindStats;
+  products: AliasKindStats;
+}
+
 export interface DashboardStats {
   total_documents: number;
   pending_review: number;
@@ -239,6 +434,17 @@ export interface TopMerchant {
   merchant: string;
   total: number;
   count: number;
+}
+
+export interface TopProduct {
+  product: string;
+  product_code: string | null;
+  manufacturer: string | null;
+  is_boonrawd: boolean;
+  in_catalog: boolean;
+  total: number;
+  quantity: number;
+  doc_count: number;
 }
 
 export interface CategoryBreakdown {
@@ -312,4 +518,23 @@ export interface AiInsightResponse {
   insights: string[];
   risks: string[];
   opportunities: string[];
+}
+
+export interface PeriodBucket {
+  start: string;
+  end: string;
+  total: number;
+  count: number;
+}
+
+export interface PeriodComparison {
+  period: "7d" | "30d" | "month" | "year";
+  current: PeriodBucket;
+  previous: PeriodBucket;
+  delta: {
+    total_abs: number;
+    total_pct: number | null;
+    count_abs: number;
+    count_pct: number | null;
+  };
 }

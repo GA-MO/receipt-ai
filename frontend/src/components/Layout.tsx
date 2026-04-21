@@ -1,23 +1,29 @@
-import { NavLink as RouterNavLink, Outlet, useLocation } from "react-router-dom";
+import { useEffect } from "react";
+import { NavLink as RouterNavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   AppShell,
   Burger,
   Group,
   Text,
   ActionIcon,
+  Tooltip,
   useMantineColorScheme,
   useComputedColorScheme,
   ThemeIcon,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { BarChart3, Camera, FileText, Moon, Receipt, Sun, Upload } from "lucide-react";
+import { BarChart3, Bell, BellOff, Camera, FileText, Moon, Receipt, Sun, Trash2, Upload } from "lucide-react";
 import classes from "./Layout.module.css";
+import { useWebPush } from "@/hooks/useWebPush";
+import { useToast } from "@/components/Toast";
+import { LearnedAliasesBadge } from "@/components/LearnedAliasesPanel";
 
 const links = [
   { to: "/", label: "อัปโหลด", icon: Upload },
   { to: "/documents", label: "เอกสารทั้งหมด", icon: FileText },
   { to: "/dashboard", label: "Dashboard", icon: BarChart3 },
   { to: "/capture", label: "ถ่ายเอกสาร", icon: Camera },
+  { to: "/trash", label: "ถังขยะ", icon: Trash2 },
 ] as const;
 
 export default function Layout() {
@@ -25,10 +31,44 @@ export default function Layout() {
   const { setColorScheme } = useMantineColorScheme();
   const colorScheme = useComputedColorScheme("light");
   const location = useLocation();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const push = useWebPush();
 
   const toggleColorScheme = () => {
     setColorScheme(colorScheme === "dark" ? "light" : "dark");
   };
+
+  const togglePush = async () => {
+    if (push.state === "enabled") {
+      const ok = await push.disable();
+      if (ok) toast("info", "ปิดการแจ้งเตือนแล้ว");
+    } else if (push.state === "unsupported") {
+      toast("error", "เบราว์เซอร์ไม่รองรับ Web Push");
+    } else if (push.state === "permission-denied") {
+      toast("error", "ถูกบล็อกใน browser — ต้องอนุญาตเองในตั้งค่า site");
+    } else {
+      const ok = await push.enable();
+      if (ok) {
+        toast("success", "เปิดการแจ้งเตือนแล้ว");
+        // Fire a test push so the user confirms the end-to-end path works.
+        await push.sendTest();
+      } else if (push.error) {
+        toast("error", push.error);
+      }
+    }
+  };
+
+  // Listen for SW → window navigation requests (user clicked a notification).
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    const handler = (event: MessageEvent) => {
+      const data = event.data as { type?: string; url?: string } | undefined;
+      if (data?.type === "push-nav" && data.url) navigate(data.url);
+    };
+    navigator.serviceWorker.addEventListener("message", handler);
+    return () => navigator.serviceWorker.removeEventListener("message", handler);
+  }, [navigate]);
 
   return (
     <AppShell
@@ -61,15 +101,40 @@ export default function Layout() {
               </Text>
             </div>
           </Group>
-          <ActionIcon
-            variant="subtle"
-            size="lg"
-            onClick={toggleColorScheme}
-            aria-label="Toggle color scheme"
-            className={classes.toggleBtn}
-          >
-            {colorScheme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
-          </ActionIcon>
+          <Group gap="xs">
+            <LearnedAliasesBadge />
+            <Tooltip
+              label={
+                push.state === "enabled"
+                  ? "แจ้งเตือนเปิดอยู่ (คลิกเพื่อปิด)"
+                  : push.state === "unsupported"
+                    ? "เบราว์เซอร์ไม่รองรับ"
+                    : push.state === "permission-denied"
+                      ? "ถูกบล็อก — เปิดในตั้งค่า site"
+                      : "เปิดการแจ้งเตือน (Web Push)"
+              }
+            >
+              <ActionIcon
+                variant={push.state === "enabled" ? "light" : "subtle"}
+                color={push.state === "enabled" ? "indigo" : undefined}
+                size="lg"
+                onClick={togglePush}
+                disabled={push.state === "loading" || push.state === "unsupported"}
+                aria-label="Toggle web push notifications"
+              >
+                {push.state === "enabled" ? <Bell size={18} /> : <BellOff size={18} />}
+              </ActionIcon>
+            </Tooltip>
+            <ActionIcon
+              variant="subtle"
+              size="lg"
+              onClick={toggleColorScheme}
+              aria-label="Toggle color scheme"
+              className={classes.toggleBtn}
+            >
+              {colorScheme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+            </ActionIcon>
+          </Group>
         </Group>
       </AppShell.Header>
 

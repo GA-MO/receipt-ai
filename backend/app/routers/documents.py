@@ -23,8 +23,11 @@ from sse_starlette.sse import EventSourceResponse
 from ..config import settings
 from ..database import SessionLocal, get_db
 from ..events import event_bus
-from ..models import Document, DocumentItem
+from ..models import Document, DocumentEvent, DocumentItem
 from ..schemas import (
+    BulkActionResult,
+    BulkIds,
+    DocumentItemCreate,
     DocumentItemUpdate,
     DocumentListItem,
     DocumentResponse,
@@ -37,8 +40,21 @@ from ..services.extraction_combined import (
     extract_with_fraud,
     merge_fraud_results,
 )
+from ..services.aliases import (
+    apply_alias_to_extraction,
+    normalize_key as alias_normalize_key,
+    upsert_alias,
+)
+from ..services.product_aliases import (
+    apply_aliases_to_items as apply_product_aliases,
+    normalize_key as product_normalize_key,
+    upsert_alias as upsert_product_alias,
+)
+from ..services.audit import record as record_event
+from ..services.catalog import find_code_by_name
 from ..services.fraud import run_fraud_detection
 from ..services.merchants import assign_normalized_merchant
+from ..services.push import PushPayload, send_to_all as push_send_to_all
 
 
 def _resolve_extraction_mode() -> str:
@@ -77,6 +93,46 @@ def _process_document(doc_id: str, file_path: str) -> None:
         _processing_lock.release()
 
 
+def _maybe_send_fraud_push(doc: Document, db: Session) -> None:
+    """If the newly-processed doc has high/medium fraud flags, push notify."""
+    if not doc.fraud_flags:
+        return
+    try:
+        payload = json.loads(doc.fraud_flags)
+    except (ValueError, TypeError):
+        return
+    flags = payload if isinstance(payload, list) else payload.get("flags", [])
+    ai = payload.get("ai_analysis") if isinstance(payload, dict) else None
+
+    high_count = sum(1 for f in flags if (f.get("severity") or "").lower() == "high")
+    medium_count = sum(1 for f in flags if (f.get("severity") or "").lower() == "medium")
+    ai_score = (ai or {}).get("risk_score", 0) if ai else 0
+
+    if high_count == 0 and medium_count == 0 and ai_score < 0.5:
+        return
+
+    merchant = doc.merchant_name or doc.filename
+    total = f"฿{float(doc.grand_total):,.2f}" if doc.grand_total is not None else "-"
+    severity_label = "🚨 ความเสี่ยงสูง" if high_count or ai_score >= 0.7 else "⚠️ ต้องตรวจสอบ"
+    body_lines = [f"{merchant} · {total}"]
+    if flags:
+        top = flags[0].get("label") or flags[0].get("type")
+        if top:
+            body_lines.append(str(top))
+    try:
+        push_send_to_all(
+            db,
+            PushPayload(
+                title=f"{severity_label} — พบรายการต้องสงสัย",
+                body="\n".join(body_lines),
+                url=f"/documents/{doc.id}",
+                tag=f"fraud-{doc.id}",
+            ),
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Failed to send fraud push for %s: %s", doc.id, exc)
+
+
 def _run_processing(doc_id: str, file_path: str) -> None:
     """Core processing logic, shared between BackgroundTasks and arq worker."""
     db = SessionLocal()
@@ -108,6 +164,37 @@ def _run_processing(doc_id: str, file_path: str) -> None:
 
         warnings = validate_extraction(result)
 
+        # Snapshot the raw Gemini extraction BEFORE any alias mutation so
+        # ``doc.raw_extraction`` always reflects what the model actually said.
+        raw_extraction_json = result.model_dump_json()
+
+        # Apply learned aliases before persisting: if a human has previously
+        # corrected this merchant's name or category, use that.
+        try:
+            applied = apply_alias_to_extraction(db, result)
+            if applied:
+                logger.info(
+                    "Applied learned alias for %s: %s (hits=%s)",
+                    doc_id,
+                    applied.canonical_name,
+                    applied.hit_count,
+                )
+        except Exception as alias_exc:  # noqa: BLE001
+            logger.warning("Alias lookup failed for %s: %s", doc_id, alias_exc)
+
+        # Same treatment for each line item.
+        try:
+            item_matches = apply_product_aliases(db, result.items)
+            if item_matches:
+                logger.info(
+                    "Applied learned product aliases on %d/%d items of %s",
+                    item_matches,
+                    len(result.items),
+                    doc_id,
+                )
+        except Exception as p_exc:  # noqa: BLE001
+            logger.warning("Product alias lookup failed for %s: %s", doc_id, p_exc)
+
         doc.merchant_name = result.merchant_name
         doc.document_number = result.document_number
         doc.document_date = result.document_date
@@ -118,7 +205,7 @@ def _run_processing(doc_id: str, file_path: str) -> None:
         doc.category = result.category
         doc.confidence = result.confidence
         doc.notes = result.notes
-        doc.raw_extraction = result.model_dump_json()
+        doc.raw_extraction = raw_extraction_json
         doc.needs_review = (
             result.confidence < settings.review_confidence_threshold
             or len(result.needs_review_fields) > 0
@@ -133,10 +220,19 @@ def _run_processing(doc_id: str, file_path: str) -> None:
             doc.notes = existing + separator + "\n".join(f"⚠️ {w}" for w in warnings)
 
         for item_data in result.items:
+            # Raw snapshot of what Gemini read — fall back to normalized when
+            # the model didn't emit raw (older extraction paths or legacy
+            # re-extracts). Alias learning uses this as a stable source.
+            raw_name = item_data.product_name_raw or item_data.product_name_normalized
+            # Resolve against the products catalog (Singha Online) so dashboards
+            # can group by SKU even when free-text variations creep in.
+            code = find_code_by_name(db, item_data.product_name_normalized)
             item = DocumentItem(
                 id=str(uuid.uuid4()),
                 document_id=doc_id,
+                product_name_raw=raw_name,
                 product_name_normalized=item_data.product_name_normalized,
+                product_code=code,
                 quantity=item_data.quantity,
                 unit=item_data.unit,
                 unit_price=item_data.unit_price,
@@ -169,6 +265,27 @@ def _run_processing(doc_id: str, file_path: str) -> None:
         db.commit()
         logger.info("Document %s processed successfully", doc_id)
         event_bus.publish(doc_id, {"status": doc.status, "needs_review": doc.needs_review})
+        record_event(
+            db,
+            doc_id,
+            "extracted",
+            actor="system",
+            payload={
+                "confidence": doc.confidence,
+                "merchant": doc.merchant_name,
+                "grand_total": float(doc.grand_total) if doc.grand_total is not None else None,
+                "items": len(doc.items or []),
+            },
+        )
+        if doc.fraud_flags:
+            record_event(
+                db,
+                doc_id,
+                "fraud_detected",
+                actor="system",
+                payload={"raw": doc.fraud_flags[:500]},
+            )
+        _maybe_send_fraud_push(doc, db)
     except Exception as exc:
         logger.error("Failed to process document %s: %s", doc_id, exc)
         db.rollback()
@@ -178,6 +295,13 @@ def _run_processing(doc_id: str, file_path: str) -> None:
             doc.error_message = str(exc)
             db.commit()
             event_bus.publish(doc_id, {"status": "error", "error_message": str(exc)})
+            record_event(
+                db,
+                doc_id,
+                "extraction_failed",
+                actor="system",
+                payload={"error": str(exc)[:500]},
+            )
     finally:
         db.close()
 
@@ -210,9 +334,14 @@ def upload_document(
 ):
     validated = validate_and_hash(file, max_bytes=settings.max_file_size_bytes)
 
+    # Only block uploads if a live (non-trashed) doc already has the hash —
+    # users can re-upload a file they previously trashed.
     existing = (
         db.query(Document)
-        .filter(Document.file_hash == validated.file_hash)
+        .filter(
+            Document.file_hash == validated.file_hash,
+            Document.deleted_at.is_(None),
+        )
         .first()
     )
     if existing:
@@ -222,14 +351,22 @@ def upload_document(
         )
 
     doc_id = str(uuid.uuid4())
-    ext = os.path.splitext(file.filename or "")[1].lower()
+    original_ext = os.path.splitext(file.filename or "")[1].lower()
+    ext = validated.extension or original_ext
     filename = f"{doc_id}{ext}"
     file_path = os.path.join(settings.upload_dir, filename)
     save_bytes(file_path, validated.data)
 
+    # If we converted (e.g. HEIC → JPG), also update the user-facing filename
+    # so downloads and review UI show a sensible extension.
+    display_name = file.filename or filename
+    if ext != original_ext and original_ext:
+        base, _ = os.path.splitext(display_name)
+        display_name = f"{base}{ext}"
+
     doc = Document(
         id=doc_id,
-        filename=file.filename or filename,
+        filename=display_name,
         file_path=file_path,
         file_type=validated.file_type,
         file_hash=validated.file_hash,
@@ -238,6 +375,13 @@ def upload_document(
     db.add(doc)
     db.commit()
     db.refresh(doc)
+    record_event(
+        db,
+        doc_id,
+        "uploaded",
+        actor="user",
+        payload={"filename": display_name, "size_bytes": validated.size, "file_type": validated.file_type},
+    )
 
     logger.info(
         "Document %s uploaded: %s (%d bytes, %s)",
@@ -252,8 +396,14 @@ def upload_document(
     return doc
 
 
-def _apply_filters(query, status, search, date_from, date_to, category=None):
-    """Apply common filters to a Document query."""
+def _apply_filters(query, status, search, date_from, date_to, category=None, *, include_deleted: bool = False):
+    """Apply common filters to a Document query.
+
+    By default excludes soft-deleted documents — the recycle-bin endpoints opt
+    back in with ``include_deleted=True``.
+    """
+    if not include_deleted:
+        query = query.filter(Document.deleted_at.is_(None))
     if status:
         query = query.filter(Document.status == status)
     if category:
@@ -273,6 +423,17 @@ def _apply_filters(query, status, search, date_from, date_to, category=None):
     return query
 
 
+_SORTABLE_COLUMNS = {
+    "uploaded_at": Document.uploaded_at,
+    "document_date": Document.document_date,
+    "merchant_name": Document.merchant_name,
+    "grand_total": Document.grand_total,
+    "confidence": Document.confidence,
+    "status": Document.status,
+    "category": Document.category,
+}
+
+
 @router.get("", response_model=list[DocumentListItem])
 def list_documents(
     skip: int = 0,
@@ -282,6 +443,8 @@ def list_documents(
     date_from: str | None = None,
     date_to: str | None = None,
     category: str | None = None,
+    sort_by: str = "uploaded_at",
+    sort_dir: str = "desc",
     db: Session = Depends(get_db),
 ):
     query = _apply_filters(db.query(Document), status, search, date_from, date_to, category)
@@ -294,10 +457,13 @@ def list_documents(
         .label("item_count")
     )
 
+    sort_col = _SORTABLE_COLUMNS.get(sort_by, Document.uploaded_at)
+    order = sort_col.desc() if sort_dir.lower() == "desc" else sort_col.asc()
+
     rows = (
         query
         .add_columns(item_count_sub)
-        .order_by(Document.uploaded_at.desc())
+        .order_by(order, Document.uploaded_at.desc())
         .offset(skip)
         .limit(limit)
         .all()
@@ -336,12 +502,83 @@ def count_documents(
     return {"count": query.count()}
 
 
+@router.get("/trash", response_model=list[DocumentListItem])
+def list_trash(
+    skip: int = 0,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+):
+    item_count_sub = (
+        select(func.count(DocumentItem.id))
+        .where(DocumentItem.document_id == Document.id)
+        .correlate(Document)
+        .scalar_subquery()
+        .label("item_count")
+    )
+    rows = (
+        db.query(Document)
+        .filter(Document.deleted_at.isnot(None))
+        .add_columns(item_count_sub)
+        .order_by(Document.deleted_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    return [
+        DocumentListItem(
+            id=d.id,
+            filename=d.filename,
+            file_type=d.file_type,
+            status=d.status,
+            uploaded_at=d.uploaded_at,
+            merchant_name=d.merchant_name,
+            merchant_normalized=d.merchant_normalized,
+            grand_total=float(d.grand_total) if d.grand_total is not None else None,
+            category=d.category,
+            confidence=d.confidence,
+            needs_review=d.needs_review,
+            item_count=item_count,
+            fraud_flags=d.fraud_flags,
+        )
+        for d, item_count in rows
+    ]
+
+
+@router.get("/trash/count")
+def count_trash(db: Session = Depends(get_db)):
+    return {
+        "count": db.query(func.count(Document.id))
+        .filter(Document.deleted_at.isnot(None))
+        .scalar()
+        or 0
+    }
+
+
 @router.get("/{doc_id}", response_model=DocumentResponse)
 def get_document(doc_id: str, db: Session = Depends(get_db)):
-    doc = db.query(Document).filter(Document.id == doc_id).first()
+    doc = (
+        db.query(Document)
+        .filter(Document.id == doc_id, Document.deleted_at.is_(None))
+        .first()
+    )
     if not doc:
         raise HTTPException(404, "ไม่พบเอกสาร")
     return doc
+
+
+def _parse_raw_extraction(doc: Document) -> dict:
+    """Parse the Gemini extraction JSON, safely returning an empty dict."""
+    if not doc.raw_extraction:
+        return {}
+    try:
+        return json.loads(doc.raw_extraction) or {}
+    except (ValueError, TypeError):
+        return {}
+
+
+def _extract_raw_merchant(doc: Document) -> str | None:
+    raw = _parse_raw_extraction(doc)
+    return raw.get("merchant_name") or raw.get("merchant_normalized")
 
 
 @router.put("/{doc_id}", response_model=DocumentResponse)
@@ -353,11 +590,107 @@ def update_document(
     doc = db.query(Document).filter(Document.id == doc_id).first()
     if not doc:
         raise HTTPException(404, "ไม่พบเอกสาร")
-    for field, value in update.model_dump(exclude_unset=True).items():
+
+    raw = _parse_raw_extraction(doc)
+    raw_merchant = raw.get("merchant_name") or raw.get("merchant_normalized")
+    raw_category = raw.get("category")
+    incoming = update.model_dump(exclude_unset=True)
+    new_merchant = incoming.get("merchant_name", doc.merchant_name)
+    new_category = incoming.get("category", doc.category)
+
+    # Capture before-state so the audit entry records what actually changed.
+    diff: dict[str, dict[str, object]] = {}
+    for field, new_value in incoming.items():
+        old_value = getattr(doc, field, None)
+        if old_value != new_value:
+            diff[field] = {
+                "from": str(old_value) if old_value is not None else None,
+                "to": str(new_value) if new_value is not None else None,
+            }
+
+    for field, value in incoming.items():
         setattr(doc, field, value)
     db.commit()
     db.refresh(doc)
     logger.info("Document %s updated", doc_id)
+
+    if diff:
+        record_event(db, doc_id, "edited", actor="user", payload={"changed": diff})
+
+    # Learn from the correction, but only when the user actually changed the
+    # merchant or category compared to what Gemini produced. Otherwise a plain
+    # no-op save (or re-saving the AI's own output) would inflate hit_count.
+    try:
+        source = raw_merchant or doc.merchant_name
+        if source and new_merchant:
+            raw_key = alias_normalize_key(source)
+            new_key = alias_normalize_key(new_merchant)
+            merchant_changed = raw_key and raw_key != new_key
+            category_changed = bool(new_category) and (new_category or "") != (raw_category or "")
+            if raw_key and (merchant_changed or category_changed):
+                alias = upsert_alias(
+                    db,
+                    source_text=source,
+                    canonical_name=new_merchant,
+                    category=new_category,
+                )
+                if alias:
+                    record_event(
+                        db,
+                        doc_id,
+                        "alias_learned",
+                        actor="user",
+                        payload={
+                            "source": source,
+                            "canonical": new_merchant,
+                            "category": new_category,
+                            "hit_count": int(alias.hit_count or 0),
+                        },
+                    )
+    except Exception as alias_exc:  # noqa: BLE001
+        logger.warning("Failed to record alias for %s: %s", doc_id, alias_exc)
+
+    return doc
+
+
+@router.post("/{doc_id}/items", response_model=DocumentResponse)
+def create_item(
+    doc_id: str,
+    payload: DocumentItemCreate,
+    db: Session = Depends(get_db),
+):
+    doc = db.query(Document).filter(Document.id == doc_id).first()
+    if not doc:
+        raise HTTPException(404, "ไม่พบเอกสาร")
+    # Trust explicit product_code from the UI (user picked from autocomplete);
+    # fall back to catalog lookup when the caller just sent a name.
+    resolved_code = payload.product_code or find_code_by_name(db, payload.product_name_normalized)
+    item = DocumentItem(
+        id=str(uuid.uuid4()),
+        document_id=doc_id,
+        # For manually-added items we don't have a Gemini raw signal — use
+        # whatever the user typed so alias learning still has a source.
+        product_name_raw=payload.product_name_raw or payload.product_name_normalized,
+        product_name_normalized=payload.product_name_normalized,
+        product_code=resolved_code,
+        quantity=payload.quantity,
+        unit=payload.unit,
+        unit_price=payload.unit_price,
+        line_total=payload.line_total,
+        category=payload.category,
+        needs_review=True,
+    )
+    db.add(item)
+    db.commit()
+    db.refresh(doc)
+    logger.info("Item %s added to document %s", item.id, doc_id)
+    record_event(
+        db,
+        doc_id,
+        "item_added",
+        actor="user",
+        payload={"item_id": item.id, "name": item.product_name_normalized},
+    )
     return doc
 
 
@@ -375,11 +708,95 @@ def update_item(
     )
     if not item:
         raise HTTPException(404, "ไม่พบรายการสินค้า")
-    for field, value in update.model_dump(exclude_unset=True).items():
+    incoming = update.model_dump(exclude_unset=True)
+
+    old_name = item.product_name_normalized
+    old_category = item.category
+    # Alias source = raw (what Gemini originally OCR'd). Stable across edits
+    # so the mapping stored is ``(original_ocr_text → user_canonical)``
+    # instead of drifting with each correction.
+    raw_name = item.product_name_raw or old_name
+    new_name = incoming.get("product_name_normalized", old_name)
+    new_category = incoming.get("category", old_category)
+
+    for field, value in incoming.items():
         setattr(item, field, value)
+
+    # Re-resolve product_code whenever the name changed, unless the caller
+    # explicitly passed one (UI picking from the autocomplete).
+    if "product_name_normalized" in incoming and "product_code" not in incoming:
+        item.product_code = find_code_by_name(db, new_name)
+
     db.commit()
     doc = db.query(Document).filter(Document.id == doc_id).first()
     db.refresh(doc)
+    record_event(
+        db,
+        doc_id,
+        "item_updated",
+        actor="user",
+        payload={"item_id": item_id, "fields": list(incoming.keys())},
+    )
+
+    # Learn product alias only when the name actually changed (or a new
+    # category was set for the same name). Quantity/price/unit edits must not
+    # produce aliases — they are per-receipt facts. Also honour catalog /
+    # semantic-jump guards inside ``upsert_product_alias``.
+    alias_status: dict | None = None
+    try:
+        if raw_name and new_name:
+            raw_key = product_normalize_key(raw_name)
+            new_key = product_normalize_key(new_name)
+            name_changed = raw_key and raw_key != new_key
+            category_changed = bool(new_category) and (new_category or "") != (old_category or "")
+            if raw_key and (name_changed or category_changed):
+                res = upsert_product_alias(
+                    db,
+                    source_text=raw_name,
+                    canonical_name=new_name,
+                    category=new_category,
+                )
+                if res.ok and res.alias is not None:
+                    alias_status = {
+                        "learned": True,
+                        "hit_count": int(res.alias.hit_count or 0),
+                    }
+                    record_event(
+                        db,
+                        doc_id,
+                        "product_alias_learned",
+                        actor="user",
+                        payload={
+                            "source": raw_name,
+                            "canonical": new_name,
+                            "category": new_category,
+                            "hit_count": int(res.alias.hit_count or 0),
+                        },
+                    )
+                elif res.skipped_reason is not None:
+                    alias_status = {
+                        "learned": False,
+                        "skipped_reason": res.skipped_reason.value,
+                        "skipped_detail": res.skipped_detail,
+                    }
+                    record_event(
+                        db,
+                        doc_id,
+                        "product_alias_skipped",
+                        actor="system",
+                        payload={
+                            "source": raw_name,
+                            "canonical": new_name,
+                            "reason": res.skipped_reason.value,
+                            "detail": res.skipped_detail,
+                        },
+                    )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Failed to learn product alias for item %s: %s", item_id, exc)
+
+    if alias_status is not None:
+        logger.info("Alias status for item %s: %s", item_id, alias_status)
+
     return doc
 
 
@@ -396,11 +813,19 @@ def delete_item(
     )
     if not item:
         raise HTTPException(404, "ไม่พบรายการสินค้า")
+    deleted_name = item.product_name_normalized
     db.delete(item)
     db.commit()
     doc = db.query(Document).filter(Document.id == doc_id).first()
     db.refresh(doc)
     logger.info("Item %s deleted from document %s", item_id, doc_id)
+    record_event(
+        db,
+        doc_id,
+        "item_deleted",
+        actor="user",
+        payload={"item_id": item_id, "name": deleted_name},
+    )
     return doc
 
 
@@ -426,8 +851,82 @@ def reextract_document(
     db.refresh(doc)
 
     logger.info("Document %s queued for re-extraction", doc_id)
+    record_event(db, doc_id, "reextracted", actor="user")
     _enqueue_processing(doc_id, doc.file_path, background_tasks)
     return doc
+
+
+@router.post("/bulk/approve", response_model=BulkActionResult)
+def bulk_approve(payload: BulkIds, db: Session = Depends(get_db)):
+    docs = (
+        db.query(Document)
+        .filter(Document.id.in_(payload.ids), Document.deleted_at.is_(None))
+        .all()
+    )
+    now = datetime.now(UTC)
+    succeeded = 0
+    for doc in docs:
+        doc.status = "reviewed"
+        doc.needs_review = False
+        doc.reviewed_at = now
+        succeeded += 1
+    db.commit()
+    failed_ids = [i for i in payload.ids if i not in {d.id for d in docs}]
+    logger.info("Bulk approved %d documents (%d missing)", succeeded, len(failed_ids))
+    return BulkActionResult(succeeded=succeeded, failed=len(failed_ids), failed_ids=failed_ids)
+
+
+@router.post("/bulk/delete", response_model=BulkActionResult)
+def bulk_delete(payload: BulkIds, db: Session = Depends(get_db)):
+    """Soft-delete: moves to trash. Use ``/bulk/purge`` to permanently remove."""
+    docs = (
+        db.query(Document)
+        .filter(Document.id.in_(payload.ids), Document.deleted_at.is_(None))
+        .all()
+    )
+    now = datetime.now(UTC)
+    for doc in docs:
+        doc.deleted_at = now
+    db.commit()
+    failed_ids = [i for i in payload.ids if i not in {d.id for d in docs}]
+    logger.info("Bulk soft-deleted %d documents (%d missing)", len(docs), len(failed_ids))
+    return BulkActionResult(succeeded=len(docs), failed=len(failed_ids), failed_ids=failed_ids)
+
+
+@router.post("/bulk/restore", response_model=BulkActionResult)
+def bulk_restore(payload: BulkIds, db: Session = Depends(get_db)):
+    docs = (
+        db.query(Document)
+        .filter(Document.id.in_(payload.ids), Document.deleted_at.isnot(None))
+        .all()
+    )
+    for doc in docs:
+        doc.deleted_at = None
+    db.commit()
+    failed_ids = [i for i in payload.ids if i not in {d.id for d in docs}]
+    logger.info("Bulk restored %d documents", len(docs))
+    return BulkActionResult(succeeded=len(docs), failed=len(failed_ids), failed_ids=failed_ids)
+
+
+@router.post("/bulk/purge", response_model=BulkActionResult)
+def bulk_purge(payload: BulkIds, db: Session = Depends(get_db)):
+    """Permanently delete: only operates on already-trashed documents."""
+    docs = (
+        db.query(Document)
+        .filter(Document.id.in_(payload.ids), Document.deleted_at.isnot(None))
+        .all()
+    )
+    for doc in docs:
+        try:
+            if doc.file_path and os.path.exists(doc.file_path):
+                os.remove(doc.file_path)
+        except OSError as exc:
+            logger.warning("Failed to remove file for %s: %s", doc.id, exc)
+        db.delete(doc)
+    db.commit()
+    failed_ids = [i for i in payload.ids if i not in {d.id for d in docs}]
+    logger.info("Bulk purged %d documents", len(docs))
+    return BulkActionResult(succeeded=len(docs), failed=len(failed_ids), failed_ids=failed_ids)
 
 
 @router.post("/{doc_id}/approve", response_model=DocumentResponse)
@@ -441,20 +940,102 @@ def approve_document(doc_id: str, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(doc)
     logger.info("Document %s approved", doc_id)
+    record_event(db, doc_id, "approved", actor="user")
     return doc
 
 
 @router.delete("/{doc_id}")
 def delete_document(doc_id: str, db: Session = Depends(get_db)):
+    """Soft-delete: moves the document to the recycle bin.
+
+    Use ``POST /documents/{id}/purge`` (or ``/bulk/purge``) to permanently
+    remove a trashed document and its file on disk.
+    """
     doc = db.query(Document).filter(Document.id == doc_id).first()
     if not doc:
         raise HTTPException(404, "ไม่พบเอกสาร")
-    if os.path.exists(doc.file_path):
-        os.remove(doc.file_path)
+    if doc.deleted_at is not None:
+        # Second delete on an already-trashed doc = purge (convenience for UIs
+        # that don't distinguish).
+        try:
+            if doc.file_path and os.path.exists(doc.file_path):
+                os.remove(doc.file_path)
+        except OSError as exc:
+            logger.warning("Failed to remove file for %s: %s", doc_id, exc)
+        db.delete(doc)
+        db.commit()
+        logger.info("Document %s permanently deleted", doc_id)
+        return {"message": "ลบเอกสารถาวรเรียบร้อย"}
+    doc.deleted_at = datetime.now(UTC)
+    db.commit()
+    logger.info("Document %s moved to trash", doc_id)
+    record_event(db, doc_id, "trashed", actor="user")
+    return {"message": "ย้ายไปถังขยะเรียบร้อย"}
+
+
+@router.post("/{doc_id}/restore", response_model=DocumentResponse)
+def restore_document(doc_id: str, db: Session = Depends(get_db)):
+    doc = db.query(Document).filter(Document.id == doc_id).first()
+    if not doc:
+        raise HTTPException(404, "ไม่พบเอกสาร")
+    if doc.deleted_at is None:
+        raise HTTPException(400, "เอกสารนี้ไม่ได้อยู่ในถังขยะ")
+    doc.deleted_at = None
+    db.commit()
+    db.refresh(doc)
+    logger.info("Document %s restored", doc_id)
+    record_event(db, doc_id, "restored", actor="user")
+    return doc
+
+
+@router.post("/{doc_id}/purge")
+def purge_document(doc_id: str, db: Session = Depends(get_db)):
+    """Permanently delete a trashed document."""
+    doc = db.query(Document).filter(Document.id == doc_id).first()
+    if not doc:
+        raise HTTPException(404, "ไม่พบเอกสาร")
+    if doc.deleted_at is None:
+        raise HTTPException(400, "ต้องย้ายไปถังขยะก่อน")
+    try:
+        if doc.file_path and os.path.exists(doc.file_path):
+            os.remove(doc.file_path)
+    except OSError as exc:
+        logger.warning("Failed to remove file for %s: %s", doc_id, exc)
     db.delete(doc)
     db.commit()
-    logger.info("Document %s deleted", doc_id)
-    return {"message": "ลบเอกสารเรียบร้อย"}
+    logger.info("Document %s purged", doc_id)
+    return {"message": "ลบเอกสารถาวรเรียบร้อย"}
+
+
+@router.get("/{doc_id}/history")
+def get_document_history(
+    doc_id: str,
+    limit: int = 200,
+    db: Session = Depends(get_db),
+):
+    """Return the audit trail for a document, newest first."""
+    # Verify the doc exists (including trashed) so the UI can show history
+    # in the recycle bin too.
+    doc = db.query(Document).filter(Document.id == doc_id).first()
+    if not doc:
+        raise HTTPException(404, "ไม่พบเอกสาร")
+    events = (
+        db.query(DocumentEvent)
+        .filter(DocumentEvent.document_id == doc_id)
+        .order_by(DocumentEvent.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    return [
+        {
+            "id": e.id,
+            "event_type": e.event_type,
+            "actor": e.actor,
+            "payload": json.loads(e.payload) if e.payload else None,
+            "created_at": e.created_at.isoformat() if e.created_at else None,
+        }
+        for e in events
+    ]
 
 
 @router.get("/{doc_id}/image")

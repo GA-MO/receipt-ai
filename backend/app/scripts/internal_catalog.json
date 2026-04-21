@@ -1,0 +1,656 @@
+{
+  "_comment": "Beer and spirits — not listed on singhaonline.com (alcohol regulation) but common on receipts handled by this system. Same shape as singha_catalog.json so seed_products can merge them. Codes use INT- prefix to avoid collisions with Singha SKU codes.",
+  "result": {
+    "products": [
+      {
+        "productCode": "INT-BEER-SINGHA-L",
+        "nameTH": "เบียร์สิงห์ขวดใหญ่",
+        "nameEN": "Singha Beer Large Bottle",
+        "brandNameTH": "เบียร์สิงห์",
+        "brandNameEN": "Singha",
+        "pathCategoryNameTH": [
+          "สินค้า/เครื่องดื่ม/เบียร์สิงห์"
+        ],
+        "sizeTH": "630ml",
+        "unitNameTH": "ขวด",
+        "tags": [
+          "เบียร์",
+          "สิงห์",
+          "สห์ใหญ่",
+          "สิงห์ใหญ่",
+          "SINGHA L",
+          "สิงห์ 630",
+          "สิงห์แดง"
+        ],
+        "price": null,
+        "productType": "AL",
+        "activate": "Y",
+        "manufacturer": "Boonrawd"
+      },
+      {
+        "productCode": "INT-BEER-SINGHA-S",
+        "nameTH": "เบียร์สิงห์ขวดเล็ก",
+        "nameEN": "Singha Beer Small Bottle",
+        "brandNameTH": "เบียร์สิงห์",
+        "brandNameEN": "Singha",
+        "pathCategoryNameTH": [
+          "สินค้า/เครื่องดื่ม/เบียร์สิงห์"
+        ],
+        "sizeTH": "330ml",
+        "unitNameTH": "ขวด",
+        "tags": [
+          "เบียร์",
+          "สิงห์",
+          "สห์เล็ก",
+          "สิงห์เล็ก",
+          "SINGHA S",
+          "สิงห์ 330"
+        ],
+        "price": null,
+        "productType": "AL",
+        "activate": "Y",
+        "manufacturer": "Boonrawd"
+      },
+      {
+        "productCode": "INT-BEER-SINGHA-CAN",
+        "nameTH": "เบียร์สิงห์กระป๋อง",
+        "nameEN": "Singha Beer Can",
+        "brandNameTH": "เบียร์สิงห์",
+        "brandNameEN": "Singha",
+        "pathCategoryNameTH": [
+          "สินค้า/เครื่องดื่ม/เบียร์สิงห์"
+        ],
+        "sizeTH": "320ml",
+        "unitNameTH": "กระป๋อง",
+        "tags": [
+          "เบียร์",
+          "สิงห์",
+          "สห์กป",
+          "สิงห์กระป๋อง",
+          "SINGHA CAN"
+        ],
+        "price": null,
+        "productType": "AL",
+        "activate": "Y",
+        "manufacturer": "Boonrawd"
+      },
+      {
+        "productCode": "INT-BEER-LEO-L",
+        "nameTH": "เบียร์ลีโอขวดใหญ่",
+        "nameEN": "Leo Beer Large Bottle",
+        "brandNameTH": "เบียร์ลีโอ",
+        "brandNameEN": "Leo",
+        "pathCategoryNameTH": [
+          "สินค้า/เครื่องดื่ม/เบียร์ลีโอ"
+        ],
+        "sizeTH": "630ml",
+        "unitNameTH": "ขวด",
+        "tags": [
+          "เบียร์",
+          "ลีโอ",
+          "ลีโอใหญ่",
+          "LEO L",
+          "ลีโอ 630"
+        ],
+        "price": null,
+        "productType": "AL",
+        "activate": "Y",
+        "manufacturer": "Boonrawd"
+      },
+      {
+        "productCode": "INT-BEER-LEO-S",
+        "nameTH": "เบียร์ลีโอขวดเล็ก",
+        "nameEN": "Leo Beer Small Bottle",
+        "brandNameTH": "เบียร์ลีโอ",
+        "brandNameEN": "Leo",
+        "pathCategoryNameTH": [
+          "สินค้า/เครื่องดื่ม/เบียร์ลีโอ"
+        ],
+        "sizeTH": "330ml",
+        "unitNameTH": "ขวด",
+        "tags": [
+          "เบียร์",
+          "ลีโอ",
+          "ลีโอเล็ก",
+          "LEO S",
+          "ลีโอ 330"
+        ],
+        "price": null,
+        "productType": "AL",
+        "activate": "Y",
+        "manufacturer": "Boonrawd"
+      },
+      {
+        "productCode": "INT-BEER-LEO-CAN",
+        "nameTH": "เบียร์ลีโอกระป๋อง",
+        "nameEN": "Leo Beer Can",
+        "brandNameTH": "เบียร์ลีโอ",
+        "brandNameEN": "Leo",
+        "pathCategoryNameTH": [
+          "สินค้า/เครื่องดื่ม/เบียร์ลีโอ"
+        ],
+        "sizeTH": "320ml",
+        "unitNameTH": "กระป๋อง",
+        "tags": [
+          "เบียร์",
+          "ลีโอ",
+          "ลีโอกป",
+          "LEO CAN"
+        ],
+        "price": null,
+        "productType": "AL",
+        "activate": "Y",
+        "manufacturer": "Boonrawd"
+      },
+      {
+        "productCode": "INT-BEER-CHANG",
+        "nameTH": "เบียร์ช้าง",
+        "nameEN": "Chang Beer",
+        "brandNameTH": "เบียร์ช้าง",
+        "brandNameEN": "Chang",
+        "pathCategoryNameTH": [
+          "สินค้า/เครื่องดื่ม/เบียร์ช้าง"
+        ],
+        "sizeTH": "320ml",
+        "unitNameTH": "ขวด",
+        "tags": [
+          "เบียร์",
+          "ช้าง",
+          "CHANG"
+        ],
+        "price": null,
+        "productType": "AL",
+        "activate": "Y",
+        "manufacturer": "ThaiBev"
+      },
+      {
+        "productCode": "INT-BEER-CHANG-ESP",
+        "nameTH": "เบียร์ช้างเอสเปรสโซ่",
+        "nameEN": "Chang Espresso",
+        "brandNameTH": "เบียร์ช้าง",
+        "brandNameEN": "Chang",
+        "pathCategoryNameTH": [
+          "สินค้า/เครื่องดื่ม/เบียร์ช้าง"
+        ],
+        "sizeTH": "320ml",
+        "unitNameTH": "ขวด",
+        "tags": [
+          "เบียร์",
+          "ช้างเอส",
+          "CHANG ESP"
+        ],
+        "price": null,
+        "productType": "AL",
+        "activate": "Y",
+        "manufacturer": "ThaiBev"
+      },
+      {
+        "productCode": "INT-BEER-UBEER",
+        "nameTH": "เบียร์ยูเบียร์",
+        "nameEN": "U Beer",
+        "brandNameTH": "เบียร์ยูเบียร์",
+        "brandNameEN": "U Beer",
+        "pathCategoryNameTH": [
+          "สินค้า/เครื่องดื่ม/เบียร์ยูเบียร์"
+        ],
+        "sizeTH": "320ml",
+        "unitNameTH": "ขวด",
+        "tags": [
+          "เบียร์",
+          "ยู",
+          "U BEER",
+          "UBEER"
+        ],
+        "price": null,
+        "productType": "AL",
+        "activate": "Y",
+        "manufacturer": "Boonrawd"
+      },
+      {
+        "productCode": "INT-BEER-MYBEER-S",
+        "nameTH": "มายเบียร์ขวดเล็ก",
+        "nameEN": "MyBeer Small Bottle",
+        "brandNameTH": "มายเบียร์",
+        "brandNameEN": "MyBeer",
+        "pathCategoryNameTH": [
+          "สินค้า/เครื่องดื่ม/มายเบียร์"
+        ],
+        "sizeTH": "330ml",
+        "unitNameTH": "ขวด",
+        "tags": [
+          "เบียร์",
+          "มายเบียร์",
+          "มาย",
+          "MY BEER",
+          "MYBEER"
+        ],
+        "price": null,
+        "productType": "AL",
+        "activate": "Y",
+        "manufacturer": "Boonrawd"
+      },
+      {
+        "productCode": "INT-BEER-MYBEER-CAN",
+        "nameTH": "มายเบียร์กระป๋อง",
+        "nameEN": "MyBeer Can",
+        "brandNameTH": "มายเบียร์",
+        "brandNameEN": "MyBeer",
+        "pathCategoryNameTH": [
+          "สินค้า/เครื่องดื่ม/มายเบียร์"
+        ],
+        "sizeTH": "320ml",
+        "unitNameTH": "กระป๋อง",
+        "tags": [
+          "เบียร์",
+          "มายเบียร์",
+          "มายกป",
+          "MY BEER CAN"
+        ],
+        "price": null,
+        "productType": "AL",
+        "activate": "Y",
+        "manufacturer": "Boonrawd"
+      },
+      {
+        "productCode": "INT-BEER-ASAHI-L",
+        "nameTH": "เบียร์อาซาฮีขวดใหญ่",
+        "nameEN": "Asahi Super Dry Large",
+        "brandNameTH": "เบียร์อาซาฮี",
+        "brandNameEN": "Asahi",
+        "pathCategoryNameTH": [
+          "สินค้า/เครื่องดื่ม/เบียร์อาซาฮี"
+        ],
+        "sizeTH": "640ml",
+        "unitNameTH": "ขวด",
+        "tags": [
+          "เบียร์",
+          "อาซาฮี",
+          "Asahi",
+          "ASAHI",
+          "ซาฮี"
+        ],
+        "price": null,
+        "productType": "AL",
+        "activate": "Y",
+        "manufacturer": "Asahi Breweries"
+      },
+      {
+        "productCode": "INT-BEER-ASAHI-S",
+        "nameTH": "เบียร์อาซาฮีขวดเล็ก",
+        "nameEN": "Asahi Super Dry Small",
+        "brandNameTH": "เบียร์อาซาฮี",
+        "brandNameEN": "Asahi",
+        "pathCategoryNameTH": [
+          "สินค้า/เครื่องดื่ม/เบียร์อาซาฮี"
+        ],
+        "sizeTH": "334ml",
+        "unitNameTH": "ขวด",
+        "tags": [
+          "เบียร์",
+          "อาซาฮี",
+          "Asahi S"
+        ],
+        "price": null,
+        "productType": "AL",
+        "activate": "Y",
+        "manufacturer": "Asahi Breweries"
+      },
+      {
+        "productCode": "INT-BEER-ASAHI-CAN",
+        "nameTH": "เบียร์อาซาฮีกระป๋อง",
+        "nameEN": "Asahi Super Dry Can",
+        "brandNameTH": "เบียร์อาซาฮี",
+        "brandNameEN": "Asahi",
+        "pathCategoryNameTH": [
+          "สินค้า/เครื่องดื่ม/เบียร์อาซาฮี"
+        ],
+        "sizeTH": "350ml",
+        "unitNameTH": "กระป๋อง",
+        "tags": [
+          "เบียร์",
+          "อาซาฮี",
+          "Asahi Can",
+          "ASAHI CAN"
+        ],
+        "price": null,
+        "productType": "AL",
+        "activate": "Y",
+        "manufacturer": "Asahi Breweries"
+      },
+      {
+        "productCode": "INT-SPIRIT-SAENGSOM",
+        "nameTH": "สุราแสงโสม",
+        "nameEN": "Saeng Som",
+        "brandNameTH": "แสงโสม",
+        "brandNameEN": "Saeng Som",
+        "pathCategoryNameTH": [
+          "สินค้า/เครื่องดื่ม/สุรา"
+        ],
+        "sizeTH": "700ml",
+        "unitNameTH": "ขวด",
+        "tags": [
+          "สุรา",
+          "แสงโสม",
+          "SS",
+          "แสง"
+        ],
+        "price": null,
+        "productType": "AL",
+        "activate": "Y",
+        "manufacturer": "ThaiBev"
+      },
+      {
+        "productCode": "INT-SPIRIT-HONGTHONG",
+        "nameTH": "สุราหงส์ทอง",
+        "nameEN": "Hong Thong",
+        "brandNameTH": "หงส์ทอง",
+        "brandNameEN": "Hong Thong",
+        "pathCategoryNameTH": [
+          "สินค้า/เครื่องดื่ม/สุรา"
+        ],
+        "sizeTH": "700ml",
+        "unitNameTH": "ขวด",
+        "tags": [
+          "สุรา",
+          "หงส์ทอง",
+          "หงส์",
+          "HT"
+        ],
+        "price": null,
+        "productType": "AL",
+        "activate": "Y",
+        "manufacturer": "ThaiBev"
+      },
+      {
+        "productCode": "INT-SPIRIT-BLEND285",
+        "nameTH": "สุราเบลนด์ 285",
+        "nameEN": "Blend 285",
+        "brandNameTH": "เบลนด์ 285",
+        "brandNameEN": "Blend 285",
+        "pathCategoryNameTH": [
+          "สินค้า/เครื่องดื่ม/สุรา"
+        ],
+        "sizeTH": "700ml",
+        "unitNameTH": "ขวด",
+        "tags": [
+          "สุรา",
+          "เบลนด์",
+          "BLEND",
+          "285"
+        ],
+        "price": null,
+        "productType": "AL",
+        "activate": "Y",
+        "manufacturer": "ThaiBev"
+      },
+      {
+        "productCode": "INT-SPIRIT-MRC",
+        "nameTH": "สุรามิสเตอร์ซี",
+        "nameEN": "Mr. C",
+        "brandNameTH": "มิสเตอร์ซี",
+        "brandNameEN": "Mr. C",
+        "pathCategoryNameTH": [
+          "สินค้า/เครื่องดื่ม/สุรา"
+        ],
+        "sizeTH": "700ml",
+        "unitNameTH": "ขวด",
+        "tags": [
+          "สุรา",
+          "มิสเตอร์ซี",
+          "MR.C",
+          "Mr.C"
+        ],
+        "price": null,
+        "productType": "AL",
+        "activate": "Y",
+        "manufacturer": "ThaiBev"
+      },
+      {
+        "productCode": "INT-SPIRIT-MEKHONG",
+        "nameTH": "สุราแม่โขง",
+        "nameEN": "Mekhong",
+        "brandNameTH": "แม่โขง",
+        "brandNameEN": "Mekhong",
+        "pathCategoryNameTH": [
+          "สินค้า/เครื่องดื่ม/สุรา"
+        ],
+        "sizeTH": "700ml",
+        "unitNameTH": "ขวด",
+        "tags": [
+          "สุรา",
+          "แม่โขง",
+          "Mekhong",
+          "MEKHONG"
+        ],
+        "price": null,
+        "productType": "AL",
+        "activate": "Y",
+        "manufacturer": "ThaiBev"
+      },
+      {
+        "productCode": "INT-SPIRIT-REGENCY",
+        "nameTH": "บรั่นดีรีเจนซี่",
+        "nameEN": "Regency Brandy",
+        "brandNameTH": "รีเจนซี่",
+        "brandNameEN": "Regency",
+        "pathCategoryNameTH": [
+          "สินค้า/เครื่องดื่ม/สุรา"
+        ],
+        "sizeTH": "700ml",
+        "unitNameTH": "ขวด",
+        "tags": [
+          "สุรา",
+          "บรั่นดี",
+          "รีเจนซี่",
+          "Regency",
+          "REGENCY"
+        ],
+        "price": null,
+        "productType": "AL",
+        "activate": "Y",
+        "manufacturer": "Suwannaphum Winery"
+      },
+      {
+        "productCode": "INT-WHISKY-JW-RED",
+        "nameTH": "จอห์นนี่ วอล์คเกอร์ เรด",
+        "nameEN": "Johnnie Walker Red Label",
+        "brandNameTH": "จอห์นนี่ วอล์คเกอร์",
+        "brandNameEN": "Johnnie Walker",
+        "pathCategoryNameTH": [
+          "สินค้า/เครื่องดื่ม/วิสกี้"
+        ],
+        "sizeTH": "700ml",
+        "unitNameTH": "ขวด",
+        "tags": [
+          "วิสกี้",
+          "จอห์นนี่ วอล์คเกอร์",
+          "จอห์นนี่",
+          "JW Red",
+          "Red Label",
+          "JWR"
+        ],
+        "price": null,
+        "productType": "AL",
+        "activate": "Y",
+        "manufacturer": "Diageo"
+      },
+      {
+        "productCode": "INT-WHISKY-JW-BLACK",
+        "nameTH": "จอห์นนี่ วอล์คเกอร์ แบล็ค",
+        "nameEN": "Johnnie Walker Black Label",
+        "brandNameTH": "จอห์นนี่ วอล์คเกอร์",
+        "brandNameEN": "Johnnie Walker",
+        "pathCategoryNameTH": [
+          "สินค้า/เครื่องดื่ม/วิสกี้"
+        ],
+        "sizeTH": "700ml",
+        "unitNameTH": "ขวด",
+        "tags": [
+          "วิสกี้",
+          "จอห์นนี่ วอล์คเกอร์",
+          "จอห์นนี่ แบล็ค",
+          "JW Black",
+          "Black Label",
+          "JWB"
+        ],
+        "price": null,
+        "productType": "AL",
+        "activate": "Y",
+        "manufacturer": "Diageo"
+      },
+      {
+        "productCode": "INT-WHISKY-CHIVAS12",
+        "nameTH": "ชีวาส รีกัล 12",
+        "nameEN": "Chivas Regal 12",
+        "brandNameTH": "ชีวาส รีกัล",
+        "brandNameEN": "Chivas Regal",
+        "pathCategoryNameTH": [
+          "สินค้า/เครื่องดื่ม/วิสกี้"
+        ],
+        "sizeTH": "700ml",
+        "unitNameTH": "ขวด",
+        "tags": [
+          "วิสกี้",
+          "ชีวาส",
+          "Chivas",
+          "CHIVAS",
+          "CHIVAS 12"
+        ],
+        "price": null,
+        "productType": "AL",
+        "activate": "Y",
+        "manufacturer": "Pernod Ricard"
+      },
+      {
+        "productCode": "INT-WHISKY-100PIPERS",
+        "nameTH": "100 ไพเพอร์ส",
+        "nameEN": "100 Pipers",
+        "brandNameTH": "100 ไพเพอร์ส",
+        "brandNameEN": "100 Pipers",
+        "pathCategoryNameTH": [
+          "สินค้า/เครื่องดื่ม/วิสกี้"
+        ],
+        "sizeTH": "700ml",
+        "unitNameTH": "ขวด",
+        "tags": [
+          "วิสกี้",
+          "100 ไพเพอร์ส",
+          "ไพเพอร์ส",
+          "100 Pipers",
+          "100PIPERS"
+        ],
+        "price": null,
+        "productType": "AL",
+        "activate": "Y",
+        "manufacturer": "Pernod Ricard"
+      },
+      {
+        "productCode": "INT-WHISKY-SILVERWOLF-L",
+        "nameTH": "วิสกี้ซิลเวอร์วูล์ฟ ขวดใหญ่",
+        "nameEN": "Silver Wolf Whisky Round",
+        "brandNameTH": "ซิลเวอร์วูล์ฟ",
+        "brandNameEN": "Silver Wolf",
+        "pathCategoryNameTH": ["สินค้า/เครื่องดื่ม/วิสกี้"],
+        "sizeTH": "700ml",
+        "unitNameTH": "ขวด",
+        "tags": ["วิสกี้", "ซิลเวอร์วูล์ฟ", "ซิลเวอร์วูลฟ์", "Silver Wolf", "SILVERWOLF", "SW"],
+        "price": null,
+        "productType": "AL",
+        "activate": "Y",
+        "manufacturer": "Boonrawd"
+      },
+      {
+        "productCode": "INT-WHISKY-SILVERWOLF-S",
+        "nameTH": "วิสกี้ซิลเวอร์วูล์ฟ ขวดแบน",
+        "nameEN": "Silver Wolf Whisky Flask",
+        "brandNameTH": "ซิลเวอร์วูล์ฟ",
+        "brandNameEN": "Silver Wolf",
+        "pathCategoryNameTH": ["สินค้า/เครื่องดื่ม/วิสกี้"],
+        "sizeTH": "350ml",
+        "unitNameTH": "ขวด",
+        "tags": ["วิสกี้", "ซิลเวอร์วูล์ฟ", "ซิลเวอร์วูลฟ์", "Silver Wolf 350", "SW 350"],
+        "price": null,
+        "productType": "AL",
+        "activate": "Y",
+        "manufacturer": "Boonrawd"
+      },
+      {
+        "productCode": "INT-WHISKY-SILVERKNIGHT-L",
+        "nameTH": "วิสกี้ซิลเวอร์ไนท์ ขวดใหญ่",
+        "nameEN": "Silver Knight Whisky Round",
+        "brandNameTH": "ซิลเวอร์ไนท์",
+        "brandNameEN": "Silver Knight",
+        "pathCategoryNameTH": ["สินค้า/เครื่องดื่ม/วิสกี้"],
+        "sizeTH": "700ml",
+        "unitNameTH": "ขวด",
+        "tags": ["วิสกี้", "ซิลเวอร์ไนท์", "ซิลเวอร์ไนต์", "Silver Knight", "SILVERKNIGHT", "SK"],
+        "price": null,
+        "productType": "AL",
+        "activate": "Y",
+        "manufacturer": "Boonrawd"
+      },
+      {
+        "productCode": "INT-WHISKY-SILVERKNIGHT-S",
+        "nameTH": "วิสกี้ซิลเวอร์ไนท์ ขวดแบน",
+        "nameEN": "Silver Knight Whisky Flask",
+        "brandNameTH": "ซิลเวอร์ไนท์",
+        "brandNameEN": "Silver Knight",
+        "pathCategoryNameTH": ["สินค้า/เครื่องดื่ม/วิสกี้"],
+        "sizeTH": "350ml",
+        "unitNameTH": "ขวด",
+        "tags": ["วิสกี้", "ซิลเวอร์ไนท์", "ซิลเวอร์ไนต์", "Silver Knight 350", "SK 350"],
+        "price": null,
+        "productType": "AL",
+        "activate": "Y",
+        "manufacturer": "Boonrawd"
+      },
+      {
+        "productCode": "INT-WHISKY-BALLANTINES",
+        "nameTH": "บัลลันไทน์",
+        "nameEN": "Ballantine's",
+        "brandNameTH": "บัลลันไทน์",
+        "brandNameEN": "Ballantine's",
+        "pathCategoryNameTH": [
+          "สินค้า/เครื่องดื่ม/วิสกี้"
+        ],
+        "sizeTH": "700ml",
+        "unitNameTH": "ขวด",
+        "tags": [
+          "วิสกี้",
+          "บัลลันไทน์",
+          "Ballantine",
+          "Ballantines",
+          "BALLANTINES"
+        ],
+        "price": null,
+        "productType": "AL",
+        "activate": "Y",
+        "manufacturer": "Pernod Ricard"
+      },
+      {
+        "productCode": "INT-WINE-SPY",
+        "nameTH": "สปายไวน์คูลเลอร์",
+        "nameEN": "Spy Wine Cooler",
+        "brandNameTH": "สปาย",
+        "brandNameEN": "Spy",
+        "pathCategoryNameTH": [
+          "สินค้า/เครื่องดื่ม/ไวน์"
+        ],
+        "sizeTH": "275ml",
+        "unitNameTH": "ขวด",
+        "tags": [
+          "ไวน์",
+          "สปาย",
+          "Spy",
+          "SPY",
+          "Spy Cooler",
+          "Wine Cooler"
+        ],
+        "price": null,
+        "productType": "AL",
+        "activate": "Y",
+        "manufacturer": "Siam Winery"
+      }
+    ]
+  }
+}

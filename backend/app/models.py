@@ -55,6 +55,8 @@ class Document(Base):
     notes = Column(Text, nullable=True)
     fraud_flags = Column(Text, nullable=True)  # JSON array of fraud flags
 
+    deleted_at = Column(DateTime, nullable=True, index=True)
+
     items = relationship(
         "DocumentItem", back_populates="document", cascade="all, delete-orphan"
     )
@@ -65,10 +67,18 @@ class DocumentItem(Base):
 
     id = Column(String, primary_key=True, default=_gen_id)
     document_id = Column(String, ForeignKey("documents.id"), nullable=False)
-    # Single product name column. Populated from the catalog match when the
-    # item matches PRODUCT_CATALOG; otherwise holds the as-written text from
-    # the receipt. Audit of the original Gemini response lives in
-    # ``Document.raw_extraction``.
+    # Singha Online SKU if the normalized name matches a catalog entry.
+    # Populated automatically on extract/update; lets dashboards group by SKU
+    # regardless of how the user re-wrote ``product_name_normalized``.
+    product_code = Column(String, nullable=True, index=True)
+    # ``product_name_raw`` = what Gemini literally read off the receipt,
+    # *before* any PRODUCT_CATALOG normalization. Immutable — user edits update
+    # ``product_name_normalized`` only. Used by the alias service as a stable
+    # learning source so corrections don't drift across edits.
+    product_name_raw = Column(String, nullable=True)
+    # ``product_name_normalized`` = display name. Starts equal to raw (or the
+    # catalog canonical if Gemini matched the catalog), then evolves with user
+    # edits. Shown in the UI and used everywhere dashboards aggregate.
     product_name_normalized = Column(String, nullable=True)
     category = Column(String, nullable=True, index=True)
     quantity = Column(Float, nullable=True)
@@ -79,3 +89,116 @@ class DocumentItem(Base):
     needs_review = Column(Boolean, default=False)
 
     document = relationship("Document", back_populates="items")
+
+
+class DocumentEvent(Base):
+    """Append-only audit trail of everything that happens to a document.
+
+    Until auth ships, ``actor`` is ``"system"`` (background processes) or
+    ``"user"`` (any human-originated API call). ``payload`` is free-form JSON
+    describing what changed — diff, fraud flags, error text, etc.
+    """
+
+    __tablename__ = "document_events"
+
+    id = Column(String, primary_key=True, default=_gen_id)
+    document_id = Column(String, ForeignKey("documents.id"), nullable=False, index=True)
+    event_type = Column(String, nullable=False, index=True)
+    actor = Column(String, nullable=False, default="user")
+    payload = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, index=True)
+
+
+class MerchantAlias(Base):
+    """Learned mapping from raw (Gemini-extracted) merchant text → canonical.
+
+    Populated when a human corrects ``merchant_name`` or ``category`` on a
+    document; consulted after future Gemini extractions so the AI "learns"
+    from operator input.
+    """
+
+    __tablename__ = "merchant_aliases"
+
+    id = Column(String, primary_key=True, default=_gen_id)
+    source_text = Column(String, nullable=False, unique=True, index=True)
+    canonical_name = Column(String, nullable=False)
+    category = Column(String, nullable=True)
+    hit_count = Column(Numeric(10, 0), default=1)
+    created_at = Column(DateTime, default=_utcnow)
+    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
+
+
+class Product(Base):
+    """Canonical catalog — seeded from singhaonline.com, extensible by admins.
+
+    Provides the authoritative list for autocomplete suggestions and the alias
+    service uses ``canonical_name`` as a poisoning-guard pool (users cannot
+    overwrite a catalog SKU via alias learning).
+    """
+
+    __tablename__ = "products"
+
+    id = Column(String, primary_key=True, default=_gen_id)
+    code = Column(String, nullable=True, index=True, unique=True)
+    canonical_name = Column(String, nullable=False, unique=True, index=True)
+    # Human-friendly short name for UI. Computed from ``canonical_name`` by
+    # ``services.catalog.build_display_name``: strips pack/volume noise and
+    # only keeps size suffix when multiple SKUs share a base name.
+    display_name = Column(String, nullable=True, index=True)
+    name_en = Column(String, nullable=True)
+    brand_th = Column(String, nullable=True, index=True)
+    brand_en = Column(String, nullable=True)
+    # Top-level Singha Online category: เครื่องดื่ม / อาหาร และของว่าง /
+    # สินค้าพรีเมียมสิงห์ / สินค้าอื่นๆ. Copied from path_category_name_th[1].
+    category = Column(String, nullable=True, index=True)
+    sub_category = Column(String, nullable=True)  # e.g. "น้ำดื่มสิงห์"
+    size = Column(String, nullable=True)
+    unit = Column(String, nullable=True)
+    aliases = Column(Text, nullable=True)  # JSON array of search keywords
+    price = Column(Numeric(12, 2), nullable=True)
+    product_type = Column(String, nullable=True)  # NON_AL / AL
+    # Manufacturer label for brand-share analytics — "Boonrawd" for our own
+    # products (the default), or "ThaiBev", "Diageo", "Pernod Ricard", etc.
+    # for competitor SKUs kept in the catalog for receipt tracking.
+    manufacturer = Column(String, nullable=True, index=True)
+    source = Column(String, default="singhaonline")
+    active = Column(Boolean, default=True, index=True)
+    created_at = Column(DateTime, default=_utcnow)
+    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
+
+
+class ProductAlias(Base):
+    """Same idea as :class:`MerchantAlias` but for line-item product names.
+
+    Only name + category are learned — units, quantities and prices vary per
+    receipt and must never be overridden from a past correction.
+    """
+
+    __tablename__ = "product_aliases"
+
+    id = Column(String, primary_key=True, default=_gen_id)
+    source_text = Column(String, nullable=False, unique=True, index=True)
+    canonical_name = Column(String, nullable=False)
+    category = Column(String, nullable=True)
+    hit_count = Column(Numeric(10, 0), default=1)
+    created_at = Column(DateTime, default=_utcnow)
+    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
+
+
+class PushSubscription(Base):
+    """Web Push subscription record.
+
+    One row per (browser, device) combo. ``endpoint`` is the push service URL
+    supplied by the browser's Push API and is naturally unique.
+    """
+
+    __tablename__ = "push_subscriptions"
+
+    id = Column(String, primary_key=True, default=_gen_id)
+    endpoint = Column(String, nullable=False, unique=True, index=True)
+    p256dh = Column(String, nullable=False)
+    auth = Column(String, nullable=False)
+    user_agent = Column(String, nullable=True)
+    created_at = Column(DateTime, default=_utcnow)
+    last_used_at = Column(DateTime, nullable=True)
+    enabled = Column(Boolean, default=True)

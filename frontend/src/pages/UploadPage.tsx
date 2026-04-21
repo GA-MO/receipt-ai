@@ -93,6 +93,8 @@ export default function UploadPage() {
       "image/jpeg": [".jpg", ".jpeg"],
       "image/png": [".png"],
       "image/webp": [".webp"],
+      "image/heic": [".heic"],
+      "image/heif": [".heif"],
       "application/pdf": [".pdf"],
     },
     maxSize: MAX_FILE_SIZE,
@@ -136,7 +138,7 @@ export default function UploadPage() {
               {isDragActive ? "วางไฟล์ที่นี่" : "ลากไฟล์มาวางหรือคลิกเพื่อเลือก"}
             </Text>
             <Text size="sm" c="dimmed" mt={4}>
-              รองรับ JPG, PNG, WebP, PDF (สูงสุด 20 MB)
+              รองรับ JPG, PNG, WebP, HEIC, PDF (สูงสุด 20 MB)
             </Text>
           </div>
         </Stack>

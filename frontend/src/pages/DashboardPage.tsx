@@ -17,6 +17,8 @@ import {
   Group,
   Loader,
   Paper,
+  SegmentedControl,
+  Select,
   SimpleGrid,
   Stack,
   Table,
@@ -29,6 +31,7 @@ import { BarChart } from "@mantine/charts";
 import "dayjs/locale/th";
 import {
   type AiInsightResponse,
+  type ExportFormat,
   type HeatmapDay,
   getExportUrl,
 } from "../api/client";
@@ -41,33 +44,23 @@ import {
   useFraudSummary,
   useSpendingHeatmap,
   useTopMerchants,
+  useTopProducts,
   useVatSummary,
 } from "../api/queries";
+import { PeriodComparisonCard } from "@/components/PeriodComparison";
 
-const CATEGORY_COLORS: Record<string, string> = {
-  "เบียร์": "yellow",
-  "น้ำดื่ม": "blue",
-  "โซดาและน้ำอัดลม": "cyan",
-  "น้ำแร่": "teal",
-  "สุรา": "red",
-  "เครื่องดื่มอื่นๆ": "violet",
-  "อาหาร": "orange",
-  "อื่นๆ": "gray",
-};
+import { CATEGORY_COLORS, CATEGORY_TW_COLORS } from "@/lib/categories";
 
-const CATEGORY_TW_COLORS: Record<string, string> = {
-  "อาหารและเครื่องดื่ม": "bg-orange-500",
-  "วัตถุดิบ": "bg-emerald-500",
-  "อุปกรณ์สำนักงาน": "bg-blue-500",
-  "เดินทางและขนส่ง": "bg-yellow-500",
-  "สาธารณูปโภค": "bg-cyan-500",
-  "การตลาดและโฆษณา": "bg-pink-500",
-  "บริการ": "bg-violet-500",
-  "อื่นๆ": "bg-gray-400",
-};
+const EXPORT_FORMAT_OPTIONS: { value: ExportFormat; label: string; hint: string }[] = [
+  { value: "line_items", label: "รายการสินค้า (ละเอียด)", hint: "1 แถวต่อสินค้า + ยอดรวมของเอกสาร" },
+  { value: "summary", label: "สรุปรายเอกสาร", hint: "1 แถวต่อเอกสาร พร้อมยอด VAT/สุทธิ" },
+  { value: "purchase_journal", label: "สมุดซื้อ (ภาษีซื้อ)", hint: "รูปแบบมาตรฐานยื่นภาษี ภ.พ.30" },
+  { value: "journal_entries", label: "บัญชีแบบ Dr/Cr", hint: "สำหรับลงสมุดบัญชี double-entry" },
+];
 
 export default function DashboardPage() {
   const [exportDateRange, setExportDateRange] = useState<[Date | null, Date | null]>([null, null]);
+  const [exportFormat, setExportFormat] = useState<ExportFormat>("line_items");
   const [aiInsight, setAiInsight] = useState<AiInsightResponse | null>(null);
 
   const exportDateFrom = exportDateRange[0] ? format(exportDateRange[0], "yyyy-MM-dd") : "";
@@ -77,6 +70,8 @@ export default function DashboardPage() {
   const recentQuery = useDocuments({ limit: 5 });
   const dailyQuery = useDailySales(30);
   const topMerchantsQuery = useTopMerchants(5);
+  const [topProductsScope, setTopProductsScope] = useState<"all" | "catalog">("all");
+  const topProductsQuery = useTopProducts(10, { catalog_only: topProductsScope === "catalog" });
   const categoriesQuery = useCategoryBreakdown();
   const vatQuery = useVatSummary();
   const fraudQuery = useFraudSummary();
@@ -94,6 +89,7 @@ export default function DashboardPage() {
   const recent = recentQuery.data ?? [];
   const dailySales = dailyQuery.data ?? [];
   const topMerchants = topMerchantsQuery.data ?? [];
+  const topProducts = topProductsQuery.data ?? [];
   const categories = categoriesQuery.data ?? [];
   const vatSummary = vatQuery.data ?? null;
   const fraudSummary = fraudQuery.data ?? null;
@@ -167,13 +163,23 @@ export default function DashboardPage() {
             onChange={(v) => setExportDateRange(v as [Date | null, Date | null])}
             locale="th"
             clearable
-            w={260}
+            w={220}
+          />
+          <Select
+            placeholder="รูปแบบไฟล์"
+            w={220}
+            value={exportFormat}
+            onChange={(v) => v && setExportFormat(v as ExportFormat)}
+            data={EXPORT_FORMAT_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+            description={EXPORT_FORMAT_OPTIONS.find((o) => o.value === exportFormat)?.hint}
+            allowDeselect={false}
           />
           <Button
             component="a"
             href={getExportUrl({
               date_from: exportDateFrom || undefined,
               date_to: exportDateTo || undefined,
+              format: exportFormat,
             })}
             color="green"
             leftSection={<Download size={16} />}
@@ -182,6 +188,11 @@ export default function DashboardPage() {
           </Button>
         </Group>
       </Group>
+
+      {/* Period comparison */}
+      <div style={{ marginBottom: "var(--mantine-spacing-lg)" }}>
+        <PeriodComparisonCard />
+      </div>
 
       {/* Stats cards */}
       <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="md" mb="lg">
@@ -292,6 +303,86 @@ export default function DashboardPage() {
           )}
         </Paper>
       </SimpleGrid>
+
+      {/* Top products (by revenue) */}
+      <Paper withBorder p="md" mb="lg">
+        <Group justify="space-between" mb="md" wrap="wrap">
+          <div>
+            <Text fw={600}>สินค้ายอดขายสูงสุด</Text>
+            <Text size="xs" c="dimmed">เรียงตามยอดรวม (line_total)</Text>
+          </div>
+          <SegmentedControl
+            size="xs"
+            value={topProductsScope}
+            onChange={(v) => setTopProductsScope(v as "all" | "catalog")}
+            data={[
+              { value: "all", label: "ทั้งหมด" },
+              { value: "catalog", label: "เฉพาะ catalog" },
+            ]}
+          />
+        </Group>
+        {topProducts.length === 0 ? (
+          <Text c="dimmed" size="sm" ta="center" py="xl">ยังไม่มีข้อมูล</Text>
+        ) : (
+          <Table striped highlightOnHover>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th w={40}>#</Table.Th>
+                <Table.Th>สินค้า</Table.Th>
+                <Table.Th ta="right" w={100}>จำนวน</Table.Th>
+                <Table.Th ta="right" w={100}>เอกสาร</Table.Th>
+                <Table.Th ta="right" w={140}>ยอดรวม</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {topProducts.map((p, i) => (
+                <Table.Tr key={p.product}>
+                  <Table.Td>
+                    <Badge
+                      variant={i < 3 ? "gradient" : "light"}
+                      gradient={i < 3 ? { from: "indigo", to: "violet" } : undefined}
+                      size="sm"
+                    >
+                      {i + 1}
+                    </Badge>
+                  </Table.Td>
+                  <Table.Td>
+                    <Group gap="xs" wrap="nowrap">
+                      <Text size="sm" fw={500} lineClamp={1} style={{ flex: 1 }}>{p.product}</Text>
+                      {p.in_catalog && p.manufacturer && (
+                        <Badge
+                          size="xs"
+                          color={p.is_boonrawd ? "indigo" : "gray"}
+                          variant="light"
+                          title={p.manufacturer}
+                        >
+                          {p.is_boonrawd ? "บุญรอด" : "คู่แข่ง"}
+                        </Badge>
+                      )}
+                      {p.in_catalog ? (
+                        <Badge size="xs" color="green" variant="light" title={`SKU ${p.product_code}`}>catalog</Badge>
+                      ) : (
+                        <Badge size="xs" color="gray" variant="light">นอก</Badge>
+                      )}
+                    </Group>
+                  </Table.Td>
+                  <Table.Td ta="right">
+                    <Text size="sm" ff="monospace">{p.quantity.toLocaleString("th-TH")}</Text>
+                  </Table.Td>
+                  <Table.Td ta="right">
+                    <Text size="sm" c="dimmed">{p.doc_count}</Text>
+                  </Table.Td>
+                  <Table.Td ta="right">
+                    <Text size="sm" ff="monospace" fw={600}>
+                      ฿{p.total.toLocaleString("th-TH", { minimumFractionDigits: 2 })}
+                    </Text>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        )}
+      </Paper>
 
       {/* Charts row 2: category breakdown + VAT summary */}
       <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md" mb="lg">

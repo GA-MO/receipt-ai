@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     # Deprecated shortcut for extraction_mode='combined' — kept for backward compat.
     use_combined_extraction: bool = False
 
+    # Web Push (VAPID)
+    vapid_public_key: str = ""
+    vapid_private_key: str = ""
+    vapid_subject: str = "mailto:admin@example.com"
+
     model_config = {"env_file": ".env"}
 
     @property

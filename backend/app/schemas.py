@@ -6,7 +6,9 @@ from pydantic import BaseModel
 
 
 class DocumentItemBase(BaseModel):
+    product_name_raw: str | None = None
     product_name_normalized: str | None = None
+    product_code: str | None = None  # Singha Online SKU when name matches catalog
     category: str | None = None
     quantity: float | None = None
     unit: str | None = None
@@ -24,13 +26,31 @@ class DocumentItemResponse(DocumentItemBase):
 
 
 class DocumentItemUpdate(BaseModel):
+    # ``product_name_raw`` is intentionally NOT here — raw is immutable once
+    # captured from Gemini. UI edits update normalized only.
     product_name_normalized: str | None = None
+    # Explicit SKU override when the UI knows which product the user picked.
+    # If ``None``, the backend auto-resolves from ``product_name_normalized``.
+    product_code: str | None = None
     category: str | None = None
     quantity: float | None = None
     unit: str | None = None
     unit_price: float | None = None
     line_total: float | None = None
     needs_review: bool | None = None
+
+
+class DocumentItemCreate(BaseModel):
+    # For manually-added items, the caller may set raw = whatever the user
+    # typed (there is no Gemini OCR source); if omitted we copy normalized.
+    product_name_raw: str | None = None
+    product_name_normalized: str | None = None
+    product_code: str | None = None
+    category: str | None = None
+    quantity: float | None = None
+    unit: str | None = None
+    unit_price: float | None = None
+    line_total: float | None = None
 
 
 # ---------- Documents ----------
@@ -74,6 +94,16 @@ class DocumentUpdate(BaseModel):
     grand_total: float | None = None
     category: str | None = None
     notes: str | None = None
+
+
+class BulkIds(BaseModel):
+    ids: list[str]
+
+
+class BulkActionResult(BaseModel):
+    succeeded: int
+    failed: int
+    failed_ids: list[str] = []
 
 
 class DocumentListItem(BaseModel):
