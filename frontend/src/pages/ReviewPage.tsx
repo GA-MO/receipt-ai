@@ -12,6 +12,7 @@ import {
   Save,
   ShieldAlert,
   Trash2,
+  Wand2,
 } from "lucide-react";
 import {
   ActionIcon,
@@ -55,7 +56,11 @@ import {
 } from "../api/queries";
 import { useDocumentStream } from "@/hooks/useDocumentStream";
 import { parseFraudData, riskScoreColor, riskScoreLabel } from "@/lib/fraud";
-import { validateTotals } from "@/lib/validation";
+import {
+  type TotalsPatch,
+  type ValidationIssue,
+  validateTotals,
+} from "@/lib/validation";
 import { CATEGORY_OPTIONS_WITH_BLANK as CATEGORY_OPTIONS } from "@/lib/categories";
 import { useToast } from "@/components/Toast";
 import { ImageCanvas } from "@/components/ImageCanvas";
@@ -152,6 +157,28 @@ export default function ReviewPage() {
         notes: form.notes || null,
       });
       toast("success", "บันทึกเรียบร้อย");
+    } catch {
+      toast("error", "ไม่สามารถบันทึกได้");
+    }
+  };
+
+  const applyFix = async (patch: TotalsPatch) => {
+    if (!id) return;
+    const next = { ...form, ...patch };
+    setForm(next);
+    try {
+      await updateDoc.mutateAsync({
+        merchant_name: next.merchant_name || null,
+        document_number: next.document_number || null,
+        document_date: next.document_date || null,
+        category: next.category || null,
+        subtotal: next.subtotal,
+        discount: next.discount,
+        vat: next.vat,
+        grand_total: next.grand_total,
+        notes: next.notes || null,
+      });
+      toast("success", "ปรับยอดให้แล้ว");
     } catch {
       toast("error", "ไม่สามารถบันทึกได้");
     }
@@ -338,19 +365,19 @@ export default function ReviewPage() {
   const formSection = (
     <Stack gap="md">
       {validationIssues.length > 0 && (
-        <Stack gap={6}>
-          {validationIssues.map((issue, i) => (
-            <Alert
-              key={i}
-              color={issue.severity === "error" ? "red" : "yellow"}
-              icon={<AlertTriangle size={16} />}
-              py="xs"
-              variant="light"
-            >
-              <Text size="xs">{issue.message}</Text>
-            </Alert>
-          ))}
-        </Stack>
+        <ReconciliationPanel
+          itemsTotal={itemsTotal}
+          subtotal={form.subtotal}
+          discount={form.discount}
+          vat={form.vat}
+          grandTotal={form.grand_total}
+          itemsIssue={!!itemsIssue}
+          vatIssue={!!vatIssue}
+          totalsIssue={!!totalsIssue}
+          issues={validationIssues}
+          onApply={applyFix}
+          disabled={isProcessing || saving}
+        />
       )}
       <div className="grid grid-cols-2 gap-3">
         <Autocomplete
@@ -891,5 +918,145 @@ function ItemRow({
         </ActionIcon>
       </Table.Td>
     </Table.Tr>
+  );
+}
+
+function ReconciliationPanel({
+  itemsTotal,
+  subtotal,
+  discount,
+  vat,
+  grandTotal,
+  itemsIssue,
+  vatIssue,
+  totalsIssue,
+  issues,
+  onApply,
+  disabled,
+}: {
+  itemsTotal: number;
+  subtotal: number | null;
+  discount: number | null;
+  vat: number | null;
+  grandTotal: number | null;
+  itemsIssue: boolean;
+  vatIssue: boolean;
+  totalsIssue: boolean;
+  issues: ValidationIssue[];
+  onApply: (patch: TotalsPatch) => void;
+  disabled?: boolean;
+}) {
+  const effectiveDiscount = discount ?? 0;
+  const expected =
+    subtotal != null ? subtotal - effectiveDiscount + (vat ?? 0) : null;
+  const allFixes = issues.flatMap((i) => i.fixes ?? []);
+  const hasItems = itemsTotal > 0;
+
+  const Row = ({
+    label,
+    value,
+    flagged,
+    muted,
+    bold,
+    dimmed,
+  }: {
+    label: string;
+    value: number | null;
+    flagged?: boolean;
+    muted?: boolean;
+    bold?: boolean;
+    dimmed?: boolean;
+  }) => {
+    if (value == null) return null;
+    const color = flagged ? "red.7" : dimmed ? "dimmed" : undefined;
+    const fw = bold ? 700 : muted ? 500 : 400;
+    return (
+      <>
+        <Text size="xs" c={color} fw={fw}>
+          {label}
+        </Text>
+        <Text size="xs" ff="monospace" ta="right" c={color} fw={fw}>
+          ฿{value.toFixed(2)}
+        </Text>
+      </>
+    );
+  };
+
+  return (
+    <Paper
+      withBorder
+      p="sm"
+      radius="md"
+      style={{
+        borderColor: "var(--mantine-color-yellow-4)",
+        background: "var(--mantine-color-yellow-0)",
+      }}
+    >
+      <Stack gap="xs">
+        <Group gap={6} align="center">
+          <AlertTriangle size={14} color="var(--mantine-color-yellow-8)" />
+          <Text fw={600} size="sm">
+            ยอดเงินไม่ตรง
+          </Text>
+        </Group>
+
+        <div
+          className="grid gap-x-4 gap-y-1"
+          style={{ gridTemplateColumns: "1fr auto" }}
+        >
+          {hasItems && (
+            <Row label="ผลรวมรายการสินค้า" value={itemsTotal} dimmed />
+          )}
+          <Row label="ยอดก่อนภาษี" value={subtotal} flagged={itemsIssue} />
+          {effectiveDiscount > 0 && (
+            <Row label="− ส่วนลด" value={effectiveDiscount} />
+          )}
+          <Row label="+ VAT" value={vat} flagged={vatIssue} />
+          {expected != null && (
+            <Row label="= ควรเป็น" value={expected} muted dimmed />
+          )}
+          <Row
+            label="ยอดรวมสุทธิในเอกสาร"
+            value={grandTotal}
+            flagged={totalsIssue}
+            bold
+          />
+        </div>
+
+        <Stack gap={2}>
+          {issues.map((issue, i) => (
+            <Text
+              key={i}
+              size="xs"
+              c={issue.severity === "error" ? "red.7" : "yellow.8"}
+            >
+              • {issue.message}
+            </Text>
+          ))}
+        </Stack>
+
+        {allFixes.length > 0 && (
+          <Stack gap={4}>
+            <Text size="xs" fw={600} c="dimmed" tt="uppercase">
+              แก้ไขให้อัตโนมัติ
+            </Text>
+            {allFixes.map((fix, k) => (
+              <Button
+                key={k}
+                size="xs"
+                variant="default"
+                justify="flex-start"
+                leftSection={<Wand2 size={12} />}
+                onClick={() => onApply(fix.apply)}
+                disabled={disabled}
+                fullWidth
+              >
+                {fix.label}
+              </Button>
+            ))}
+          </Stack>
+        )}
+      </Stack>
+    </Paper>
   );
 }
