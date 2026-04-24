@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { format } from "date-fns";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { format, parse } from "date-fns";
 import {
   AlertCircle,
   ArrowDown,
@@ -108,22 +108,51 @@ function SortHeader({
 
 export default function DocumentsPage() {
   const { toast } = useToast();
-  const [page, setPage] = useState(0);
-  const [statusFilter, setStatusFilter] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchInput, setSearchInput] = useState("");
-  const [dateRange, setDateRange] = useState<[Date | null, Date | null] | undefined>(undefined);
-  const [sortBy, setSortBy] = useState<SortKey>("uploaded_at");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Filters + pagination + sort all live in URL query params so back-nav restores them
+  const page = Number(searchParams.get("page") ?? "0") || 0;
+  const statusFilter = searchParams.get("status") ?? "";
+  const categoryFilter = searchParams.get("category") ?? "";
+  const searchQuery = searchParams.get("q") ?? "";
+  const sortBy = (searchParams.get("sort_by") ?? "uploaded_at") as SortKey;
+  const sortDir = (searchParams.get("sort_dir") ?? "desc") as SortDir;
+  const dateFrom = searchParams.get("from") ?? "";
+  const dateTo = searchParams.get("to") ?? "";
+
+  const updateParams = (updates: Record<string, string | null>) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        for (const [key, value] of Object.entries(updates)) {
+          if (value === null || value === "") next.delete(key);
+          else next.set(key, value);
+        }
+        return next;
+      },
+      { replace: true },
+    );
+  };
+
+  const [searchInput, setSearchInput] = useState(searchQuery);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  // Keep searchInput in sync when URL query changes externally (e.g., back-nav)
+  useEffect(() => {
+    setSearchInput(searchQuery);
+  }, [searchQuery]);
+
+  const dateRange: [Date | null, Date | null] = [
+    dateFrom ? parse(dateFrom, "yyyy-MM-dd", new Date()) : null,
+    dateTo ? parse(dateTo, "yyyy-MM-dd", new Date()) : null,
+  ];
+
+  const setPage = (p: number) =>
+    updateParams({ page: p === 0 ? null : String(p) });
+
   const bulkApprove = useBulkApprove();
   const bulkDelete = useBulkDelete();
-
-  const dateFrom = dateRange?.[0] ? format(dateRange[0], "yyyy-MM-dd") : "";
-  const dateTo = dateRange?.[1] ? format(dateRange[1], "yyyy-MM-dd") : "";
 
   const filters = {
     status: statusFilter || undefined,
@@ -145,18 +174,13 @@ export default function DocumentsPage() {
   const loading = docsLoading;
 
   const handleSearch = () => {
-    setPage(0);
-    setSearchQuery(searchInput);
+    updateParams({ q: searchInput || null, page: null });
   };
 
   const handleSort = (col: SortKey) => {
-    if (sortBy === col) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortBy(col);
-      setSortDir("desc");
-    }
-    setPage(0);
+    const nextDir =
+      sortBy === col ? (sortDir === "asc" ? "desc" : "asc") : "desc";
+    updateParams({ sort_by: col, sort_dir: nextDir, page: null });
   };
 
   const toggleOne = (id: string) => {
@@ -237,7 +261,10 @@ export default function DocumentsPage() {
               <ActionIcon
                 variant="subtle"
                 size="sm"
-                onClick={() => { setSearchInput(""); setSearchQuery(""); setPage(0); }}
+                onClick={() => {
+                  setSearchInput("");
+                  updateParams({ q: null, page: null });
+                }}
               >
                 ✕
               </ActionIcon>
@@ -253,7 +280,7 @@ export default function DocumentsPage() {
           placeholder="ทั้งหมด"
           data={STATUS_OPTIONS}
           value={statusFilter || null}
-          onChange={(v) => { setStatusFilter(v || ""); setPage(0); }}
+          onChange={(v) => updateParams({ status: v || null, page: null })}
           clearable
           w={160}
         />
@@ -261,15 +288,22 @@ export default function DocumentsPage() {
           placeholder="ทุกหมวด"
           data={CATEGORY_OPTIONS}
           value={categoryFilter || null}
-          onChange={(v) => { setCategoryFilter(v || ""); setPage(0); }}
+          onChange={(v) => updateParams({ category: v || null, page: null })}
           clearable
           w={180}
         />
         <DatePickerInput
           type="range"
           placeholder="เลือกช่วงวันที่"
-          value={dateRange as [Date | null, Date | null]}
-          onChange={(v) => { setDateRange(v as [Date | null, Date | null]); setPage(0); }}
+          value={dateRange}
+          onChange={(v) => {
+            const [from, to] = (v as [Date | null, Date | null]) ?? [null, null];
+            updateParams({
+              from: from ? format(from, "yyyy-MM-dd") : null,
+              to: to ? format(to, "yyyy-MM-dd") : null,
+              page: null,
+            });
+          }}
           locale="th"
           clearable
           w={260}
@@ -482,7 +516,7 @@ export default function DocumentsPage() {
               <Group gap="xs">
                 <ActionIcon
                   variant="outline"
-                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  onClick={() => setPage(Math.max(0, page - 1))}
                   disabled={page === 0}
                 >
                   <ChevronLeft size={16} />
@@ -492,7 +526,7 @@ export default function DocumentsPage() {
                 </Text>
                 <ActionIcon
                   variant="outline"
-                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                  onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
                   disabled={page >= totalPages - 1}
                 >
                   <ChevronRight size={16} />

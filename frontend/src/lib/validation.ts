@@ -45,6 +45,13 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+function fmt(n: number): string {
+  return n.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
 export function validateTotals(input: ValidationInput): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   const subtotal = toNum(input.subtotal);
@@ -59,10 +66,10 @@ export function validateTotals(input: ValidationInput): ValidationIssue[] {
       issues.push({
         field: "items",
         severity: "warning",
-        message: `ผลรวมรายการสินค้า ฿${itemsTotal.toFixed(2)} ไม่ตรงกับยอดก่อนภาษี ฿${subtotal.toFixed(2)} (ต่าง ฿${diff.toFixed(2)})`,
+        message: `ผลรวมรายการสินค้า ฿${fmt(itemsTotal)} ไม่ตรงกับยอดก่อนภาษี ฿${fmt(subtotal)} (ต่าง ฿${fmt(diff)})`,
         fixes: [
           {
-            label: `ใช้ผลรวมรายการ ฿${itemsTotal.toFixed(2)} เป็นยอดก่อนภาษี`,
+            label: `ใช้ผลรวมรายการ ฿${fmt(itemsTotal)} เป็นยอดก่อนภาษี`,
             apply: { subtotal: round2(itemsTotal) },
           },
         ],
@@ -78,10 +85,10 @@ export function validateTotals(input: ValidationInput): ValidationIssue[] {
       issues.push({
         field: "vat",
         severity: "warning",
-        message: `VAT 7% ของ ฿${subtotal.toFixed(2)} ควรเป็น ฿${expectedVat.toFixed(2)} (ที่กรอก: ฿${vat.toFixed(2)} ≈ ${actualRate.toFixed(1)}%)`,
+        message: `VAT 7% ของ ฿${fmt(subtotal)} ควรเป็น ฿${fmt(expectedVat)} (ที่กรอก: ฿${fmt(vat)} ≈ ${actualRate.toFixed(1)}%)`,
         fixes: [
           {
-            label: `คำนวณ VAT 7% = ฿${expectedVat.toFixed(2)}`,
+            label: `คำนวณ VAT 7% = ฿${fmt(expectedVat)}`,
             apply: { vat: round2(expectedVat) },
           },
         ],
@@ -95,7 +102,7 @@ export function validateTotals(input: ValidationInput): ValidationIssue[] {
     if (diff > TOTAL_TOLERANCE_BAHT) {
       const fixes: ValidationFix[] = [
         {
-          label: `คำนวณยอดรวมสุทธิใหม่ = ฿${expected.toFixed(2)}`,
+          label: `คำนวณยอดรวมสุทธิใหม่ = ฿${fmt(expected)}`,
           apply: { grand_total: round2(expected) },
         },
       ];
@@ -106,14 +113,14 @@ export function validateTotals(input: ValidationInput): ValidationIssue[] {
         const splitSub = round2(grand / (1 + THAI_VAT_RATE));
         const splitVat = round2(grand - splitSub);
         fixes.push({
-          label: `ยอดรวม VAT แล้ว — แยกเป็น ฿${splitSub.toFixed(2)} + VAT ฿${splitVat.toFixed(2)}`,
+          label: `ยอดรวม VAT แล้ว — แยกเป็น ฿${fmt(splitSub)} + VAT ฿${fmt(splitVat)}`,
           apply: { subtotal: splitSub, vat: splitVat },
         });
       }
       issues.push({
         field: "totals",
         severity: "error",
-        message: `ยอดรวมไม่ตรง: ${subtotal.toFixed(2)} − ${discount.toFixed(2)} + ${(vat ?? 0).toFixed(2)} = ${expected.toFixed(2)} แต่กรอก ${grand.toFixed(2)} (ต่าง ฿${diff.toFixed(2)})`,
+        message: `ยอดรวมไม่ตรง: ${fmt(subtotal)} − ${fmt(discount)} + ${fmt(vat ?? 0)} = ${fmt(expected)} แต่กรอก ${fmt(grand)} (ต่าง ฿${fmt(diff)})`,
         fixes,
       });
     }

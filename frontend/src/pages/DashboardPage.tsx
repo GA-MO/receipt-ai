@@ -27,7 +27,7 @@ import {
   Title,
 } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
-import { BarChart } from "@mantine/charts";
+import { BarChart, Sparkline } from "@mantine/charts";
 import "dayjs/locale/th";
 import {
   type AiInsightResponse,
@@ -42,6 +42,7 @@ import {
   useDashboardStats,
   useDocuments,
   useFraudSummary,
+  usePeriodComparison,
   useSpendingHeatmap,
   useTopMerchants,
   useTopProducts,
@@ -50,6 +51,20 @@ import {
 import { PeriodComparisonCard } from "@/components/PeriodComparison";
 
 import { CATEGORY_COLORS, CATEGORY_TW_COLORS } from "@/lib/categories";
+
+function formatRelativeTime(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (!then) return "ไม่ทราบ";
+  const now = Date.now();
+  const sec = Math.max(1, Math.round((now - then) / 1000));
+  if (sec < 60) return `${sec} วินาทีที่แล้ว`;
+  const min = Math.round(sec / 60);
+  if (min < 60) return `${min} นาทีที่แล้ว`;
+  const hr = Math.round(min / 60);
+  if (hr < 24) return `${hr} ชั่วโมงที่แล้ว`;
+  const day = Math.round(hr / 24);
+  return `${day} วันที่แล้ว`;
+}
 
 const EXPORT_FORMAT_OPTIONS: { value: ExportFormat; label: string; hint: string }[] = [
   { value: "line_items", label: "รายการสินค้า (ละเอียด)", hint: "1 แถวต่อสินค้า + ยอดรวมของเอกสาร" },
@@ -67,6 +82,7 @@ export default function DashboardPage() {
   const exportDateTo = exportDateRange[1] ? format(exportDateRange[1], "yyyy-MM-dd") : "";
 
   const statsQuery = useDashboardStats();
+  const periodComparisonQuery = usePeriodComparison("month");
   const recentQuery = useDocuments({ limit: 5 });
   const dailyQuery = useDailySales(30);
   const topMerchantsQuery = useTopMerchants(5);
@@ -100,7 +116,15 @@ export default function DashboardPage() {
       const data = await aiInsightMut.mutateAsync();
       setAiInsight(data);
     } catch {
-      setAiInsight({ headline: "ไม่สามารถสร้าง insight ได้", insights: [], risks: [], opportunities: [] });
+      setAiInsight({
+        headline: "ไม่สามารถสร้าง insight ได้",
+        insights: [],
+        risks: [],
+        opportunities: [],
+        trends: [],
+        doc_count: 0,
+        generated_at: new Date().toISOString(),
+      });
     }
   };
   const insightLoading = aiInsightMut.isPending;
@@ -113,24 +137,63 @@ export default function DashboardPage() {
     );
   }
 
-  const statCards = stats
+  // Last-14-day series for sparklines (pad short data)
+  const recentDaily = dailySales.slice(-14);
+  const salesSeries = recentDaily.map((d) => d.total);
+  const countSeries = recentDaily.map((d) => d.count);
+
+  const pc = periodComparisonQuery.data;
+  const salesDeltaPct = pc?.delta.total_pct ?? null;
+  const docsDeltaPct = pc?.delta.count_pct ?? null;
+
+  const statCards: StatCardData[] = stats
     ? [
-        { label: "เอกสารทั้งหมด", value: stats.total_documents, icon: FileText, color: "indigo" as const },
-        { label: "รอตรวจสอบ", value: stats.pending_review, icon: AlertCircle, color: "yellow" as const },
-        { label: "ตรวจสอบแล้ว", value: stats.reviewed, icon: CheckCircle2, color: "green" as const },
+        {
+          label: "เอกสารทั้งหมด",
+          value: stats.total_documents.toLocaleString("th-TH"),
+          icon: FileText,
+          color: "indigo",
+          deltaPct: docsDeltaPct,
+          sparkline: countSeries,
+          context: "all time",
+        },
+        {
+          label: "รอตรวจสอบ",
+          value: stats.pending_review.toLocaleString("th-TH"),
+          icon: AlertCircle,
+          color: "yellow",
+          context: "ใน queue",
+        },
+        {
+          label: "ตรวจสอบแล้ว",
+          value: stats.reviewed.toLocaleString("th-TH"),
+          icon: CheckCircle2,
+          color: "green",
+          context: "สะสม",
+        },
         {
           label: "ยอดขายรวม",
           value: `฿${stats.total_sales.toLocaleString("th-TH", { minimumFractionDigits: 2 })}`,
           icon: TrendingUp,
-          color: "grape" as const,
+          color: "grape",
+          deltaPct: salesDeltaPct,
+          sparkline: salesSeries,
+          context: "เดือนนี้",
         },
         {
           label: "Avg Confidence",
           value: `${(stats.avg_confidence * 100).toFixed(1)}%`,
           icon: BarChart3,
-          color: "cyan" as const,
+          color: "cyan",
+          context: "AI accuracy",
         },
-        { label: "อัปโหลดวันนี้", value: stats.documents_today, icon: FileText, color: "pink" as const },
+        {
+          label: "อัปโหลดวันนี้",
+          value: stats.documents_today.toLocaleString("th-TH"),
+          icon: FileText,
+          color: "pink",
+          context: "วันนี้",
+        },
       ]
     : [];
 
@@ -196,20 +259,9 @@ export default function DashboardPage() {
 
       {/* Stats cards */}
       <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="md" mb="lg">
-        {statCards.map((card, idx) => {
-          const Icon = card.icon;
-          return (
-            <Paper key={idx} withBorder p="md">
-              <Group justify="space-between" mb="xs">
-                <Text size="sm" c="dimmed" fw={500}>{card.label}</Text>
-                <ThemeIcon size="lg" radius="md" variant="light" color={card.color}>
-                  <Icon size={18} />
-                </ThemeIcon>
-              </Group>
-              <Text size="xl" fw={700}>{card.value}</Text>
-            </Paper>
-          );
-        })}
+        {statCards.map((card, idx) => (
+          <StatCard key={idx} card={card} />
+        ))}
       </SimpleGrid>
 
       {/* AI Business Insight */}
@@ -234,34 +286,78 @@ export default function DashboardPage() {
           </Group>
         ) : (
           <Stack gap="sm">
-            <Group justify="space-between">
-              <Text fw={700}>{aiInsight.headline}</Text>
+            <Group justify="space-between" align="flex-start">
+              <Group gap="xs" align="center">
+                <ThemeIcon size="md" radius="md" variant="gradient" gradient={{ from: "indigo", to: "violet" }}>
+                  <TrendingUp size={16} />
+                </ThemeIcon>
+                <div>
+                  <Text fw={700} size="sm">AI Business Insight</Text>
+                  <Text size="xs" c="dimmed">
+                    ดึงจาก {aiInsight.doc_count.toLocaleString("th-TH")} เอกสาร · อัปเดต {formatRelativeTime(aiInsight.generated_at)}
+                  </Text>
+                </div>
+              </Group>
               <Button variant="subtle" size="xs" color="indigo" onClick={handleAiInsight} loading={insightLoading}>
                 วิเคราะห์ใหม่
               </Button>
             </Group>
 
-            <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="xs">
-              {aiInsight.insights.slice(0, 3).map((text, i) => (
-                <Paper key={i} p="xs" radius="sm" withBorder>
-                  <Text size="xs" lineClamp={2}>{text}</Text>
-                </Paper>
-              ))}
-            </SimpleGrid>
+            <Text fw={600} size="md">{aiInsight.headline}</Text>
 
-            {(aiInsight.risks.length > 0 || aiInsight.opportunities.length > 0) && (
-              <Group gap="md">
-                {aiInsight.risks.slice(0, 2).map((text, i) => (
-                  <Badge key={i} color="red" variant="light" size="sm" style={{ maxWidth: "48%" }}>
-                    ⚠ {text.length > 50 ? text.slice(0, 50) + "…" : text}
-                  </Badge>
+            {(aiInsight.risks.length > 0 ||
+              aiInsight.opportunities.length > 0 ||
+              aiInsight.trends.length > 0) && (
+              <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="xs">
+                {aiInsight.risks.slice(0, 1).map((text, i) => (
+                  <Paper
+                    key={`r-${i}`}
+                    p="xs"
+                    radius="sm"
+                    withBorder
+                    style={{ borderLeft: "3px solid var(--mantine-color-red-5)" }}
+                  >
+                    <Text size="xs" fw={600} c="red.7" mb={2}>
+                      ⚠ Risk
+                    </Text>
+                    <Text size="xs" lineClamp={2}>
+                      {text}
+                    </Text>
+                  </Paper>
                 ))}
-                {aiInsight.opportunities.slice(0, 2).map((text, i) => (
-                  <Badge key={i} color="green" variant="light" size="sm" style={{ maxWidth: "48%" }}>
-                    ✦ {text.length > 50 ? text.slice(0, 50) + "…" : text}
-                  </Badge>
+                {aiInsight.opportunities.slice(0, 1).map((text, i) => (
+                  <Paper
+                    key={`o-${i}`}
+                    p="xs"
+                    radius="sm"
+                    withBorder
+                    style={{ borderLeft: "3px solid var(--mantine-color-green-5)" }}
+                  >
+                    <Text size="xs" fw={600} c="green.7" mb={2}>
+                      ✦ Opportunity
+                    </Text>
+                    <Text size="xs" lineClamp={2}>
+                      {text}
+                    </Text>
+                  </Paper>
                 ))}
-              </Group>
+                {aiInsight.trends.slice(0, 1).map((text, i) => (
+                  <Paper
+                    key={`t-${i}`}
+                    p="xs"
+                    radius="sm"
+                    withBorder
+                    style={{ borderLeft: "3px solid var(--mantine-color-indigo-5)" }}
+                  >
+                    <Text size="xs" fw={600} c="indigo.7" mb={2}>
+                      ↗ Trend
+                    </Text>
+                    <Text size="xs" lineClamp={2}>
+                      {text}
+                    </Text>
+                  </Paper>
+                ))}
+              </SimpleGrid>
             )}
           </Stack>
         )}
@@ -760,5 +856,79 @@ function SpendingHeatmap({ data }: { data: HeatmapDay[] }) {
         <span className="text-[10px] text-[var(--mantine-color-dimmed)] ml-1">มาก</span>
       </div>
     </div>
+  );
+}
+
+type StatCardIcon = React.ComponentType<{ size?: number }>;
+
+interface StatCardData {
+  label: string;
+  value: string;
+  icon: StatCardIcon;
+  color:
+    | "indigo"
+    | "yellow"
+    | "green"
+    | "grape"
+    | "cyan"
+    | "pink";
+  deltaPct?: number | null;
+  sparkline?: number[];
+  context?: string;
+}
+
+function StatCard({ card }: { card: StatCardData }) {
+  const Icon = card.icon;
+  const hasDelta = card.deltaPct != null;
+  const deltaPositive = hasDelta && (card.deltaPct as number) >= 0;
+  const deltaColor = !hasDelta
+    ? "dimmed"
+    : deltaPositive
+      ? "teal.7"
+      : "red.7";
+  const deltaArrow = !hasDelta ? "" : deltaPositive ? "↑" : "↓";
+  const hasSparkline = card.sparkline && card.sparkline.length >= 2;
+
+  return (
+    <Paper withBorder p="md">
+      <Group justify="space-between" align="flex-start" mb="xs" wrap="nowrap">
+        <Text size="sm" c="dimmed" fw={500}>
+          {card.label}
+        </Text>
+        <ThemeIcon size="lg" radius="md" variant="light" color={card.color}>
+          <Icon size={18} />
+        </ThemeIcon>
+      </Group>
+      <Group gap="xs" align="baseline" wrap="nowrap">
+        <Text size="xl" fw={700} style={{ lineHeight: 1.1 }}>
+          {card.value}
+        </Text>
+        {hasDelta && (
+          <Text size="xs" c={deltaColor} fw={600}>
+            {deltaArrow} {Math.abs(card.deltaPct as number).toFixed(1)}%
+          </Text>
+        )}
+      </Group>
+      {(hasSparkline || card.context) && (
+        <Group justify="space-between" align="center" mt="xs" wrap="nowrap">
+          {card.context && (
+            <Text size="xs" c="dimmed">
+              {card.context}
+            </Text>
+          )}
+          {hasSparkline && (
+            <Sparkline
+              w={80}
+              h={24}
+              data={card.sparkline as number[]}
+              curveType="monotone"
+              color={card.color}
+              fillOpacity={0.3}
+              strokeWidth={1.5}
+            />
+          )}
+        </Group>
+      )}
+    </Paper>
   );
 }

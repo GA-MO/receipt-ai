@@ -518,6 +518,9 @@ export interface AiInsightResponse {
   insights: string[];
   risks: string[];
   opportunities: string[];
+  trends: string[];
+  doc_count: number;
+  generated_at: string;
 }
 
 export interface PeriodBucket {

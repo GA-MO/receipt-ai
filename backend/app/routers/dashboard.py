@@ -575,13 +575,15 @@ AI_INSIGHT_PROMPT = """\
     "insight สั้นๆ ไม่เกิน 15 คำ"
   ],
   "risks": ["ความเสี่ยงสั้นๆ ไม่เกิน 10 คำ (ถ้ามี)"],
-  "opportunities": ["โอกาสสั้นๆ ไม่เกิน 10 คำ (ถ้ามี)"]
+  "opportunities": ["โอกาสสั้นๆ ไม่เกิน 10 คำ (ถ้ามี)"],
+  "trends": ["แนวโน้มสั้นๆ ไม่เกิน 10 คำ (ถ้ามี) — เช่น หมวดที่เพิ่ม/ลด, pattern การใช้จ่าย"]
 }}
 
 กฎสำคัญ:
 - ข้อความทุกอันต้องสั้น กระชับ อ่านปั๊บเข้าใจเลย
-- insights ไม่เกิน 3 ข้อ, risks ไม่เกิน 2, opportunities ไม่เกิน 2
-- ถ้าไม่มี risk/opportunity ให้เป็น []
+- insights ไม่เกิน 3 ข้อ, risks ไม่เกิน 2, opportunities ไม่เกิน 2, trends ไม่เกิน 2
+- risks = สิ่งที่อาจกระทบ margin/operations, opportunities = ช่องทางประหยัด/เพิ่มรายได้, trends = pattern ที่สังเกตได้ในข้อมูล
+- ถ้าไม่มี risk/opportunity/trend ให้เป็น []
 - เน้นตัวเลขและ % เทียบ เช่น "ยอดเบียร์คิดเป็น 60% ของยอดทั้งหมด"
 - ตอบเป็น JSON เท่านั้น
 """
@@ -657,6 +659,9 @@ def ai_insight(db: Session = Depends(get_db)):
             ),
         )
         data = json.loads(response.text.strip())
+        data.setdefault("trends", [])
+        data["doc_count"] = total
+        data["generated_at"] = datetime.now(UTC).isoformat()
         logger.info("AI insight generated successfully")
         return data
     except Exception as exc:
@@ -666,6 +671,9 @@ def ai_insight(db: Session = Depends(get_db)):
             "insights": [],
             "risks": [],
             "opportunities": [],
+            "trends": [],
+            "doc_count": total,
+            "generated_at": datetime.now(UTC).isoformat(),
         }
 
 

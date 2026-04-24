@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   AlertTriangle,
   ArrowLeft,
+  Calculator,
   CheckCircle2,
   CircleDashed,
   Loader2,
@@ -11,8 +12,8 @@ import {
   RotateCcw,
   Save,
   ShieldAlert,
+  ShieldCheck,
   Trash2,
-  Wand2,
 } from "lucide-react";
 import {
   ActionIcon,
@@ -32,6 +33,7 @@ import {
   Text,
   TextInput,
   Textarea,
+  ThemeIcon,
   Title,
   Tooltip,
 } from "@mantine/core";
@@ -55,7 +57,7 @@ import {
   useUpdateItem,
 } from "../api/queries";
 import { useDocumentStream } from "@/hooks/useDocumentStream";
-import { parseFraudData, riskScoreColor, riskScoreLabel } from "@/lib/fraud";
+import { parseFraudData } from "@/lib/fraud";
 import {
   type TotalsPatch,
   type ValidationIssue,
@@ -85,6 +87,14 @@ export default function ReviewPage() {
   const approveMut = useApproveDocument();
   const deleteMut = useDeleteDocument();
   const reextractMut = useReextractDocument();
+
+  const location = useLocation();
+  // If we navigated here from within the app, go back to preserve filters/pagination.
+  // Otherwise (direct URL / refresh), fall back to the documents list.
+  const handleBack = () => {
+    if (location.key !== "default") navigate(-1);
+    else navigate("/documents");
+  };
 
   // Shared autocomplete pools; dedup'd by React Query key so multiple item
   // rows each calling `useAutocomplete("product")` share one request.
@@ -184,6 +194,35 @@ export default function ReviewPage() {
     }
   };
 
+  // Apply all validation fixes in dependency order: items → vat → totals
+  const applyAllFixes = async () => {
+    const round2 = (n: number) => Math.round(n * 100) / 100;
+    const discount = form.discount ?? 0;
+
+    let newSubtotal = form.subtotal;
+    let newVat = form.vat;
+    let newGrand = form.grand_total;
+    let anyChange = false;
+
+    if (itemsIssue && itemsTotal > 0) {
+      newSubtotal = round2(itemsTotal);
+      anyChange = true;
+    }
+    if (vatIssue && newSubtotal != null) {
+      newVat = round2(newSubtotal * 0.07);
+      anyChange = true;
+    }
+    if (totalsIssue || anyChange) {
+      newGrand = round2((newSubtotal ?? 0) - discount + (newVat ?? 0));
+    }
+
+    await applyFix({
+      subtotal: newSubtotal,
+      vat: newVat,
+      grand_total: newGrand,
+    });
+  };
+
   const handleSaveItem = async (item: DocumentItemData, field: string, value: string) => {
     if (!id) return;
     const numFields = ["quantity", "unit_price", "line_total"];
@@ -275,7 +314,6 @@ export default function ReviewPage() {
   const isProcessing = doc.status === "processing";
   const confColor = (doc.confidence ?? 0) >= 0.9 ? "green" : (doc.confidence ?? 0) >= 0.7 ? "yellow" : "red";
   const { flags: fraudFlags, ai_analysis: aiAnalysis } = parseFraudData(doc.fraud_flags);
-  const hasRisk = fraudFlags.length > 0 || (aiAnalysis && aiAnalysis.risk_score >= 0.3);
 
   // Live validation on current form state + items sum.
   const itemsTotal = doc.items.reduce(
@@ -290,51 +328,158 @@ export default function ReviewPage() {
     items_total: itemsTotal || null,
   });
 
-  const fraudSection = hasRisk && (
-    <Paper withBorder p="md" radius="md" style={{ borderColor: "var(--mantine-color-red-4)" }}>
-      <Stack gap="sm">
-        {aiAnalysis && (
-          <Group justify="space-between" align="center">
-            <Group gap="xs">
-              <ShieldAlert size={18} />
-              <Text fw={700} size="sm">AI Fraud Analysis</Text>
+  type HeroVariant = {
+    color: string;
+    bg: "strong" | "soft";
+    icon: React.ReactNode;
+    title: string;
+    subtitle?: string;
+    summary?: string;
+    riskPct?: number;
+    showFlags?: boolean;
+  };
+
+  const heroVariant: HeroVariant | null = (() => {
+    const aiRisk = aiAnalysis?.risk_score ?? 0;
+    const riskPct = Math.round(aiRisk * 100);
+
+    if (doc.status === "error") {
+      return {
+        color: "red",
+        bg: "strong",
+        icon: <AlertTriangle size={22} />,
+        title: "เกิดข้อผิดพลาด",
+        subtitle: doc.error_message || "ประมวลผลเอกสารไม่สำเร็จ",
+      };
+    }
+    if (doc.status === "processing") {
+      return {
+        color: "blue",
+        bg: "strong",
+        icon: <Loader2 size={22} className="animate-spin" />,
+        title: "กำลังประมวลผล",
+        subtitle: "AI กำลังดึงข้อมูลจากเอกสาร...",
+      };
+    }
+
+    const highRisk = fraudFlags.length > 0 && aiRisk >= 0.5;
+    const lowConf = (doc.confidence ?? 1) < 0.7;
+
+    // B: reviewed + high risk → soft severity (human already approved)
+    if (highRisk && doc.status === "reviewed") {
+      return {
+        color: "red",
+        bg: "soft",
+        icon: <ShieldCheck size={22} />,
+        title: "อนุมัติแล้ว ทั้งที่มีความเสี่ยง",
+        summary: aiAnalysis?.summary,
+        riskPct,
+        showFlags: true,
+      };
+    }
+    if (highRisk) {
+      return {
+        color: "red",
+        bg: "strong",
+        icon: <ShieldAlert size={22} />,
+        title: "พบความเสี่ยงสูง",
+        summary: aiAnalysis?.summary,
+        riskPct,
+        showFlags: true,
+      };
+    }
+    if (doc.status === "reviewed") {
+      return {
+        color: "green",
+        bg: "strong",
+        icon: <CheckCircle2 size={22} />,
+        title: "ตรวจสอบเรียบร้อย",
+        subtitle: "อนุมัติแล้ว",
+      };
+    }
+    if (fraudFlags.length > 0 || lowConf) {
+      return {
+        color: "yellow",
+        bg: "strong",
+        icon: <AlertTriangle size={22} />,
+        title: "ควรตรวจทาน",
+        summary: aiAnalysis?.summary,
+        riskPct: fraudFlags.length > 0 ? riskPct : undefined,
+        showFlags: fraudFlags.length > 0,
+      };
+    }
+    // Healthy default — no issues, no need for a hero banner
+    return null;
+  })();
+
+  const heroSection = heroVariant && (
+    <Paper
+      withBorder
+      p="md"
+      radius="md"
+      style={{
+        background:
+          heroVariant.bg === "strong"
+            ? `var(--mantine-color-${heroVariant.color}-0)`
+            : undefined,
+        borderColor: `var(--mantine-color-${heroVariant.color}-${heroVariant.bg === "strong" ? "4" : "3"})`,
+      }}
+    >
+      <Stack gap="md">
+        <Group gap="md" wrap="nowrap" align="flex-start">
+          <ThemeIcon
+            color={heroVariant.color}
+            variant="light"
+            size={44}
+            radius="xl"
+          >
+            {heroVariant.icon}
+          </ThemeIcon>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <Group justify="space-between" align="center" wrap="nowrap">
+              <Text fw={700} size="md">
+                {heroVariant.title}
+              </Text>
+              {heroVariant.riskPct != null && (
+                <Badge
+                  color={heroVariant.color}
+                  variant={heroVariant.bg === "strong" ? "filled" : "light"}
+                  size="sm"
+                >
+                  RISK {heroVariant.riskPct}%
+                </Badge>
+              )}
             </Group>
-            <Badge
-              color={riskScoreColor(aiAnalysis.risk_score)}
-              variant="filled"
-              size="lg"
-            >
-              Risk: {(aiAnalysis.risk_score * 100).toFixed(0)}% — {riskScoreLabel(aiAnalysis.risk_score)}
-            </Badge>
-          </Group>
-        )}
+            {heroVariant.subtitle && (
+              <Text size="sm" c="dimmed" mt={2}>
+                {heroVariant.subtitle}
+              </Text>
+            )}
+            {heroVariant.summary && (
+              <Text size="sm" mt={4}>
+                {heroVariant.summary}
+              </Text>
+            )}
+          </div>
+        </Group>
 
-        {aiAnalysis?.summary && (
-          <Alert color={riskScoreColor(aiAnalysis.risk_score)} variant="light" icon={<ShieldAlert size={16} />}>
-            <Text size="sm">{aiAnalysis.summary}</Text>
-          </Alert>
-        )}
-
-        {fraudFlags.length > 0 && (
+        {heroVariant.showFlags && fraudFlags.length > 0 && (
           <Stack gap={4}>
-            <Text size="xs" c="dimmed" fw={600} tt="uppercase">
-              รายการที่ตรวจพบ ({fraudFlags.length})
-            </Text>
             {fraudFlags.map((flag, i) => (
-              <Paper key={i} withBorder p="xs" radius="sm" style={{
-                borderLeftWidth: 3,
-                borderLeftColor: `var(--mantine-color-${SEVERITY_COLOR[flag.severity] || "gray"}-5)`,
-              }}>
-                <Group gap="xs" wrap="nowrap">
-                  <Badge color={SEVERITY_COLOR[flag.severity] || "gray"} variant="filled" size="xs" style={{ flexShrink: 0 }}>
-                    {flag.severity === "high" ? "สูง" : flag.severity === "medium" ? "กลาง" : "ต่ำ"}
-                  </Badge>
-                  <div>
-                    <Text size="xs" fw={600}>{flag.label}</Text>
-                    <Text size="xs" c="dimmed">{flag.detail}</Text>
-                  </div>
-                </Group>
-              </Paper>
+              <div
+                key={i}
+                style={{
+                  paddingLeft: 12,
+                  borderLeft: `3px solid var(--mantine-color-${SEVERITY_COLOR[flag.severity] || "gray"}-5)`,
+                }}
+              >
+                <Text size="sm" fw={600} lh={1.3}>
+                  {flag.label}
+                </Text>
+                <Text size="xs" c="dimmed" lh={1.4}>
+                  {flag.detail}
+                </Text>
+              </div>
             ))}
           </Stack>
         )}
@@ -362,23 +507,15 @@ export default function ReviewPage() {
   const vatIssue = validationIssues.find((i) => i.field === "vat");
   const itemsIssue = validationIssues.find((i) => i.field === "items");
 
+  const expectedVat =
+    form.subtotal != null ? form.subtotal * 0.07 : null;
+  const expectedGrand =
+    form.subtotal != null
+      ? form.subtotal - (form.discount ?? 0) + (form.vat ?? 0)
+      : null;
+
   const formSection = (
-    <Stack gap="md">
-      {validationIssues.length > 0 && (
-        <ReconciliationPanel
-          itemsTotal={itemsTotal}
-          subtotal={form.subtotal}
-          discount={form.discount}
-          vat={form.vat}
-          grandTotal={form.grand_total}
-          itemsIssue={!!itemsIssue}
-          vatIssue={!!vatIssue}
-          totalsIssue={!!totalsIssue}
-          issues={validationIssues}
-          onApply={applyFix}
-          disabled={isProcessing || saving}
-        />
-      )}
+    <Stack gap="lg">
       <div className="grid grid-cols-2 gap-3">
         <Autocomplete
           label="ร้านค้า"
@@ -411,50 +548,107 @@ export default function ReviewPage() {
           onChange={(v) => setForm({ ...form, category: v || "" })}
           disabled={isProcessing}
         />
-        <NumberInput
-          label="ยอดก่อนภาษี"
-          prefix="฿"
-          thousandSeparator=","
-          decimalScale={2}
-          value={form.subtotal ?? ""}
-          onChange={(v) => setForm({ ...form, subtotal: v === "" ? null : Number(v) })}
-          disabled={isProcessing}
-          error={itemsIssue ? "ไม่ตรงกับผลรวมสินค้า" : undefined}
-        />
-        <NumberInput
-          label="ส่วนลด"
-          prefix="฿"
-          thousandSeparator=","
-          decimalScale={2}
-          value={form.discount ?? ""}
-          onChange={(v) => setForm({ ...form, discount: v === "" ? null : Number(v) })}
-          disabled={isProcessing}
-        />
-        <NumberInput
-          label="VAT"
-          prefix="฿"
-          thousandSeparator=","
-          decimalScale={2}
-          value={form.vat ?? ""}
-          onChange={(v) => setForm({ ...form, vat: v === "" ? null : Number(v) })}
-          disabled={isProcessing}
-          error={vatIssue ? "VAT ไม่ใช่ 7%" : undefined}
-        />
-        <div className="col-span-2">
-          <NumberInput
-            label="ยอดรวมสุทธิ"
-            prefix="฿"
-            thousandSeparator=","
-            decimalScale={2}
-            value={form.grand_total ?? ""}
-            onChange={(v) => setForm({ ...form, grand_total: v === "" ? null : Number(v) })}
+      </div>
+
+      <Stack gap="sm">
+        <Group justify="space-between" align="center">
+          <Text size="xs" c="dimmed" fw={700} tt="uppercase" lts={1}>
+            ยอดเงิน
+          </Text>
+          {validationIssues.length > 0 && (
+            <Button
+              size="xs"
+              variant="light"
+              color="indigo"
+              leftSection={<Calculator size={14} />}
+              onClick={applyAllFixes}
+              disabled={isProcessing || saving}
+            >
+              แก้อัตโนมัติ
+            </Button>
+          )}
+        </Group>
+
+        <div className="grid grid-cols-2 gap-3">
+          <AmountField
+            label="ยอดก่อนภาษี"
+            value={form.subtotal}
+            onChange={(v) => setForm({ ...form, subtotal: v })}
             disabled={isProcessing}
-            size="lg"
-            styles={{ input: { fontWeight: 600 } }}
-            error={totalsIssue ? "ยอดรวมไม่ตรง" : undefined}
+            warning={itemsIssue ? "ไม่ตรงกับผลรวมสินค้า" : undefined}
+          />
+          <AmountField
+            label="ส่วนลด"
+            value={form.discount}
+            onChange={(v) => setForm({ ...form, discount: v })}
+            disabled={isProcessing}
+          />
+          <AmountField
+            label="VAT 7%"
+            value={form.vat}
+            onChange={(v) => setForm({ ...form, vat: v })}
+            disabled={isProcessing}
+            warning={
+              vatIssue && expectedVat != null
+                ? `ควรเป็น ${fmtBaht(expectedVat)}`
+                : undefined
+            }
           />
         </div>
-      </div>
+
+        <Paper
+          withBorder
+          p="md"
+          radius="md"
+          style={{
+            background: "var(--mantine-color-indigo-0)",
+            borderColor: totalsIssue
+              ? "var(--mantine-color-orange-4)"
+              : "var(--mantine-color-indigo-3)",
+          }}
+        >
+          <Group justify="space-between" align="center" wrap="nowrap">
+            <Stack gap={0}>
+              <Text size="sm" fw={600} c="indigo.7">
+                ยอดรวมสุทธิ
+              </Text>
+              <Text size="xs" c="dimmed">
+                รวม VAT · สุทธิ
+              </Text>
+            </Stack>
+            <NumberInput
+              prefix="฿"
+              thousandSeparator=","
+              decimalScale={2}
+              value={form.grand_total ?? ""}
+              onChange={(v) =>
+                setForm({ ...form, grand_total: v === "" ? null : Number(v) })
+              }
+              disabled={isProcessing}
+              variant="unstyled"
+              hideControls
+              styles={{
+                input: {
+                  fontSize: 26,
+                  fontWeight: 700,
+                  textAlign: "right",
+                  color: totalsIssue
+                    ? "var(--mantine-color-orange-7)"
+                    : "var(--mantine-color-indigo-9)",
+                  padding: 0,
+                  height: "auto",
+                  minWidth: 180,
+                },
+              }}
+            />
+          </Group>
+          {totalsIssue && expectedGrand != null && (
+            <Text size="xs" c="orange.7" ta="right" mt={4}>
+              ควรเป็น ฿{fmtBaht(expectedGrand)}
+            </Text>
+          )}
+        </Paper>
+      </Stack>
 
       <div>
         <Group justify="space-between" mb="sm">
@@ -504,6 +698,7 @@ export default function ReviewPage() {
               py="xs"
               mb="sm"
               variant="light"
+              styles={{ wrapper: { alignItems: "center" } }}
             >
               <Text size="xs">
                 <b>{off.length} รายการ</b> ไม่อยู่ใน catalog
@@ -617,7 +812,7 @@ export default function ReviewPage() {
       <div className="sticky top-0 z-20 px-3 py-2" style={{ background: "var(--mantine-color-body)", borderBottom: "1px solid var(--mantine-color-default-border)" }}>
         <Group justify="space-between" wrap="nowrap">
           <Group gap="xs" wrap="nowrap" className="min-w-0">
-            <ActionIcon variant="subtle" onClick={() => navigate("/documents")}>
+            <ActionIcon variant="subtle" onClick={handleBack}>
               <ArrowLeft size={18} />
             </ActionIcon>
             <div className="min-w-0">
@@ -649,18 +844,8 @@ export default function ReviewPage() {
         </Tabs.List>
       </Tabs>
 
-      {/* Banners */}
-      {isProcessing && (
-        <Alert color="blue" icon={<Loader2 size={16} className="animate-spin" />} py="xs" mx="sm" mt="sm">
-          <Text size="sm">AI กำลังประมวลผล...</Text>
-        </Alert>
-      )}
-      {doc.error_message && (
-        <Alert color="red" icon={<AlertTriangle size={16} />} py="xs" mx="sm" mt="sm">
-          <Text size="sm">{doc.error_message}</Text>
-        </Alert>
-      )}
-      {fraudSection && <div className="px-3 pt-2">{fraudSection}</div>}
+      {/* Hero status card (fraud detail merged in) */}
+      {heroSection && <div className="px-3 pt-2">{heroSection}</div>}
 
       {/* Content */}
       <div className="flex-1 overflow-auto">
@@ -695,24 +880,24 @@ export default function ReviewPage() {
   // DESKTOP LAYOUT
   // ============================================
   const desktopLayout = (
-    <div className="hidden lg:flex flex-col h-full p-6">
+    <div
+      className="hidden lg:flex flex-col"
+      style={{
+        height:
+          "calc(100vh - var(--app-shell-header-offset) - 2 * var(--app-shell-padding))",
+      }}
+    >
       {/* Top bar */}
       <Group justify="space-between" mb="md">
         <Group gap="md">
-          <ActionIcon variant="subtle" size="lg" onClick={() => navigate("/documents")}>
+          <ActionIcon variant="subtle" size="lg" onClick={handleBack}>
             <ArrowLeft size={20} />
           </ActionIcon>
           <div>
             <Title order={3}>{doc.filename}</Title>
-            <Group gap="xs" mt={2}>
-              <Text size="sm" c="dimmed">{new Date(doc.uploaded_at).toLocaleString("th-TH")}</Text>
-              {doc.confidence != null && <Badge color={confColor} variant="light">Confidence: {(doc.confidence * 100).toFixed(0)}%</Badge>}
-              {doc.status === "reviewed" && <Badge color="green" variant="light" leftSection={<CheckCircle2 size={12} />}>ตรวจสอบแล้ว</Badge>}
-              {doc.status === "extracted" && <Badge color="yellow" variant="light">รอตรวจสอบ</Badge>}
-              {doc.status === "processing" && <Badge color="blue" variant="light" leftSection={<Loader2 size={12} className="animate-spin" />}>กำลังประมวลผล</Badge>}
-              {doc.status === "error" && <Badge color="red" variant="light" leftSection={<AlertTriangle size={12} />}>เกิดข้อผิดพลาด</Badge>}
-              {fraudFlags.length > 0 && <Badge color="red" variant="light" leftSection={<ShieldAlert size={12} />}>Fraud: {fraudFlags.length}</Badge>}
-            </Group>
+            <Text size="sm" c="dimmed" mt={4}>
+              อัปโหลด {new Date(doc.uploaded_at).toLocaleString("th-TH")}
+            </Text>
           </div>
         </Group>
         <Group gap="sm">
@@ -728,32 +913,65 @@ export default function ReviewPage() {
         </Group>
       </Group>
 
-      {isProcessing && (
-        <Alert color="blue" icon={<Loader2 size={18} className="animate-spin" />} mb="md">
-          AI กำลังประมวลผลเอกสาร...
-        </Alert>
-      )}
-      {doc.error_message && (
-        <Alert color="red" icon={<AlertTriangle size={18} />} mb="md">
-          {doc.error_message}
-        </Alert>
-      )}
-      {fraudSection && <div className="mb-4">{fraudSection}</div>}
-
-      {/* 2-column layout */}
-      <div className="flex-1 grid grid-cols-2 gap-6 min-h-0">
-        <Paper withBorder p="md" className="overflow-auto">
-          {imageSection}
+      {/* 2-column layout: document (full-height, left) + info (scrollable, right) */}
+      <div className="flex-1 grid grid-cols-[2fr_3fr] gap-6 min-h-0">
+        <Paper
+          withBorder
+          p="md"
+          className="overflow-hidden"
+          style={{ display: "flex", flexDirection: "column" }}
+        >
+          <div className="flex-1 min-h-0">
+            {doc.file_type === "pdf" ? (
+              <iframe
+                src={getDocumentImageUrl(doc.id)}
+                className="w-full h-full rounded-lg"
+                title="PDF"
+              />
+            ) : (
+              <div className="h-full rounded-lg overflow-hidden">
+                <ImageCanvas
+                  src={getDocumentImageUrl(doc.id)}
+                  alt={doc.filename}
+                  downloadFilename={doc.filename}
+                />
+              </div>
+            )}
+          </div>
         </Paper>
-        <Paper withBorder className="overflow-auto flex flex-col">
-          <Group justify="space-between" p="md" className="sticky top-0 z-10" style={{ background: "var(--mantine-color-body)", borderBottom: "1px solid var(--mantine-color-default-border)" }}>
-            <Text fw={600}>ข้อมูลที่ดึงได้</Text>
+        <Paper
+          withBorder
+          className="overflow-hidden"
+          style={{ display: "flex", flexDirection: "column" }}
+        >
+          <Group
+            justify="space-between"
+            p="md"
+            style={{
+              background: "var(--mantine-color-body)",
+              borderBottom: "1px solid var(--mantine-color-default-border)",
+            }}
+          >
+            <Group gap="xs" align="baseline">
+              <Text fw={600}>ข้อมูลที่ดึงได้</Text>
+              {doc.confidence != null && (
+                <Text
+                  size="xs"
+                  c={confColor === "red" ? "red.7" : "dimmed"}
+                >
+                  AI อ่านได้ {Math.round(doc.confidence * 100)}%
+                </Text>
+              )}
+            </Group>
             <Button size="sm" onClick={handleSaveHeader} disabled={saving || isProcessing} leftSection={saving ? <Loader size="xs" /> : <Save size={14} />}>
               บันทึก
             </Button>
           </Group>
-          <div className="p-4 flex-1">
-            {formSection}
+          <div className="flex-1 overflow-auto p-4">
+            <Stack gap="md">
+              {heroSection}
+              {formSection}
+            </Stack>
           </div>
         </Paper>
       </div>
@@ -921,142 +1139,53 @@ function ItemRow({
   );
 }
 
-function ReconciliationPanel({
-  itemsTotal,
-  subtotal,
-  discount,
-  vat,
-  grandTotal,
-  itemsIssue,
-  vatIssue,
-  totalsIssue,
-  issues,
-  onApply,
+const fmtBaht = (n: number | null | undefined): string => {
+  if (n == null) return "—";
+  return n.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+};
+
+function AmountField({
+  label,
+  value,
+  onChange,
   disabled,
+  warning,
 }: {
-  itemsTotal: number;
-  subtotal: number | null;
-  discount: number | null;
-  vat: number | null;
-  grandTotal: number | null;
-  itemsIssue: boolean;
-  vatIssue: boolean;
-  totalsIssue: boolean;
-  issues: ValidationIssue[];
-  onApply: (patch: TotalsPatch) => void;
+  label: string;
+  value: number | null;
+  onChange: (v: number | null) => void;
   disabled?: boolean;
+  warning?: string;
 }) {
-  const effectiveDiscount = discount ?? 0;
-  const expected =
-    subtotal != null ? subtotal - effectiveDiscount + (vat ?? 0) : null;
-  const allFixes = issues.flatMap((i) => i.fixes ?? []);
-  const hasItems = itemsTotal > 0;
-
-  const Row = ({
-    label,
-    value,
-    flagged,
-    muted,
-    bold,
-    dimmed,
-  }: {
-    label: string;
-    value: number | null;
-    flagged?: boolean;
-    muted?: boolean;
-    bold?: boolean;
-    dimmed?: boolean;
-  }) => {
-    if (value == null) return null;
-    const color = flagged ? "red.7" : dimmed ? "dimmed" : undefined;
-    const fw = bold ? 700 : muted ? 500 : 400;
-    return (
-      <>
-        <Text size="xs" c={color} fw={fw}>
-          {label}
-        </Text>
-        <Text size="xs" ff="monospace" ta="right" c={color} fw={fw}>
-          ฿{value.toFixed(2)}
-        </Text>
-      </>
-    );
-  };
-
+  const hasWarning = !!warning;
   return (
-    <Paper
-      withBorder
-      p="sm"
-      radius="md"
-      style={{
-        borderColor: "var(--mantine-color-yellow-4)",
-        background: "var(--mantine-color-yellow-0)",
-      }}
-    >
-      <Stack gap="xs">
-        <Group gap={6} align="center">
-          <AlertTriangle size={14} color="var(--mantine-color-yellow-8)" />
-          <Text fw={600} size="sm">
-            ยอดเงินไม่ตรง
-          </Text>
-        </Group>
-
-        <div
-          className="grid gap-x-4 gap-y-1"
-          style={{ gridTemplateColumns: "1fr auto" }}
-        >
-          {hasItems && (
-            <Row label="ผลรวมรายการสินค้า" value={itemsTotal} dimmed />
-          )}
-          <Row label="ยอดก่อนภาษี" value={subtotal} flagged={itemsIssue} />
-          {effectiveDiscount > 0 && (
-            <Row label="− ส่วนลด" value={effectiveDiscount} />
-          )}
-          <Row label="+ VAT" value={vat} flagged={vatIssue} />
-          {expected != null && (
-            <Row label="= ควรเป็น" value={expected} muted dimmed />
-          )}
-          <Row
-            label="ยอดรวมสุทธิในเอกสาร"
-            value={grandTotal}
-            flagged={totalsIssue}
-            bold
+    <NumberInput
+      label={label}
+      prefix="฿ "
+      thousandSeparator=","
+      decimalScale={2}
+      value={value ?? ""}
+      onChange={(v) => onChange(v === "" ? null : Number(v))}
+      disabled={disabled}
+      hideControls
+      rightSection={
+        hasWarning ? (
+          <AlertTriangle
+            size={14}
+            style={{ color: "var(--mantine-color-orange-6)" }}
           />
-        </div>
-
-        <Stack gap={2}>
-          {issues.map((issue, i) => (
-            <Text
-              key={i}
-              size="xs"
-              c={issue.severity === "error" ? "red.7" : "yellow.8"}
-            >
-              • {issue.message}
-            </Text>
-          ))}
-        </Stack>
-
-        {allFixes.length > 0 && (
-          <Stack gap={4}>
-            <Text size="xs" fw={600} c="dimmed" tt="uppercase">
-              แก้ไขให้อัตโนมัติ
-            </Text>
-            {allFixes.map((fix, k) => (
-              <Button
-                key={k}
-                size="xs"
-                variant="default"
-                justify="flex-start"
-                leftSection={<Wand2 size={12} />}
-                onClick={() => onApply(fix.apply)}
-                disabled={disabled}
-                fullWidth
-              >
-                {fix.label}
-              </Button>
-            ))}
-          </Stack>
-        )}
-      </Stack>
-    </Paper>
+        ) : undefined
+      }
+      error={warning}
+      styles={{
+        input: hasWarning
+          ? { borderColor: "var(--mantine-color-orange-5)" }
+          : undefined,
+        error: { color: "var(--mantine-color-orange-7)" },
+      }}
+    />
   );
 }
