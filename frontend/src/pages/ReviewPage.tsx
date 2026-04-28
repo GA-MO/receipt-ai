@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   AlertTriangle,
@@ -106,6 +106,16 @@ export default function ReviewPage() {
   const { data: productOptions = [] } = useAutocomplete("product", "", 500);
   const merchantSuggestions = merchantOptions.map((o) => o.value);
   const productSuggestions = productOptions.map((o) => o.value);
+  // Lookup of canonical name → catalog SKU code, so saving an Autocomplete
+  // pick can attach `product_code` directly instead of relying on the
+  // server-side fuzzy resolver.
+  const productCodeByName = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const o of productOptions) {
+      if (o.code) map.set(o.value, o.code);
+    }
+    return map;
+  }, [productOptions]);
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [reextractModalOpen, setReextractModalOpen] = useState(false);
@@ -229,8 +239,21 @@ export default function ReviewPage() {
     const val = numFields.includes(field)
       ? value === "" ? null : Number(value)
       : value;
+    const data: Record<string, unknown> = { [field]: val };
+    // When the user picks a product name from the catalog autocomplete,
+    // pin the SKU code so the backend doesn't have to fuzzy-resolve and
+    // possibly drop it. Free-text edits (no map hit) still go through the
+    // server-side resolver. Empty string clears the code.
+    if (field === "product_name_normalized") {
+      const trimmed = (value || "").trim();
+      if (!trimmed) {
+        data.product_code = null;
+      } else if (productCodeByName.has(trimmed)) {
+        data.product_code = productCodeByName.get(trimmed);
+      }
+    }
     try {
-      await updateItemMut.mutateAsync({ itemId: item.id, data: { [field]: val } });
+      await updateItemMut.mutateAsync({ itemId: item.id, data });
     } catch {
       toast("error", "ไม่สามารถบันทึกรายการได้");
     }

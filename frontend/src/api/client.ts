@@ -311,6 +311,7 @@ export type AutocompleteKind = "merchant" | "product";
 export interface AutocompleteOption {
   value: string;
   score: number;
+  code?: string | null;
 }
 
 export function getAutocomplete(

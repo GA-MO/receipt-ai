@@ -9,6 +9,12 @@ user-confirmed canonical names:
 
 Returns at most ``limit`` suggestions, ordered by combined frequency and
 optionally filtered by ``q`` (case-insensitive substring match).
+
+Product suggestions also carry the resolved catalog ``code`` (SKU) so the UI
+can persist the exact SKU on selection without relying on a server-side
+fuzzy re-resolve. Historical names that don't map to any catalog SKU are
+filtered out — they were the source of confusing "ไม่อยู่ใน catalog" results
+after picking a brand-only label like ``"น้ำดื่มสิงห์"``.
 """
 
 from __future__ import annotations
@@ -27,6 +33,7 @@ from ..models import (
     Product,
     ProductAlias,
 )
+from ..services.catalog import find_code_by_name
 
 router = APIRouter()
 
@@ -50,6 +57,9 @@ def autocomplete(
     db: Session = Depends(get_db),
 ):
     counter: Counter[str] = Counter()
+    # Product-only: name → catalog code (first catalog hit wins; aliases /
+    # historical fall back to fuzzy resolve).
+    codes: dict[str, str] = {}
 
     if kind == "merchant":
         for row in (
@@ -72,52 +82,76 @@ def autocomplete(
             if name and _match(name, q):
                 counter[name] += int(count or 0)
 
-    else:  # product
-        # 1. Canonical catalog (singhaonline.com seed) — authoritative, highest weight.
-        # Match against display/canonical (Thai), name_en (English), and the
-        # ``aliases`` JSON blob (short codes, OCR-friendly variants) so the
-        # user can pipe in ``"Silver"``, ``"SK"``, ``"SINGHA L"``, etc. and
-        # still surface the right catalog entry.
-        catalog_rows = (
-            db.query(
-                Product.display_name,
-                Product.canonical_name,
-                Product.name_en,
-                Product.aliases,
-            )
-            .filter(Product.active.is_(True))
-            .all()
+        return [
+            {"value": name, "score": score}
+            for name, score in counter.most_common(limit)
+        ]
+
+    # ----- product -----
+    # 1. Canonical catalog (singhaonline.com seed) — authoritative, highest weight.
+    # Match against display/canonical (Thai), name_en (English), and the
+    # ``aliases`` JSON blob (short codes, OCR-friendly variants) so the
+    # user can pipe in ``"Silver"``, ``"SK"``, ``"SINGHA L"``, etc. and
+    # still surface the right catalog entry.
+    catalog_rows = (
+        db.query(
+            Product.code,
+            Product.display_name,
+            Product.canonical_name,
+            Product.name_en,
+            Product.aliases,
         )
-        for display, canon, name_en, aliases in catalog_rows:
-            name = (display or canon or "").strip()
-            if not name:
+        .filter(Product.active.is_(True))
+        .all()
+    )
+    for code, display, canon, name_en, aliases in catalog_rows:
+        name = (display or canon or "").strip()
+        if not name:
+            continue
+        haystacks = (name, (canon or ""), (name_en or ""), (aliases or ""))
+        if not q or any(_match(h, q) for h in haystacks):
+            counter[name] += _CATALOG_WEIGHT
+            if code and name not in codes:
+                codes[name] = code
+
+    # 2. User-confirmed aliases.
+    for row in (
+        db.query(ProductAlias.canonical_name, ProductAlias.hit_count)
+        .all()
+    ):
+        name = (row[0] or "").strip()
+        if not name or not _match(name, q):
+            continue
+        # Aliases sometimes reference catalog canonicals — try to attach a
+        # code so the UI can pin the SKU on selection.
+        if name not in codes:
+            resolved = find_code_by_name(db, name)
+            if resolved:
+                codes[name] = resolved
+        counter[name] += max(int(row[1] or 0), 1) * _ALIAS_WEIGHT
+
+    # 3. Historical product names from prior documents — but only those that
+    # resolve to a real catalog SKU. Brand-only labels that Gemini once
+    # produced (e.g. ``"น้ำดื่มสิงห์"``) would otherwise pollute the dropdown
+    # and lead to "ไม่อยู่ใน catalog" after the user picks them.
+    rows = (
+        db.query(DocumentItem.product_name_normalized, func.count(DocumentItem.id))
+        .filter(DocumentItem.product_name_normalized.isnot(None))
+        .group_by(DocumentItem.product_name_normalized)
+        .all()
+    )
+    for name, count in rows:
+        name = (name or "").strip()
+        if not name or not _match(name, q):
+            continue
+        if name not in codes:
+            resolved = find_code_by_name(db, name)
+            if not resolved:
                 continue
-            haystacks = (name, (canon or ""), (name_en or ""), (aliases or ""))
-            if not q or any(_match(h, q) for h in haystacks):
-                counter[name] += _CATALOG_WEIGHT
-
-        # 2. User-confirmed aliases.
-        for row in (
-            db.query(ProductAlias.canonical_name, ProductAlias.hit_count)
-            .all()
-        ):
-            name = (row[0] or "").strip()
-            if name and _match(name, q):
-                counter[name] += max(int(row[1] or 0), 1) * _ALIAS_WEIGHT
-
-        # 3. Historical product names from prior documents.
-        rows = (
-            db.query(DocumentItem.product_name_normalized, func.count(DocumentItem.id))
-            .filter(DocumentItem.product_name_normalized.isnot(None))
-            .group_by(DocumentItem.product_name_normalized)
-            .all()
-        )
-        for name, count in rows:
-            name = (name or "").strip()
-            if name and _match(name, q):
-                counter[name] += int(count or 0)
+            codes[name] = resolved
+        counter[name] += int(count or 0)
 
     return [
-        {"value": name, "score": score}
+        {"value": name, "code": codes.get(name), "score": score}
         for name, score in counter.most_common(limit)
     ]

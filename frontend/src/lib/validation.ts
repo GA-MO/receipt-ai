@@ -5,10 +5,10 @@
 export type ValidationSeverity = "info" | "warning" | "error";
 
 export type TotalsPatch = Partial<{
-  subtotal: number;
-  discount: number;
-  vat: number;
-  grand_total: number;
+  subtotal: number | null;
+  discount: number | null;
+  vat: number | null;
+  grand_total: number | null;
 }>;
 
 export interface ValidationFix {
