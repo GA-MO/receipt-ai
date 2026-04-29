@@ -6,14 +6,13 @@ from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
-from google.genai import types
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from ..config import settings
 from ..database import get_db
 from ..models import Document, DocumentItem
 from ..schemas import DashboardStats
+from ..services import llm_client
 
 logger = logging.getLogger(__name__)
 
@@ -592,8 +591,6 @@ AI_INSIGHT_PROMPT = """\
 @router.get("/ai-insight")
 def ai_insight(db: Session = Depends(get_db)):
     """Generate AI-powered business insight from current data."""
-    from ..services.extraction import _get_client
-
     total = db.query(func.count(Document.id)).scalar() or 0
     reviewed = db.query(func.count(Document.id)).filter(Document.status == "reviewed").scalar() or 0
     total_sales = float(
@@ -649,16 +646,8 @@ def ai_insight(db: Session = Depends(get_db)):
     )
 
     try:
-        client = _get_client()
-        response = client.models.generate_content(
-            model=settings.gemini_model,
-            contents=[prompt],
-            config=types.GenerateContentConfig(
-                temperature=0.3,
-                response_mime_type="application/json",
-            ),
-        )
-        data = json.loads(response.text.strip())
+        raw_text = llm_client.generate_json(prompt=prompt, temperature=0.3)
+        data = json.loads(raw_text)
         data.setdefault("trends", [])
         data["doc_count"] = total
         data["generated_at"] = datetime.now(UTC).isoformat()

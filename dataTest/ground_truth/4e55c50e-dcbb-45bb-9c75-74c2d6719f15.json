@@ -1,0 +1,16 @@
+{
+  "_note": "Ground truth from human review (status=reviewed before any model re-extracts). Captured 2026-04-29.",
+  "merchant_name": "ร้านสุดาพาณิชย์",
+  "merchant_normalized": "สุดาพาณิชย์",
+  "document_date": "2025-12-30",
+  "grand_total": 130305.0,
+  "category": "เครื่องดื่ม",
+  "items": [
+    {"product_name_normalized": "เบียร์ลีโอขวดใหญ่", "quantity": 60.0, "unit_price": 644.0, "line_total": 38640.0},
+    {"product_name_normalized": "เบียร์สิงห์ขวดใหญ่", "quantity": 120.0, "unit_price": 688.0, "line_total": 82560.0},
+    {"product_name_normalized": "โซดาสิงห์", "quantity": 37.0, "unit_price": 155.0, "line_total": 5735.0},
+    {"product_name_normalized": "น้ำสิงห์เพ็ท 600ml", "quantity": 28.0, "unit_price": 85.0, "line_total": 2380.0},
+    {"product_name_normalized": "สิงห์เลมอนโซดา", "quantity": 2.0, "unit_price": 330.0, "line_total": 660.0},
+    {"product_name_normalized": "สิงห์เลมอนโซดา เรด", "quantity": 1.0, "unit_price": 330.0, "line_total": 330.0}
+  ]
+}

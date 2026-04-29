@@ -2,12 +2,22 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    # AI
+    # AI provider selector: "gemini" (default, google-genai SDK) or "openrouter"
+    llm_provider: str = "gemini"
+
+    # Gemini (used when llm_provider == "gemini")
     gemini_api_key: str = ""
     gcp_credentials_path: str = ""
     gcp_project_id: str = ""
     gcp_location: str = "asia-southeast1"
     gemini_model: str = "gemini-3-flash-preview"
+
+    # OpenRouter (used when llm_provider == "openrouter")
+    openrouter_api_key: str = ""
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    openrouter_model: str = "google/gemini-3-flash-preview"
+    openrouter_app_title: str = "Thai Receipt Intelligence"
+    openrouter_app_url: str = ""
 
     # Database
     database_url: str = "sqlite:///./data/receipts.db"
@@ -22,7 +32,7 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = "INFO"
 
-    # Retry
+    # Retry (shared across providers; kept under gemini_* names for backward compat)
     gemini_max_retries: int = 3
     gemini_retry_delay: float = 1.0
     gemini_request_timeout: float = 60.0

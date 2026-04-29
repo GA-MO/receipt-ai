@@ -1,0 +1,692 @@
+{
+  "doc_id": "4e55c50e-dcbb-45bb-9c75-74c2d6719f15",
+  "ground_truth": {
+    "_note": "Ground truth from human review (status=reviewed before any model re-extracts). Captured 2026-04-29.",
+    "merchant_name": "ร้านสุดาพาณิชย์",
+    "merchant_normalized": "สุดาพาณิชย์",
+    "document_date": "2025-12-30",
+    "grand_total": 130305.0,
+    "category": "เครื่องดื่ม",
+    "items": [
+      {
+        "product_name_normalized": "เบียร์ลีโอขวดใหญ่",
+        "quantity": 60.0,
+        "unit_price": 644.0,
+        "line_total": 38640.0
+      },
+      {
+        "product_name_normalized": "เบียร์สิงห์ขวดใหญ่",
+        "quantity": 120.0,
+        "unit_price": 688.0,
+        "line_total": 82560.0
+      },
+      {
+        "product_name_normalized": "โซดาสิงห์",
+        "quantity": 37.0,
+        "unit_price": 155.0,
+        "line_total": 5735.0
+      },
+      {
+        "product_name_normalized": "น้ำสิงห์เพ็ท 600ml",
+        "quantity": 28.0,
+        "unit_price": 85.0,
+        "line_total": 2380.0
+      },
+      {
+        "product_name_normalized": "สิงห์เลมอนโซดา",
+        "quantity": 2.0,
+        "unit_price": 330.0,
+        "line_total": 660.0
+      },
+      {
+        "product_name_normalized": "สิงห์เลมอนโซดา เรด",
+        "quantity": 1.0,
+        "unit_price": 330.0,
+        "line_total": 330.0
+      }
+    ]
+  },
+  "results": [
+    {
+      "model": "google/gemini-2.5-flash-lite",
+      "ok": true,
+      "latency_s": 6.088,
+      "cost_usd": 0.0010781,
+      "prompt_tokens": 6653,
+      "completion_tokens": 1032,
+      "extraction": {
+        "merchant_name": "ร้านสุดาพาณิชย์",
+        "merchant_normalized": "สุดาพาณิชย์",
+        "document_number": null,
+        "document_date": "1968-12-30",
+        "category": "เครื่องดื่ม",
+        "items": [
+          {
+            "product_name_raw": "เพียรใน",
+            "product_name_normalized": "เพียรใน",
+            "category": "เครื่องดื่ม",
+            "quantity": 60,
+            "unit": "ขวด",
+            "unit_price": 644.0,
+            "line_total": 38640.0
+          },
+          {
+            "product_name_raw": "เพียรใน",
+            "product_name_normalized": "เพียรใน",
+            "category": "เครื่องดื่ม",
+            "quantity": 120,
+            "unit": "ขวด",
+            "unit_price": 688.0,
+            "line_total": 82560.0
+          },
+          {
+            "product_name_raw": "9MOM สิงห์ เปรี้ยว",
+            "product_name_normalized": "9MOM สิงห์ เปรี้ยว",
+            "category": "เครื่องดื่ม",
+            "quantity": 37,
+            "unit": "ขวด",
+            "unit_price": 155.0,
+            "line_total": 5735.0
+          },
+          {
+            "product_name_raw": "น้ำสิงห์ เปรี้ยว",
+            "product_name_normalized": "น้ำสิงห์ เปรี้ยว",
+            "category": "เครื่องดื่ม",
+            "quantity": 28,
+            "unit": "ขวด",
+            "unit_price": 85.0,
+            "line_total": 2380.0
+          },
+          {
+            "product_name_raw": "เบียร์",
+            "product_name_normalized": "เบียร์",
+            "category": "เครื่องดื่ม",
+            "quantity": 2,
+            "unit": "ขวด",
+            "unit_price": 330.0,
+            "line_total": 660.0
+          },
+          {
+            "product_name_raw": "เบียร์ (100)",
+            "product_name_normalized": "เบียร์",
+            "category": "เครื่องดื่ม",
+            "quantity": 1,
+            "unit": "ขวด",
+            "unit_price": 330.0,
+            "line_total": 330.0
+          }
+        ],
+        "subtotal": 130305.0,
+        "discount": 0.0,
+        "vat": 0.0,
+        "grand_total": 130305.0,
+        "confidence": 0.85,
+        "notes": "เอกสารนี้เป็นบิลเงินสด",
+        "needs_review_fields": [
+          "document_number",
+          "document_date",
+          "items[0].product_name_normalized",
+          "items[1].product_name_normalized",
+          "items[2].product_name_normalized",
+          "items[3].product_name_normalized",
+          "items[4].product_name_normalized",
+          "items[5].product_name_normalized"
+        ],
+        "fraud_analysis": {
+          "risk_score": 0.2,
+          "risk_level": "low",
+          "summary": "เอกสารมีวันที่อยู่ในอดีตที่ห่างไกล (ปี 2568) ซึ่งอาจเป็นไปได้ว่าเอกสารเก่าหรือมีการกรอกข้อมูลผิดพลาด แต่โดยรวมไม่พบความผิดปกติที่ชัดเจน",
+          "flags": [
+            {
+              "type": "ai_analysis",
+              "label": "วันที่เอกสารเก่าเกินไป",
+              "severity": "low",
+              "detail": "วันที่ในเอกสารคือ 30/12/68 ซึ่งตรงกับปี ค.ศ. 1968 ซึ่งเก่าเกินกว่า 5 ปีจากปัจจุบัน (2026) อาจเป็นเอกสารเก่ามาก หรือมีการกรอกปีผิดพลาด"
+            }
+          ]
+        }
+      },
+      "accuracy": {
+        "merchant_match": true,
+        "normalized_match": true,
+        "date_match": false,
+        "total_match": true,
+        "category_match": true,
+        "items_count_match": true,
+        "items_name_overlap": 0.0,
+        "items_total_match": true,
+        "composite": 0.722
+      },
+      "error": null
+    },
+    {
+      "model": "openai/gpt-4.1-mini",
+      "ok": true,
+      "latency_s": 17.179,
+      "cost_usd": 0.0036952,
+      "prompt_tokens": 5930,
+      "completion_tokens": 827,
+      "extraction": {
+        "merchant_name": "ร้านสุดาพาณิชย์",
+        "merchant_normalized": "สุดาพาณิชย์",
+        "document_number": null,
+        "document_date": "2025-12-30",
+        "category": "เครื่องดื่ม",
+        "items": [
+          {
+            "product_name_raw": "เพียวรีโอโขวดใหญ่",
+            "product_name_normalized": "เบียร์ลีโอขวดใหญ่",
+            "category": "เครื่องดื่ม",
+            "quantity": 60,
+            "unit": "ขวด",
+            "unit_price": 64.0,
+            "line_total": 3864.0
+          },
+          {
+            "product_name_raw": "เพียวรีสิงห์ขวดใหญ่",
+            "product_name_normalized": "เบียร์สิงห์ขวดใหญ่",
+            "category": "เครื่องดื่ม",
+            "quantity": 120,
+            "unit": "ขวด",
+            "unit_price": 68.8,
+            "line_total": 8256.0
+          },
+          {
+            "product_name_raw": "โซดาสิงห์เปรี้ยวหวาน",
+            "product_name_normalized": "โซดาสิงห์",
+            "category": "เครื่องดื่ม",
+            "quantity": 37,
+            "unit": "ขวด",
+            "unit_price": 15.5,
+            "line_total": 573.5
+          },
+          {
+            "product_name_raw": "น้ำสิงห์เปรี้ยวหวาน",
+            "product_name_normalized": "น้ำดื่มสิงห์",
+            "category": "เครื่องดื่ม",
+            "quantity": 28,
+            "unit": "ขวด",
+            "unit_price": 8.5,
+            "line_total": 238.0
+          },
+          {
+            "product_name_raw": "เวอ่อนโซดา",
+            "product_name_normalized": "เวอ่อนโซดา",
+            "category": "เครื่องดื่ม",
+            "quantity": 2,
+            "unit": "ขวด",
+            "unit_price": 33.0,
+            "line_total": 66.0
+          },
+          {
+            "product_name_raw": "เจลอ่อนโซดา (แดง)",
+            "product_name_normalized": "เจลอ่อนโซดา (แดง)",
+            "category": "เครื่องดื่ม",
+            "quantity": 1,
+            "unit": "ขวด",
+            "unit_price": 33.0,
+            "line_total": 33.0
+          }
+        ],
+        "subtotal": 13130.5,
+        "discount": 0.0,
+        "vat": 0.0,
+        "grand_total": 130805.0,
+        "confidence": 0.85,
+        "notes": "ราคาต่อหน่วยและยอดรวมที่เขียนด้วยลายมือไม่สอดคล้องกันอย่างมาก อาจเป็นการเขียนผิดหรือคำนวณผิด",
+        "needs_review_fields": [
+          "subtotal",
+          "grand_total",
+          "unit_price"
+        ],
+        "fraud_analysis": {
+          "risk_score": 0.5,
+          "risk_level": "medium",
+          "summary": "พบความไม่สอดคล้องระหว่างราคาต่อหน่วยและยอดรวมในเอกสาร อาจเกิดจากการเขียนผิดหรือคำนวณผิด",
+          "flags": [
+            {
+              "type": "ai_analysis",
+              "label": "ยอดรวมและราคาต่อหน่วยไม่สอดคล้อง",
+              "severity": "medium",
+              "detail": "ราคาต่อหน่วยและยอดรวมที่เขียนด้วยลายมือไม่ตรงกันอย่างมาก อาจเป็นข้อผิดพลาดในการบันทึกข้อมูล"
+            }
+          ]
+        }
+      },
+      "accuracy": {
+        "merchant_match": true,
+        "normalized_match": true,
+        "date_match": true,
+        "total_match": false,
+        "category_match": true,
+        "items_count_match": true,
+        "items_name_overlap": 0.5,
+        "items_total_match": false,
+        "composite": 0.528
+      },
+      "error": null
+    },
+    {
+      "model": "google/gemini-2.5-flash",
+      "ok": true,
+      "latency_s": 7.78,
+      "cost_usd": null,
+      "prompt_tokens": 6653,
+      "completion_tokens": 1129,
+      "extraction": {
+        "merchant_name": "ร้านสุดาพาณิชย์",
+        "merchant_normalized": "สุดาพาณิชย์",
+        "document_number": null,
+        "document_date": "2025-12-30",
+        "category": "เครื่องดื่ม",
+        "items": [
+          {
+            "product_name_raw": "เบียร์ลีโอขวดใหญ่",
+            "product_name_normalized": "เบียร์ลีโอขวดใหญ่",
+            "category": "เครื่องดื่ม",
+            "quantity": 60,
+            "unit": "ขวด",
+            "unit_price": 644.0,
+            "line_total": 38640.0
+          },
+          {
+            "product_name_raw": "เบียร์สิงห์ขวดใหญ่",
+            "product_name_normalized": "เบียร์สิงห์ขวดใหญ่",
+            "category": "เครื่องดื่ม",
+            "quantity": 120,
+            "unit": "ขวด",
+            "unit_price": 688.0,
+            "line_total": 82560.0
+          },
+          {
+            "product_name_raw": "โซดาสิงห์เปล่า/ถาด",
+            "product_name_normalized": "โซดาสิงห์",
+            "category": "เครื่องดื่ม",
+            "quantity": 37,
+            "unit": "ถาด",
+            "unit_price": 155.0,
+            "line_total": 5735.0
+          },
+          {
+            "product_name_raw": "น้ำสิงห์เปล่า/ถาด",
+            "product_name_normalized": "น้ำดื่มสิงห์",
+            "category": "เครื่องดื่ม",
+            "quantity": 28,
+            "unit": "ถาด",
+            "unit_price": 85.0,
+            "line_total": 2380.0
+          },
+          {
+            "product_name_raw": "เบียร์ลีโอ",
+            "product_name_normalized": "เบียร์ลีโอขวดเล็ก",
+            "category": "เครื่องดื่ม",
+            "quantity": 2,
+            "unit": "ขวด",
+            "unit_price": 330.0,
+            "line_total": 660.0
+          },
+          {
+            "product_name_raw": "เบียร์ลีโอ (100)",
+            "product_name_normalized": "เบียร์ลีโอขวดเล็ก",
+            "category": "เครื่องดื่ม",
+            "quantity": 1,
+            "unit": "ขวด",
+            "unit_price": 330.0,
+            "line_total": 330.0
+          }
+        ],
+        "subtotal": 130305.0,
+        "discount": 0.0,
+        "vat": 0.0,
+        "grand_total": 130305.0,
+        "confidence": 0.9,
+        "notes": "วันที่ในเอกสารเป็นช่วง 1-30 ธันวาคม 2568 (พ.ศ. 68) ซึ่งแปลงเป็น ค.ศ. 2025-12-30",
+        "needs_review_fields": [],
+        "fraud_analysis": {
+          "risk_score": 0.3,
+          "risk_level": "medium",
+          "summary": "วันที่ในเอกสารเป็นอนาคต และยอดรวมที่คำนวณได้ไม่ตรงกับยอดรวมที่เขียนด้วยลายมือ",
+          "flags": [
+            {
+              "type": "ai_analysis",
+              "label": "วันที่ในอนาคต",
+              "severity": "high",
+              "detail": "วันที่ในเอกสาร (2025-12-30) เป็นวันที่ในอนาคตเมื่อเทียบกับวันที่ปัจจุบัน (2026-04-29)"
+            },
+            {
+              "type": "ai_analysis",
+              "label": "ยอดรวมไม่ตรงกัน",
+              "severity": "medium",
+              "detail": "ยอดรวมที่คำนวณได้จากรายการสินค้า (130305.00) ไม่ตรงกับยอดรวมที่เขียนด้วยลายมือ (130305.00) ซึ่งในกรณีนี้บังเอิญตรงกัน แต่การคำนวณจาก unit price และ quantity ของรายการแรก (60 * 644 = 38640) และรายการที่สอง (120 * 688 = 82560) มีความผิดปกติเล็กน้อยในตัวเลขที่เขียนด้วยลายมือ"
+            }
+          ]
+        }
+      },
+      "accuracy": {
+        "merchant_match": true,
+        "normalized_match": true,
+        "date_match": true,
+        "total_match": true,
+        "category_match": true,
+        "items_count_match": true,
+        "items_name_overlap": 0.5,
+        "items_total_match": true,
+        "composite": 0.917
+      },
+      "error": null
+    },
+    {
+      "model": "anthropic/claude-haiku-4.5",
+      "ok": false,
+      "latency_s": 11.034,
+      "cost_usd": null,
+      "prompt_tokens": 7944,
+      "completion_tokens": 1159,
+      "extraction": {},
+      "accuracy": {},
+      "error": "invalid JSON: Expecting value: line 1 column 1 (char 0)"
+    },
+    {
+      "model": "openai/gpt-5-mini",
+      "ok": true,
+      "latency_s": 54.356,
+      "cost_usd": null,
+      "prompt_tokens": 6871,
+      "completion_tokens": 4568,
+      "extraction": {
+        "merchant_name": "ร้านสุดาพาณิชย์",
+        "merchant_normalized": "สุดาพาณิชย์",
+        "document_number": null,
+        "document_date": "2025-12-30",
+        "category": "เครื่องดื่ม",
+        "items": [
+          {
+            "product_name_raw": "เพอริเอ้",
+            "product_name_normalized": "น้ำแร่เพอริเอ้",
+            "category": "เครื่องดื่ม",
+            "quantity": 60,
+            "unit": "ขวด",
+            "unit_price": 644.0,
+            "line_total": 38640.0
+          },
+          {
+            "product_name_raw": "สิงห์ใหญ่",
+            "product_name_normalized": "เบียร์สิงห์ขวดใหญ่",
+            "category": "เครื่องดื่ม",
+            "quantity": 120,
+            "unit": "ขวด",
+            "unit_price": 688.0,
+            "line_total": 82560.0
+          },
+          {
+            "product_name_raw": "โซดาสิงห์",
+            "product_name_normalized": "โซดาสิงห์",
+            "category": "เครื่องดื่ม",
+            "quantity": 37,
+            "unit": "ขวด",
+            "unit_price": 155.0,
+            "line_total": 5735.0
+          },
+          {
+            "product_name_raw": "น้ำสิงห์ เปรี้ยว",
+            "product_name_normalized": "น้ำดื่มสิงห์",
+            "category": "เครื่องดื่ม",
+            "quantity": 28,
+            "unit": "ขวด",
+            "unit_price": 85.0,
+            "line_total": 2380.0
+          },
+          {
+            "product_name_raw": "เวมอโรท",
+            "product_name_normalized": "เวมอโรท",
+            "category": "เครื่องดื่ม",
+            "quantity": 2,
+            "unit": "ขวด",
+            "unit_price": 330.0,
+            "line_total": 660.0
+          },
+          {
+            "product_name_raw": "เหล้าโทกา (แถม)",
+            "product_name_normalized": "เหล้าโทกา (แถม)",
+            "category": "เครื่องดื่ม",
+            "quantity": 1,
+            "unit": "ขวด",
+            "unit_price": 330.0,
+            "line_total": 330.0
+          }
+        ],
+        "subtotal": 130305.0,
+        "discount": 0.0,
+        "vat": 0.0,
+        "grand_total": 130305.0,
+        "confidence": 0.75,
+        "notes": "วันที่เขียนอ่านเป็น '1-30/12/68' ตีความเป็น 30/12/2568 → 2025-12-30. ยอดรวมที่เขียนด้วยลายมือ (130,305) ตรงกับผลรวมรายการที่คำนวณ (130,305) ไม่มี VAT ระบุ นำยอดคำนวณมาใช้ ยืนยันรายการบางบรรทัดลายมืออ่านไม่ชัดต้องตรวจสอบเพิ่มเติม",
+        "needs_review_fields": [
+          "document_date",
+          "items[3].product_name_raw",
+          "items[4].product_name_raw",
+          "items[5].product_name_raw"
+        ],
+        "fraud_analysis": {
+          "risk_score": 0.0,
+          "risk_level": "low",
+          "summary": "เอกสารไม่มีความผิดปกติที่เห็นได้ชัด ยอดรวมตรงกับผลรวมรายการและวันที่ไม่อยู่ในอนาคต",
+          "flags": []
+        }
+      },
+      "accuracy": {
+        "merchant_match": true,
+        "normalized_match": true,
+        "date_match": true,
+        "total_match": true,
+        "category_match": true,
+        "items_count_match": true,
+        "items_name_overlap": 0.33,
+        "items_total_match": true,
+        "composite": 0.888
+      },
+      "error": null
+    },
+    {
+      "model": "google/gemini-2.5-pro",
+      "ok": true,
+      "latency_s": 39.525,
+      "cost_usd": 0.04908625,
+      "prompt_tokens": 6653,
+      "completion_tokens": 4077,
+      "extraction": {
+        "merchant_name": "ร้านสุดาพาณิชย์",
+        "merchant_normalized": "สุดาพาณิชย์",
+        "document_number": null,
+        "document_date": "2025-12-30",
+        "category": "เครื่องดื่ม",
+        "items": [
+          {
+            "product_name_raw": "เบียร์ลีโอขวดใหญ่",
+            "product_name_normalized": "เบียร์ลีโอขวดใหญ่",
+            "category": "เครื่องดื่ม",
+            "quantity": 60,
+            "unit": "ลัง",
+            "unit_price": 644.0,
+            "line_total": 38640.0
+          },
+          {
+            "product_name_raw": "เบียร์สิงห์ ขวดใหญ่",
+            "product_name_normalized": "เบียร์สิงห์ขวดใหญ่",
+            "category": "เครื่องดื่ม",
+            "quantity": 120,
+            "unit": "ลัง",
+            "unit_price": 688.0,
+            "line_total": 82560.0
+          },
+          {
+            "product_name_raw": "โซดาสิงห์",
+            "product_name_normalized": "โซดาสิงห์",
+            "category": "เครื่องดื่ม",
+            "quantity": 37,
+            "unit": "ถาด",
+            "unit_price": 155.0,
+            "line_total": 5735.0
+          },
+          {
+            "product_name_raw": "น้ำสิงห์",
+            "product_name_normalized": "น้ำดื่มสิงห์",
+            "category": "เครื่องดื่ม",
+            "quantity": 28,
+            "unit": "ถาด",
+            "unit_price": 85.0,
+            "line_total": 2380.0
+          },
+          {
+            "product_name_raw": "เลม่อนโซดา",
+            "product_name_normalized": "สิงห์เลมอนโซดา",
+            "category": "เครื่องดื่ม",
+            "quantity": 2,
+            "unit": "ถาด",
+            "unit_price": 330.0,
+            "line_total": 660.0
+          },
+          {
+            "product_name_raw": "เลม่อนโซดา (แดง)",
+            "product_name_normalized": "สิงห์เลมอนโซดา",
+            "category": "เครื่องดื่ม",
+            "quantity": 1,
+            "unit": "ถาด",
+            "unit_price": 330.0,
+            "line_total": 330.0
+          }
+        ],
+        "subtotal": 130305.0,
+        "discount": 0.0,
+        "vat": 0.0,
+        "grand_total": 130305.0,
+        "confidence": 0.95,
+        "notes": "วันที่ถูกเขียนเป็น '1-30' ซึ่งเป็นรูปแบบที่ไม่ปกติ จึงตีความว่าเป็นวันที่ 30",
+        "needs_review_fields": [
+          "document_date"
+        ],
+        "fraud_analysis": {
+          "risk_score": 0.1,
+          "risk_level": "low",
+          "summary": "เอกสารเป็นบิลเงินสดเขียนด้วยลายมือ การคำนวณยอดรวมถูกต้องและไม่พบความผิดปกติที่ชัดเจน",
+          "flags": [
+            {
+              "type": "ai_analysis",
+              "label": "รูปแบบวันที่ผิดปกติ",
+              "severity": "low",
+              "detail": "วันที่ถูกระบุเป็น '1-30 / 12 / 68' ซึ่งเป็นรูปแบบที่ไม่มาตรฐาน แต่ได้ตีความว่าเป็นวันที่ 30 ธันวาคม พ.ศ. 2568"
+            }
+          ]
+        }
+      },
+      "accuracy": {
+        "merchant_match": true,
+        "normalized_match": true,
+        "date_match": true,
+        "total_match": true,
+        "category_match": true,
+        "items_count_match": true,
+        "items_name_overlap": 0.67,
+        "items_total_match": true,
+        "composite": 0.945
+      },
+      "error": null
+    },
+    {
+      "model": "qwen/qwen3-vl-235b-a22b-instruct",
+      "ok": true,
+      "latency_s": 41.673,
+      "cost_usd": null,
+      "prompt_tokens": 9679,
+      "completion_tokens": 888,
+      "extraction": {
+        "merchant_name": "ร้านสุดาพาณิชย์",
+        "merchant_normalized": "สุดาพาณิชย์",
+        "document_number": null,
+        "document_date": "2025-12-01",
+        "category": "เครื่องดื่ม",
+        "items": [
+          {
+            "product_name_raw": "เบียร์สิงห์ขวดใหญ่",
+            "product_name_normalized": "เบียร์สิงห์ขวดใหญ่",
+            "category": "เครื่องดื่ม",
+            "quantity": 60,
+            "unit": "ขวด",
+            "unit_price": 644.0,
+            "line_total": 38640.0
+          },
+          {
+            "product_name_raw": "เบียร์ลีโอขวดใหญ่",
+            "product_name_normalized": "เบียร์ลีโอขวดใหญ่",
+            "category": "เครื่องดื่ม",
+            "quantity": 120,
+            "unit": "ขวด",
+            "unit_price": 688.0,
+            "line_total": 82560.0
+          },
+          {
+            "product_name_raw": "โซดาสิงห์เปลี่ยน/ถาด",
+            "product_name_normalized": "โซดาสิงห์",
+            "category": "เครื่องดื่ม",
+            "quantity": 37,
+            "unit": "ถาด",
+            "unit_price": 155.0,
+            "line_total": 5735.0
+          },
+          {
+            "product_name_raw": "น้ำดื่มสิงห์ 600ml",
+            "product_name_normalized": "น้ำดื่มสิงห์ 600ml",
+            "category": "เครื่องดื่ม",
+            "quantity": 28,
+            "unit": "ขวด",
+            "unit_price": 85.0,
+            "line_total": 2380.0
+          },
+          {
+            "product_name_raw": "เบียร์ช้าง",
+            "product_name_normalized": "เบียร์ช้าง",
+            "category": "เครื่องดื่ม",
+            "quantity": 2,
+            "unit": "ขวด",
+            "unit_price": 330.0,
+            "line_total": 660.0
+          },
+          {
+            "product_name_raw": "เบียร์ช้าง (11 ดู)",
+            "product_name_normalized": "เบียร์ช้าง",
+            "category": "เครื่องดื่ม",
+            "quantity": 1,
+            "unit": "ขวด",
+            "unit_price": 330.0,
+            "line_total": 330.0
+          }
+        ],
+        "subtotal": 130305.0,
+        "discount": 0.0,
+        "vat": 0.0,
+        "grand_total": 130305.0,
+        "confidence": 0.85,
+        "notes": "เอกสารเป็นบิลเงินสดเขียนมือ ชื่อสินค้าบางรายการมีการเขียนย่อและใช้คำที่พบบ่อยตามตาราง PRODUCT_CATALOG ยอดรวมที่เขียนด้วยลายมือ (130,305) ตรงกับยอดคำนวณ",
+        "needs_review_fields": [],
+        "fraud_analysis": {
+          "risk_score": 0.0,
+          "risk_level": "low",
+          "summary": "เอกสารเป็นบิลเงินสดเขียนมือ ข้อมูลครบถ้วน ยอดรวมตรงกัน ไม่พบสิ่งผิดปกติที่มองเห็นได้จากเอกสารเอง",
+          "flags": []
+        }
+      },
+      "accuracy": {
+        "merchant_match": true,
+        "normalized_match": true,
+        "date_match": false,
+        "total_match": true,
+        "category_match": true,
+        "items_count_match": true,
+        "items_name_overlap": 0.5,
+        "items_total_match": true,
+        "composite": 0.806
+      },
+      "error": null
+    }
+  ]
+}

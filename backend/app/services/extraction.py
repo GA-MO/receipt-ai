@@ -1,17 +1,11 @@
 import json
 import logging
-import time
 from pathlib import Path
 
-from google import genai
-from google.genai import types
-
-from ..config import settings
 from ..schemas import DocumentItemBase, ExtractionResult
+from . import llm_client
 
 logger = logging.getLogger(__name__)
-
-_client: genai.Client | None = None
 
 # Top-level product categories, aligned with singhaonline.com (2026-04).
 # Keep this list tight — subcategories are represented through
@@ -206,87 +200,9 @@ _MIME_MAP = {
 }
 
 
-def _get_client() -> genai.Client:
-    """Get or create the Gemini client (lazy init, auto-refresh on auth error)."""
-    global _client
-    if _client is not None:
-        return _client
-
-    if settings.gemini_api_key:
-        _client = genai.Client(api_key=settings.gemini_api_key)
-        logger.info("Gemini client configured via API key")
-    elif settings.gcp_credentials_path:
-        _client = _create_vertex_client()
-    else:
-        raise RuntimeError(
-            "ต้องตั้งค่า GEMINI_API_KEY หรือ GCP_CREDENTIALS_PATH อย่างน้อย 1 อย่าง"
-        )
-    return _client
-
-
-def _create_vertex_client() -> genai.Client:
-    """Create a Vertex AI client with fresh credentials."""
-    import os
-
-    os.environ.setdefault(
-        "GOOGLE_APPLICATION_CREDENTIALS", settings.gcp_credentials_path
-    )
-    import google.auth
-    from google.auth.transport.requests import Request
-
-    scopes = ["https://www.googleapis.com/auth/cloud-platform"]
-    credentials, project = google.auth.default(scopes=scopes)
-    credentials.refresh(Request())
-    project = settings.gcp_project_id or project
-
-    client = genai.Client(
-        vertexai=True,
-        project=project,
-        location=settings.gcp_location,
-        credentials=credentials,
-    )
-    logger.info("Gemini client configured via Vertex AI (project=%s)", project)
-    return client
-
-
-def _reset_client() -> None:
-    """Reset the client so the next call creates a fresh one (e.g. on auth error)."""
-    global _client
-    _client = None
-    logger.info("Gemini client reset — will re-create on next call")
-
-
-def _call_gemini_with_retry(contents: list, config: types.GenerateContentConfig) -> str:
-    """Call Gemini API with retry logic for transient failures."""
-    last_error: Exception | None = None
-
-    for attempt in range(1, settings.gemini_max_retries + 1):
-        client = _get_client()
-        try:
-            response = client.models.generate_content(
-                model=settings.gemini_model,
-                contents=contents,
-                config=config,
-            )
-            return response.text.strip()
-        except Exception as exc:
-            last_error = exc
-            is_auth_error = "401" in str(exc) or "403" in str(exc) or "credentials" in str(exc).lower()
-            logger.warning(
-                "Gemini API attempt %d/%d failed: %s",
-                attempt,
-                settings.gemini_max_retries,
-                exc,
-            )
-            if is_auth_error:
-                _reset_client()
-            if attempt < settings.gemini_max_retries:
-                delay = settings.gemini_retry_delay * (2 ** (attempt - 1))
-                time.sleep(delay)
-
-    raise RuntimeError(
-        f"Gemini API failed after {settings.gemini_max_retries} attempts: {last_error}"
-    )
+# Backward-compat shim: agentic extraction still imports ``_get_client``.
+# Forward to the shared client cache in ``llm_client``.
+_get_client = llm_client.get_gemini_client
 
 
 def _coerce_extracted_payload(data: object) -> dict:
@@ -377,28 +293,25 @@ def parse_extraction_payload(data: object) -> ExtractionResult:
 
 
 def extract_receipt(file_path: str) -> ExtractionResult:
-    """Extract structured data from a receipt image/PDF using Gemini Vision."""
+    """Extract structured data from a receipt image/PDF using the configured LLM."""
     path = Path(file_path)
     mime_type = _MIME_MAP.get(path.suffix.lower(), "image/jpeg")
     file_data = path.read_bytes()
 
-    image_part = types.Part.from_bytes(data=file_data, mime_type=mime_type)
-    contents = [EXTRACTION_PROMPT, image_part]
-
-    config = types.GenerateContentConfig(
-        system_instruction=SYSTEM_INSTRUCTION,
-        temperature=0.1,
-        response_mime_type="application/json",
-    )
-
     logger.info("Extracting receipt: %s (%s, %d bytes)", path.name, mime_type, len(file_data))
 
-    raw_text = _call_gemini_with_retry(contents, config)
+    raw_text = llm_client.generate_json(
+        system_instruction=SYSTEM_INSTRUCTION,
+        prompt=EXTRACTION_PROMPT,
+        file_bytes=file_data,
+        mime_type=mime_type,
+        temperature=0.1,
+    )
 
     try:
         data = json.loads(raw_text)
     except json.JSONDecodeError as exc:
-        logger.error("Gemini returned invalid JSON: %s", raw_text[:500])
+        logger.error("LLM returned invalid JSON: %s", raw_text[:500])
         raise RuntimeError(f"AI ตอบ JSON ไม่ถูกต้อง: {exc}") from exc
 
     result = parse_extraction_payload(data)

@@ -30,8 +30,9 @@ from sqlalchemy.orm import Session
 
 from ..config import settings
 from ..schemas import ExtractionResult
-from .extraction import _MIME_MAP, _get_client, parse_extraction_payload
+from .extraction import _MIME_MAP, parse_extraction_payload
 from .extraction_tools import TOOL_HANDLERS, build_tool_declarations
+from .llm_client import get_gemini_client
 
 logger = logging.getLogger(__name__)
 
@@ -138,7 +139,18 @@ def _call_handler(name: str, args: dict, db: Session) -> dict:
 
 
 def extract_agentic(file_path: str, db: Session, max_iterations: int = 8) -> AgenticResult:
-    """Run the multi-turn agentic extraction loop."""
+    """Run the multi-turn agentic extraction loop.
+
+    NOTE: this path uses Gemini-native function calling and is not yet ported
+    to OpenRouter. If ``LLM_PROVIDER=openrouter`` is set, choose another
+    ``EXTRACTION_MODE`` (combined/legacy) instead.
+    """
+    if settings.llm_provider != "gemini":
+        raise RuntimeError(
+            "extraction_mode='agentic' รองรับเฉพาะ LLM_PROVIDER=gemini "
+            f"(ปัจจุบันเป็น {settings.llm_provider}). ใช้ extraction_mode='combined' แทน"
+        )
+
     path = Path(file_path)
     mime_type = _MIME_MAP.get(path.suffix.lower(), "image/jpeg")
     file_data = path.read_bytes()
@@ -156,7 +168,7 @@ def extract_agentic(file_path: str, db: Session, max_iterations: int = 8) -> Age
         )
     ]
 
-    client = _get_client()
+    client = get_gemini_client()
     tools = build_tool_declarations()
     # Force Gemini to always make a tool call — this prevents it from emitting
     # plain text mid-flow and derailing the loop.

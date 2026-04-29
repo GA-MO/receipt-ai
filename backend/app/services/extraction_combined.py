@@ -24,16 +24,15 @@ import logging
 from datetime import UTC, date, datetime
 from pathlib import Path
 
-from google.genai import types
 from sqlalchemy.orm import Session
 
 from ..models import Document
 from ..schemas import ExtractionResult
+from . import llm_client
 from .extraction import (
     _MIME_MAP,
     EXTRACTION_PROMPT,
     SYSTEM_INSTRUCTION,
-    _call_gemini_with_retry,
     parse_extraction_payload,
 )
 
@@ -131,29 +130,26 @@ class CombinedResult:
 
 
 def extract_with_fraud(file_path: str) -> CombinedResult:
-    """Run extraction + self-contained fraud check in one Gemini call."""
+    """Run extraction + self-contained fraud check in one LLM call."""
     path = Path(file_path)
     mime_type = _MIME_MAP.get(path.suffix.lower(), "image/jpeg")
     file_data = path.read_bytes()
 
-    image_part = types.Part.from_bytes(data=file_data, mime_type=mime_type)
-    contents = [EXTRACTION_PROMPT, image_part]
-
-    config = types.GenerateContentConfig(
-        system_instruction=_build_system_instruction(),
-        temperature=0.1,
-        response_mime_type="application/json",
-    )
-
     logger.info(
         "Combined extract+fraud: %s (%s, %d bytes)", path.name, mime_type, len(file_data)
     )
-    raw_text = _call_gemini_with_retry(contents, config)
+    raw_text = llm_client.generate_json(
+        system_instruction=_build_system_instruction(),
+        prompt=EXTRACTION_PROMPT,
+        file_bytes=file_data,
+        mime_type=mime_type,
+        temperature=0.1,
+    )
 
     try:
         data = json.loads(raw_text)
     except json.JSONDecodeError as exc:
-        logger.error("Gemini returned invalid JSON: %s", raw_text[:500])
+        logger.error("LLM returned invalid JSON: %s", raw_text[:500])
         raise RuntimeError(f"AI ตอบ JSON ไม่ถูกต้อง: {exc}") from exc
 
     if isinstance(data, list):

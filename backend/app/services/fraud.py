@@ -1,14 +1,13 @@
-"""AI-powered fraud detection using Gemini."""
+"""AI-powered fraud detection (provider-neutral via llm_client)."""
 
 import json
 import logging
 from datetime import UTC, datetime
 
-from google.genai import types
 from sqlalchemy.orm import Session
 
-from ..config import settings
 from ..models import Document
+from . import llm_client
 
 logger = logging.getLogger(__name__)
 
@@ -115,8 +114,6 @@ def run_fraud_detection(doc: Document, db: Session) -> str | None:
     if not doc.grand_total or float(doc.grand_total) <= 0:
         return None
 
-    from .extraction import _get_client
-
     history = (
         db.query(Document)
         .filter(
@@ -137,16 +134,8 @@ def run_fraud_detection(doc: Document, db: Session) -> str | None:
     )
 
     try:
-        client = _get_client()
-        response = client.models.generate_content(
-            model=settings.gemini_model,
-            contents=[prompt],
-            config=types.GenerateContentConfig(
-                temperature=0.2,
-                response_mime_type="application/json",
-            ),
-        )
-        data = json.loads(response.text.strip())
+        raw_text = llm_client.generate_json(prompt=prompt, temperature=0.2)
+        data = json.loads(raw_text)
 
         flags = [
             {
