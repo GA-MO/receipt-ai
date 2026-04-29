@@ -1,4 +1,4 @@
-.PHONY: dev dev-backend dev-frontend stop install install-backend install-frontend test build clean db-migrate db-upgrade docker-up docker-down
+.PHONY: dev dev-backend dev-frontend stop install install-backend install-frontend test build clean db-migrate db-upgrade docker-up docker-down refresh-aliases refresh-aliases-apply
 
 # ── Dev servers ──────────────────────────────────────────────
 
@@ -64,6 +64,12 @@ db-upgrade: ## Apply all pending migrations
 
 db-downgrade: ## Rollback one migration
 	cd backend && .venv/bin/alembic downgrade -1
+
+refresh-aliases: ## Preview alias proposals from extraction history (dry run)
+	cd backend && .venv/bin/python -m app.scripts.refresh_product_aliases
+
+refresh-aliases-apply: ## Apply alias proposals from extraction history
+	cd backend && .venv/bin/python -m app.scripts.refresh_product_aliases --apply
 
 # ── Docker ───────────────────────────────────────────────────
 

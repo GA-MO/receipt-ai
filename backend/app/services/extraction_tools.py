@@ -27,142 +27,39 @@ from rapidfuzz import fuzz, process
 from sqlalchemy.orm import Session
 
 from ..models import Document
+from . import catalog
 
 logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Catalog (formerly embedded in the prompt)
+# Catalog (DB-backed, lazily loaded)
 # ---------------------------------------------------------------------------
+#
+# The catalog used to be a hardcoded list of dicts. It is now built from
+# active rows in the ``products`` table via :func:`catalog.prompt_catalog_entries`,
+# which merges seed aliases (``products.aliases``) and learned aliases
+# (``product_aliases``). Cleared by :func:`catalog.invalidate_cache` whenever
+# admin endpoints mutate ``products``.
 
 CatalogEntry = dict[str, Any]
 
-# Kept as a Python list of dicts — easier to search than the markdown table.
-# In the future this could move to a DB table.
-PRODUCT_CATALOG_ENTRIES: list[CatalogEntry] = [
-    {
-        "name": "เบียร์สิงห์ขวดใหญ่",
-        "category": "เครื่องดื่ม",
-        "aliases": ["สห์ใหญ่", "สิงห์ใหญ่", "SINGHA L", "สห.ญ", "สิงห์ 630", "สิงห์แดง", "สิงห์ 620 ml"],
-    },
-    {
-        "name": "เบียร์สิงห์ขวดเล็ก",
-        "category": "เครื่องดื่ม",
-        "aliases": ["สห์เล็ก", "สิงห์เล็ก", "SINGHA S", "สห.ล", "สิงห์ 330"],
-    },
-    {
-        "name": "เบียร์สิงห์กระป๋อง",
-        "category": "เครื่องดื่ม",
-        "aliases": ["สห์กป", "สิงห์กระป๋อง", "SINGHA CAN"],
-    },
-    {
-        "name": "เบียร์ลีโอขวดใหญ่",
-        "category": "เครื่องดื่ม",
-        "aliases": ["ลีโอใหญ่", "ลิโอใหญ่", "LEO L", "ลีโอ 630", "ล.ญ", "ลีโอใหญ่"],
-    },
-    {
-        "name": "เบียร์ลีโอขวดเล็ก",
-        "category": "เครื่องดื่ม",
-        "aliases": ["ลีโอเล็ก", "LEO S", "ลีโอ 330", "ล.ล"],
-    },
-    {
-        "name": "เบียร์ลีโอกระป๋อง",
-        "category": "เครื่องดื่ม",
-        "aliases": ["ลีโอกป", "LEO CAN"],
-    },
-    {
-        "name": "เบียร์ช้าง",
-        "category": "เครื่องดื่ม",
-        "aliases": ["ช้าง", "CHANG", "ช.", "ช้าง ใหญ่"],
-    },
-    {
-        "name": "เบียร์ช้างเอสเปรสโซ่",
-        "category": "เครื่องดื่ม",
-        "aliases": ["ช้างเอส", "CHANG ESP"],
-    },
-    {
-        "name": "เบียร์ยูเบียร์",
-        "category": "เครื่องดื่ม",
-        "aliases": ["U BEER", "ยู", "UBEER"],
-    },
-    {
-        "name": "น้ำดื่มสิงห์",
-        "category": "เครื่องดื่ม",
-        "aliases": ["น้ำสิงห์", "นส", "SINGHA WATER", "สห์น้ำ", "น้ำเปล่าสิงห์"],
-    },
-    {
-        "name": "น้ำดื่มสิงห์ 600ml",
-        "category": "เครื่องดื่ม",
-        "aliases": ["น้ำสิงห์ 600", "สห์600", "น้ำสิงห์เปลี่ยนขวด"],
-    },
-    {
-        "name": "น้ำดื่มสิงห์ 1.5L",
-        "category": "เครื่องดื่ม",
-        "aliases": ["น้ำสิงห์ 1500", "สห์1500"],
-    },
-    {
-        "name": "โซดาสิงห์",
-        "category": "เครื่องดื่ม",
-        "aliases": [
-            "โซดาสห์", "SINGHA SODA", "SODAPP", "โซดา", "โซคา",
-            "โซดาขวด", "โซดาเปลี่ยน", "โซดาถาด", "โซดาเปลี่ยน/ถาด", "โซดาเปล่า/ถาด",
-        ],
-    },
-    {
-        "name": "น้ำแร่เพอริเอ้",
-        "category": "เครื่องดื่ม",
-        "aliases": ["เพอริเอ้", "PERRIER", "Perrier"],
-    },
-    {
-        "name": "น้ำแร่ออร่า",
-        "category": "เครื่องดื่ม",
-        "aliases": ["ออร่า", "AURA"],
-    },
-    {
-        "name": "สุราแสงโสม",
-        "category": "เครื่องดื่ม",
-        "aliases": ["แสงโสม", "SS", "Saeng Som", "แสง"],
-    },
-    {
-        "name": "สุราหงส์ทอง",
-        "category": "เครื่องดื่ม",
-        "aliases": ["หงส์ทอง", "หงส์", "HT", "Hong Thong", "หงส์ทอง กลม", "หงส์ทอง แบน"],
-    },
-    {
-        "name": "สุราเบลนด์ 285",
-        "category": "เครื่องดื่ม",
-        "aliases": ["เบลนด์", "BLEND", "285"],
-    },
-    {
-        "name": "สุรามิสเตอร์ซี",
-        "category": "เครื่องดื่ม",
-        "aliases": ["มิสเตอร์ซี", "MR.C", "Mr.C"],
-    },
-    {
-        "name": "บี-อิ้ง",
-        "category": "เครื่องดื่ม",
-        "aliases": ["B-ing", "บีอิ้ง", "Bing"],
-    },
-    {
-        "name": "เฮลซ์บลูบอย",
-        "category": "เครื่องดื่ม",
-        "aliases": ["เฮลซ์", "HELZ", "บลูบอย"],
-    },
-    {
-        "name": "สิงห์เลมอนโซดา",
-        "category": "เครื่องดื่ม",
-        "aliases": ["เลมอนโซดา", "LEMON SODA"],
-    },
-]
 
-# Flat (alias, entry) pairs for fuzzy matching across names + aliases.
-_FLAT_INDEX: list[tuple[str, CatalogEntry]] = []
-for _entry in PRODUCT_CATALOG_ENTRIES:
-    _FLAT_INDEX.append((_entry["name"], _entry))
-    for _alias in _entry["aliases"]:
-        _FLAT_INDEX.append((_alias, _entry))
+def _flat_index() -> tuple[list[tuple[str, CatalogEntry]], list[str]]:
+    """Build the flat (candidate-string, entry) pairs for fuzzy matching.
 
-_CANDIDATE_STRINGS = [s for s, _ in _FLAT_INDEX]
+    Rebuilt on every call but cheap because :func:`catalog.prompt_catalog_entries`
+    is itself cached. We avoid module-level caching here so that
+    ``invalidate_cache`` clearing the underlying entries flows through
+    automatically without us tracking a second cache key.
+    """
+    flat: list[tuple[str, CatalogEntry]] = []
+    for entry in catalog.prompt_catalog_entries():
+        flat.append((entry["name"], entry))
+        for alias in entry.get("aliases", []):
+            flat.append((alias, entry))
+    candidates = [s for s, _ in flat]
+    return flat, candidates
 
 
 # ---------------------------------------------------------------------------
@@ -171,16 +68,22 @@ _CANDIDATE_STRINGS = [s for s, _ in _FLAT_INDEX]
 
 
 def lookup_catalog(query: str, limit: int = 5, **_ignored) -> dict:
-    """Fuzzy-match ``query`` against PRODUCT_CATALOG.
+    """Fuzzy-match ``query`` against the active products catalog.
 
-    Returns the top ``limit`` matches sorted by similarity.
+    Returns the top ``limit`` matches sorted by similarity. Each match
+    includes the SKU ``code`` so Gemini can emit it in ``product_code`` via
+    :func:`emit_extraction` instead of relying on a downstream fuzzy fallback.
     """
     if not query:
         return {"matches": []}
 
+    flat, candidates = _flat_index()
+    if not candidates:
+        return {"query": query, "matches": []}
+
     raw_matches = process.extract(
         query,
-        _CANDIDATE_STRINGS,
+        candidates,
         scorer=fuzz.token_set_ratio,
         limit=limit * 2,  # oversample before de-duping to canonical entries
     )
@@ -188,12 +91,13 @@ def lookup_catalog(query: str, limit: int = 5, **_ignored) -> dict:
     seen_names: set[str] = set()
     results: list[dict] = []
     for candidate_str, score, idx in raw_matches:
-        entry = _FLAT_INDEX[idx][1]
+        entry = flat[idx][1]
         if entry["name"] in seen_names:
             continue
         seen_names.add(entry["name"])
         results.append(
             {
+                "code": entry.get("code"),
                 "name": entry["name"],
                 "category": entry["category"],
                 "matched_alias": candidate_str,
@@ -371,6 +275,14 @@ def build_tool_declarations() -> list[types.Tool]:
                             "product_name_normalized": {
                                 "type": "STRING",
                                 "description": "ชื่อสินค้า (ชื่อทางการจาก catalog ถ้ามี)",
+                            },
+                            "product_code": {
+                                "type": "STRING",
+                                "description": (
+                                    "SKU code จาก lookup_catalog match ที่ตรงที่สุด — "
+                                    "ใส่เฉพาะเมื่อ score ≥ 85 และมั่นใจว่าเป็น SKU เดียวกันจริง; "
+                                    "ถ้าไม่ match catalog ให้ละไว้ null"
+                                ),
                             },
                             "category": {"type": "STRING"},
                             "quantity": {"type": "NUMBER"},

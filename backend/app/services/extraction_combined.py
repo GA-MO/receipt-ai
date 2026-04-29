@@ -32,7 +32,7 @@ from . import llm_client
 from .extraction import (
     _MIME_MAP,
     EXTRACTION_PROMPT,
-    SYSTEM_INSTRUCTION,
+    build_system_instruction,
     parse_extraction_payload,
 )
 
@@ -104,7 +104,7 @@ def _build_system_instruction() -> str:
     would treat as placeholders.
     """
     today = datetime.now(UTC).strftime("%Y-%m-%d")
-    return SYSTEM_INSTRUCTION + _FRAUD_SCHEMA_ADDITION.replace("__TODAY__", today)
+    return build_system_instruction() + _FRAUD_SCHEMA_ADDITION.replace("__TODAY__", today)
 
 
 # ---------------------------------------------------------------------------

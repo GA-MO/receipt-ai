@@ -25,7 +25,6 @@ from ..config import settings
 from ..models import ProductAlias
 from ..schemas import DocumentItemBase
 from .catalog import is_canonical_name as is_db_canonical
-from .extraction import CATALOG_CANONICAL_NAMES
 
 logger = logging.getLogger(__name__)
 
@@ -59,22 +58,15 @@ class UpsertResult:
         return self.alias is not None
 
 
-def _is_catalog_canonical(text: str, db: Session | None = None) -> bool:
-    """True if ``text`` is a known catalog canonical.
+def _is_catalog_canonical(text: str, db: Session) -> bool:
+    """True if ``text`` is the canonical name of an active catalog SKU.
 
-    Checks both the small hardcoded PRODUCT_CATALOG (Gemini system prompt)
-    and the larger DB-backed ``products`` table (singhaonline.com seed). Any
-    match blocks alias learning so user corrections can't overwrite the
-    mapping for that SKU globally.
+    The catalog used to live in two places (a hardcoded list in
+    ``extraction.py`` plus the ``products`` table). Both are now sourced from
+    ``products``, so this is a thin wrapper around :func:`is_db_canonical`
+    that guards alias learning from poisoning catalog SKUs.
     """
-    key = " ".join((text or "").strip().split()).lower()
-    if not key:
-        return False
-    if key in CATALOG_CANONICAL_NAMES:
-        return True
-    if db is not None and is_db_canonical(db, text):
-        return True
-    return False
+    return is_db_canonical(db, text)
 
 
 _PARTIAL_RATIO_MIN_LENGTH_RATIO = 0.6
@@ -161,8 +153,8 @@ def upsert_alias(
 
     Refuses (and returns :class:`AliasSkipReason`) when:
 
-    * ``source_text`` is a canonical in PRODUCT_CATALOG — learning it would
-      rewrite every future document that legitimately matches the canonical.
+    * ``source_text`` is a canonical SKU in the products catalog — learning it
+      would rewrite every future document that legitimately matches it.
     * ``fuzzy(source, canonical) < 50`` — a big semantic jump (e.g.
       ``เบียร์ลีโอขวดเล็ก`` → ``สิงห์เลม่อนโซดา``) is almost always a
       per-document fix, not a global rule.
@@ -179,7 +171,7 @@ def upsert_alias(
     # mapping for every receipt that correctly matched that canonical.
     if _is_catalog_canonical(source_text, db):
         logger.warning(
-            "Refused product alias: source %r is a PRODUCT_CATALOG canonical",
+            "Refused product alias: source %r is a catalog canonical",
             source_text,
         )
         return UpsertResult(

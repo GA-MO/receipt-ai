@@ -63,6 +63,8 @@ _AGENTIC_SYSTEM_INSTRUCTION_TEMPLATE = """\
 - ข้อความคำอธิบายทั้งหมด (notes, summary, flags) ต้องเป็นภาษาไทย 100%
 - `product_name_normalized` ใช้ชื่อจาก `lookup_catalog` match ที่ดีที่สุด
   ถ้า score < 75 ใช้ชื่อจากเอกสาร (ตัด unit/suffix ออก)
+- `product_code` ใช้ field `code` จาก `lookup_catalog` match เดียวกัน — เฉพาะเมื่อ score ≥ 85
+  ถ้าไม่มี match ที่มั่นใจ → ละไว้ null (ห้ามแต่งรหัสเอง, ห้ามใช้บาร์โค้ดบนใบเสร็จ)
 - `category` ของแต่ละ item: ใช้ 1 ใน 4 หมวด Singha Online
   * "เครื่องดื่ม" — เบียร์, น้ำดื่ม, โซดา, สุรา, น้ำแร่, น้ำอัดลม, ชา, กาแฟ
   * "อาหาร และของว่าง" — อาหาร, ขนม, snack

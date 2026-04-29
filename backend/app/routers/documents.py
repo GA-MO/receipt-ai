@@ -27,6 +27,7 @@ from ..models import Document, DocumentEvent, DocumentItem
 from ..schemas import (
     BulkActionResult,
     BulkIds,
+    DocumentItemBase,
     DocumentItemCreate,
     DocumentItemUpdate,
     DocumentListItem,
@@ -51,10 +52,45 @@ from ..services.product_aliases import (
     upsert_alias as upsert_product_alias,
 )
 from ..services.audit import record as record_event
+from ..models import Product
 from ..services.catalog import find_code_by_name
 from ..services.fraud import run_fraud_detection
 from ..services.merchants import assign_normalized_merchant
 from ..services.push import PushPayload, send_to_all as push_send_to_all
+
+
+def _resolve_product_code(db: Session, item: DocumentItemBase) -> str | None:
+    """Resolve a SKU code for an extracted line item.
+
+    Trust order:
+
+    1. Gemini-emitted ``product_code`` is *valid* (active row) → use it.
+    2. Gemini-emitted ``product_code`` is *invalid* (no such row) → return
+       ``None``. An invalid emit means "I see a product not represented in
+       our catalog" (e.g. receipt has 500ml but we only stock 600ml). Fuzzy
+       fallback at this point would silently pick a wrong-size SKU and bury
+       the catalog gap, so we stay honest and surface ``None``.
+    3. Gemini *abstained* (no code emitted) → fuzzy-match the normalized
+       name against ``products.canonical_name``/``display_name``. This
+       handles older extraction paths and items where Gemini chose name-only.
+    """
+    emitted = (item.product_code or "").strip() or None
+    if emitted:
+        exists = (
+            db.query(Product.code)
+            .filter(Product.code == emitted, Product.active.is_(True))
+            .first()
+        )
+        if exists:
+            return emitted
+        logger.warning(
+            "Gemini emitted unknown product_code %r for %r — leaving unresolved "
+            "(catalog gap; do not fuzzy-fallback to a wrong-size SKU).",
+            emitted,
+            item.product_name_normalized,
+        )
+        return None
+    return find_code_by_name(db, item.product_name_normalized)
 
 
 def _resolve_extraction_mode() -> str:
@@ -224,9 +260,10 @@ def _run_processing(doc_id: str, file_path: str) -> None:
             # the model didn't emit raw (older extraction paths or legacy
             # re-extracts). Alias learning uses this as a stable source.
             raw_name = item_data.product_name_raw or item_data.product_name_normalized
-            # Resolve against the products catalog (Singha Online) so dashboards
-            # can group by SKU even when free-text variations creep in.
-            code = find_code_by_name(db, item_data.product_name_normalized)
+            # SKU resolution priority:
+            # 1. Gemini-emitted product_code (from prompt catalog) when valid.
+            # 2. Fuzzy fallback against products.canonical_name / display_name.
+            code = _resolve_product_code(db, item_data)
             item = DocumentItem(
                 id=str(uuid.uuid4()),
                 document_id=doc_id,

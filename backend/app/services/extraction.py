@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 
 from ..schemas import DocumentItemBase, ExtractionResult
-from . import llm_client
+from . import catalog, llm_client
 
 logger = logging.getLogger(__name__)
 
@@ -32,73 +32,20 @@ LEGACY_CATEGORY_MAP = {
     "อื่นๆ": "สินค้าอื่นๆ",
 }
 
-# Boonrawd product catalog with aliases for matching handwritten/abbreviated names
-def _parse_catalog_canonicals(catalog_markdown: str) -> frozenset[str]:
-    """Extract the first column ("ชื่อทางการ") from the catalog markdown table.
+# PRODUCT_CATALOG markdown is now built from the ``products`` table at runtime
+# via :func:`catalog.prompt_catalog_markdown`, so adding a SKU automatically
+# lands in the prompt — no manual sync.
+#
+# The two halves of SYSTEM_INSTRUCTION ("head" before catalog, "tail" after)
+# are concatenated in :func:`build_system_instruction`.
 
-    Returned as a lowercase-normalized frozenset for O(1) membership checks.
-    Used by ``services.product_aliases`` to refuse poisoning aliases where the
-    source text is itself a catalog canonical.
-    """
-    out: set[str] = set()
-    for line in catalog_markdown.splitlines():
-        line = line.strip()
-        if not line.startswith("|") or line.startswith("|---"):
-            continue
-        cells = [c.strip() for c in line.strip("|").split("|")]
-        if len(cells) < 3:
-            continue
-        # Skip the header row explicitly
-        if "ชื่อทางการ" in cells[0]:
-            continue
-        name = cells[0]
-        if name:
-            out.add(" ".join(name.strip().split()).lower())
-    return frozenset(out)
-
-
-PRODUCT_CATALOG = """
-## สินค้าเครือบุญรอด — ใช้ตารางนี้ map ชื่อย่อ/ลายมือ → ชื่อทางการ
-
-| ชื่อทางการ (product_name_normalized) | คำย่อ / ชื่อเล่น / ลายมือที่พบบ่อย | หมวด |
-|--------------------------------------|--------------------------------------|------|
-| เบียร์สิงห์ขวดใหญ่ | สห์ใหญ่, สิงห์ใหญ่, SINGHA L, สห.ญ, สิงห์ 630, สิงห์แดง | เครื่องดื่ม |
-| เบียร์สิงห์ขวดเล็ก | สห์เล็ก, สิงห์เล็ก, SINGHA S, สห.ล, สิงห์ 330 | เครื่องดื่ม |
-| เบียร์สิงห์กระป๋อง | สห์กป, สิงห์กระป๋อง, SINGHA CAN | เครื่องดื่ม |
-| เบียร์ลีโอขวดใหญ่ | ลีโอใหญ่, LEO L, ลีโอ 630, ล.ญ | เครื่องดื่ม |
-| เบียร์ลีโอขวดเล็ก | ลีโอเล็ก, LEO S, ลีโอ 330, ล.ล | เครื่องดื่ม |
-| เบียร์ลีโอกระป๋อง | ลีโอกป, LEO CAN | เครื่องดื่ม |
-| เบียร์ช้าง | ช้าง, CHANG, ช. | เครื่องดื่ม |
-| เบียร์ช้างเอสเปรสโซ่ | ช้างเอส, CHANG ESP | เครื่องดื่ม |
-| เบียร์ยูเบียร์ | U BEER, ยู, UBEER | เครื่องดื่ม |
-| น้ำดื่มสิงห์ | น้ำสิงห์, นส, SINGHA WATER, สห์น้ำ, น้ำเปล่าสิงห์ | เครื่องดื่ม |
-| น้ำดื่มสิงห์ 600ml | น้ำสิงห์ 600, สห์600 | เครื่องดื่ม |
-| น้ำดื่มสิงห์ 1.5L | น้ำสิงห์ 1500, สห์1500 | เครื่องดื่ม |
-| โซดาสิงห์ | โซดาสห์, SINGHA SODA, SODAPP, โซดา, โซคา, โซดาขวด, โซดาเปลี่ยน, โซดาถาด, โซดาเปลี่ยน/ถาด, โซดาเปล่า/ถาด | เครื่องดื่ม |
-| น้ำแร่เพอริเอ้ | เพอริเอ้, PERRIER, Perrier | เครื่องดื่ม |
-| น้ำแร่ออร่า | ออร่า, AURA | เครื่องดื่ม |
-| สุราแสงโสม | แสงโสม, SS, Saeng Som, แสง | เครื่องดื่ม |
-| สุราหงส์ทอง | หงส์ทอง, หงส์, HT, Hong Thong | เครื่องดื่ม |
-| สุราเบลนด์ 285 | เบลนด์, BLEND, 285 | เครื่องดื่ม |
-| สุรามิสเตอร์ซี | มิสเตอร์ซี, MR.C, Mr.C | เครื่องดื่ม |
-| บี-อิ้ง | B-ing, บีอิ้ง, Bing | เครื่องดื่ม |
-| เฮลซ์บลูบอย | เฮลซ์, HELZ, บลูบอย | เครื่องดื่ม |
-| สิงห์เลมอนโซดา | เลมอนโซดา, LEMON SODA | เครื่องดื่ม |
-"""
-
-# Normalized lowercase set of canonical product names, used by the alias
-# service to refuse learning aliases where the *source* (what the user is
-# overriding) is already a catalog canonical — accepting those would poison
-# future documents that genuinely match the canonical.
-CATALOG_CANONICAL_NAMES: frozenset[str] = _parse_catalog_canonicals(PRODUCT_CATALOG)
-
-SYSTEM_INSTRUCTION = """\
+_SYSTEM_INSTRUCTION_HEAD = """\
 คุณเป็น AI ผู้เชี่ยวชาญในการอ่านและวิเคราะห์เอกสารการขายภาษาไทย
 เช่น ใบเสร็จรับเงิน บิลเงินสด ใบกำกับภาษี และใบส่งของ
 รวมถึงเอกสารที่เขียนด้วยลายมือ
+"""
 
-""" + PRODUCT_CATALOG + """
-
+_SYSTEM_INSTRUCTION_TAIL_TEMPLATE = """
 ## JSON Schema ที่ต้องตอบกลับ (เท่านั้น ห้ามเพิ่ม markdown/fence)
 {
   "merchant_name": "ชื่อร้านค้าหรือบริษัท (string | null)",
@@ -110,6 +57,7 @@ SYSTEM_INSTRUCTION = """\
     {
       "product_name_raw": "ชื่อสินค้าที่อ่านได้จากเอกสาร **ตรงตามลายมือ/ตัวอักษรจริง** (ยังไม่ผ่าน catalog normalization, ไม่ทำ typo fix — แต่อาจตัด unit เช่น 'ลัง'/'ขวด' ออก)",
       "product_name_normalized": "ชื่อสินค้าที่แสดงในระบบ — ถ้า match กับตาราง PRODUCT_CATALOG ให้ใช้ 'ชื่อทางการ' จากตาราง; ถ้าไม่ match ให้ใช้ค่าเดียวกับ product_name_raw",
+      "product_code": "SKU code ของสินค้า (string | null) — ดูจากคอลัมน์ product_code ของตาราง PRODUCT_CATALOG; ใส่เฉพาะเมื่อมั่นใจว่า match จริง ไม่ใช่ทุกบรรทัดต้องมี",
       "category": "หมวดหมู่ของรายการนี้ (string จาก allowed categories)",
       "quantity": 0,
       "unit": "หน่วย เช่น ขวด ลัง แพ็ค กระป๋อง",
@@ -133,7 +81,7 @@ SYSTEM_INSTRUCTION = """\
   - แต่ "คำอธิบาย" ต้องเขียนเป็นไทยเสมอ เช่น ถ้ายอดรวมลายมือไม่ตรงกับการคำนวณ ต้องเขียนแบบ
     "ยอดรวมที่เขียนด้วยลายมือ (16,905) ไม่ตรงกับยอดคำนวณ (16,105) ใช้ยอดคำนวณแทน"
     ห้ามเขียนเป็น "The handwritten grand total is inconsistent..."
-- **สองฟิลด์ชื่อสินค้า** (ต้องใส่ทั้งคู่):
+- **สามฟิลด์ของแต่ละ item**:
   - `product_name_raw` = ข้อความต้นฉบับจากเอกสาร ตรงตามตัวอักษร/ลายมือที่อ่านได้
     - **ห้าม** ทำ catalog lookup, ห้ามแก้ typo, ห้าม normalize
     - ทำได้แค่: ตัด **unit** เช่น "ลัง"/"ขวด"/"แพ็ค" และ **return marker** เช่น "เปลี่ยน/ถาด" ออก
@@ -143,6 +91,12 @@ SYSTEM_INSTRUCTION = """\
     1. ถ้า raw match กับ PRODUCT_CATALOG (อ้อม typo/alias ก็นับ) → ใช้ **ชื่อทางการ** จากตาราง
     2. ถ้าไม่ match → ใช้ **ค่าเดียวกับ raw**
     3. ห้ามทั้งคู่เป็น null ตราบใดที่อ่านเอกสารออก — ถ้าอ่านไม่ออกจริง ๆ ให้ใส่ "?" และเพิ่มใน `needs_review_fields`
+  - `product_code` = SKU code ของสินค้า (สำคัญ — ใช้เพื่อ resolve กลับ DB ตรงๆ ไม่ผ่าน fuzzy match)
+    1. ถ้า normalized match แถวใดในตาราง PRODUCT_CATALOG → ใช้ค่าใน column `product_code` ของแถวนั้น **ตรงๆ ไม่ดัดแปลง**
+    2. ถ้าตาราง PRODUCT_CATALOG ของแถวที่ match มี `product_code = "-"` → ใส่ null
+    3. ถ้าไม่ match catalog เลย (สินค้าจากร้านอื่นนอกเครือบุญรอด) → ใส่ null
+    4. **ห้ามแต่งรหัสขึ้นเอง** ถ้าไม่แน่ใจให้ null — ห้ามเดา
+    5. ห้ามใช้ EAN/บาร์โค้ดที่ปรากฏบนใบเสร็จเป็น product_code — ใช้เฉพาะรหัสจาก catalog เท่านั้น
 - **คำต่อท้ายสินค้าที่ไม่ใช่ส่วนของชื่อ** : คำเหล่านี้อธิบาย **รูปแบบการขาย/การบรรจุ** ไม่ใช่ชื่อสินค้า
   ให้ละทิ้งคำเหล่านี้เวลา map ไป product_name_normalized และเวลาจัด category
   - "เปลี่ยน" / "เปล่า" / "ถาด" / "เปลี่ยน/ถาด" / "เปล่า/ถาด" → หมายถึงขายแบบเปลี่ยนลัง/คืนลังเปล่า (returnable crate)
@@ -184,6 +138,22 @@ SYSTEM_INSTRUCTION = """\
 - ถ้ามีหลายหน้าหรือหลายรายการที่เป็นสรุปรวม ให้ดึงรายการแต่ละบรรทัดเป็น item แยก
 - ตอบเป็น JSON เท่านั้น ห้ามมี markdown code fence หรือข้อความอื่น
 """
+
+
+def build_system_instruction() -> str:
+    """Build SYSTEM_INSTRUCTION with the live DB-backed catalog injected.
+
+    The catalog markdown is cached in :mod:`catalog` (invalidated when admin
+    endpoints mutate ``products``), so this is effectively a string-concat per
+    extraction call — adding/editing SKUs in the DB is reflected in the next
+    request without code changes.
+    """
+    return (
+        _SYSTEM_INSTRUCTION_HEAD
+        + catalog.prompt_catalog_markdown()
+        + _SYSTEM_INSTRUCTION_TAIL_TEMPLATE
+    )
+
 
 EXTRACTION_PROMPT = (
     "ดึงข้อมูลจากเอกสารในรูปนี้ตาม JSON schema และกฎที่กำหนดไว้ใน system instruction "
@@ -250,10 +220,19 @@ def _parse_items(raw_items: object, default_category: str | None) -> list[Docume
         # back to normalized so alias source is non-null downstream.
         if raw_name is None:
             raw_name = normalized
+        product_code = it.get("product_code")
+        if isinstance(product_code, str):
+            product_code = product_code.strip() or None
+            # Guard against the catalog's "-" placeholder leaking through.
+            if product_code == "-":
+                product_code = None
+        else:
+            product_code = None
         items.append(
             DocumentItemBase(
                 product_name_raw=raw_name,
                 product_name_normalized=normalized,
+                product_code=product_code,
                 category=cat,
                 quantity=it.get("quantity"),
                 unit=it.get("unit"),
@@ -301,7 +280,7 @@ def extract_receipt(file_path: str) -> ExtractionResult:
     logger.info("Extracting receipt: %s (%s, %d bytes)", path.name, mime_type, len(file_data))
 
     raw_text = llm_client.generate_json(
-        system_instruction=SYSTEM_INSTRUCTION,
+        system_instruction=build_system_instruction(),
         prompt=EXTRACTION_PROMPT,
         file_bytes=file_data,
         mime_type=mime_type,

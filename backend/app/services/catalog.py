@@ -3,18 +3,22 @@
 Used by:
 * autocomplete — ``search_names()`` returns ranked canonical names
 * alias service — ``is_canonical_name()`` prevents poisoning of catalog SKUs
+* extraction prompts — ``prompt_catalog_markdown()`` / ``prompt_catalog_entries()``
+  build a Gemini-ready view of the catalog (markdown table for combined/legacy,
+  Python list for agentic) so SYSTEM_INSTRUCTION never goes out of sync with DB
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 from collections import defaultdict
-from typing import Iterable
+from typing import Any, Iterable
 
 from sqlalchemy.orm import Session
 
-from ..models import Product
+from ..models import Product, ProductAlias
 
 logger = logging.getLogger(__name__)
 
@@ -143,6 +147,8 @@ def build_display_names(items: list[tuple[str, str]]) -> dict[str, str]:
 # In-memory cache of active canonical names, lower-cased for O(1) membership.
 # Invalidated when admin endpoints mutate ``products``; rebuilt lazily.
 _canonical_cache: frozenset[str] | None = None
+_prompt_entries_cache: list[dict[str, Any]] | None = None
+_prompt_markdown_cache: str | None = None
 
 
 def _norm(text: str | None) -> str:
@@ -152,17 +158,32 @@ def _norm(text: str | None) -> str:
 
 
 def invalidate_cache() -> None:
-    global _canonical_cache
+    global _canonical_cache, _prompt_entries_cache, _prompt_markdown_cache
     _canonical_cache = None
+    _prompt_entries_cache = None
+    _prompt_markdown_cache = None
 
 
 def _load_canonicals(db: Session) -> frozenset[str]:
+    """Load both ``canonical_name`` and ``display_name`` of active products.
+
+    Both are "catalog canonicals" from the alias-guard perspective: Gemini may
+    emit either form (the prompt now uses ``display_name`` while ``find_code_by_name``
+    matches against both), and a user override on either should refuse to learn
+    a global alias.
+    """
     rows = (
-        db.query(Product.canonical_name)
+        db.query(Product.canonical_name, Product.display_name)
         .filter(Product.active.is_(True))
         .all()
     )
-    return frozenset(_norm(r[0]) for r in rows if r[0])
+    out: set[str] = set()
+    for canon, display in rows:
+        if canon:
+            out.add(_norm(canon))
+        if display:
+            out.add(_norm(display))
+    return frozenset(out)
 
 
 def canonical_set(db: Session) -> frozenset[str]:
@@ -252,3 +273,146 @@ def find_code_by_name(db: Session, name: str | None) -> str | None:
     if best_code and best_score >= _CATALOG_MATCH_THRESHOLD:
         return best_code
     return None
+
+
+# ---------------------------------------------------------------------------
+# Prompt catalog: DB-backed view of the catalog for Gemini SYSTEM_INSTRUCTION.
+# Both the markdown table (combined/legacy modes) and the structured entry
+# list (agentic mode) are built from active ``products`` rows so adding a new
+# SKU automatically lands in the prompt — no manual catalog sync.
+# ---------------------------------------------------------------------------
+
+
+def _parse_seed_aliases(raw: str | None) -> list[str]:
+    """Parse the ``products.aliases`` JSON column safely."""
+    if not raw:
+        return []
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(data, list):
+        return []
+    return [s.strip() for s in data if isinstance(s, str) and s.strip()]
+
+
+def _build_prompt_entries(db: Session) -> list[dict[str, Any]]:
+    """Build catalog entries (one per active SKU) for prompt injection.
+
+    For each product:
+      * ``code`` = SKU code (e.g. "10089790100"), or None when the row has no
+        code. Used by Gemini to emit ``product_code`` directly, sidestepping
+        the fuzzy-match fallback.
+      * ``name`` = ``display_name`` (clean, e.g. "น้ำสิงห์เพ็ท 600ml")
+        with fall-back to ``canonical_name`` if display_name is empty.
+      * ``category`` = product.category (with "สินค้าอื่นๆ" default)
+      * ``aliases`` = merged from:
+          1. ``products.aliases`` (seed aliases shipped with each SKU)
+          2. ``product_aliases`` table (user-confirmed corrections)
+          3. ``canonical_name`` itself (if different from display_name) so
+             models that emit the long marketing name still match.
+        Deduped case-insensitively, original casing preserved.
+    """
+    products: list[Product] = (
+        db.query(Product)
+        .filter(Product.active.is_(True))
+        .order_by(Product.category, Product.canonical_name)
+        .all()
+    )
+
+    # Pre-load learned aliases keyed by canonical_name (lowercased).
+    alias_rows: list[ProductAlias] = db.query(ProductAlias).all()
+    learned_by_canon: dict[str, list[str]] = defaultdict(list)
+    for row in alias_rows:
+        if row.canonical_name and row.source_text:
+            learned_by_canon[_norm(row.canonical_name)].append(row.source_text)
+
+    entries: list[dict[str, Any]] = []
+    for p in products:
+        name = (p.display_name or p.canonical_name or "").strip()
+        if not name:
+            continue
+
+        aliases: list[str] = []
+        seen: set[str] = set()
+
+        def _add(alias: str | None) -> None:
+            if not alias:
+                return
+            key = _norm(alias)
+            if not key or key == _norm(name):
+                return
+            if key in seen:
+                return
+            seen.add(key)
+            aliases.append(alias)
+
+        for a in _parse_seed_aliases(p.aliases):
+            _add(a)
+        for a in learned_by_canon.get(_norm(p.canonical_name), []):
+            _add(a)
+        for a in learned_by_canon.get(_norm(name), []):
+            _add(a)
+        # Long canonical_name as fallback alias if display differs
+        if p.canonical_name and _norm(p.canonical_name) != _norm(name):
+            _add(p.canonical_name)
+
+        entries.append(
+            {
+                "code": p.code,
+                "name": name,
+                "category": p.category or "สินค้าอื่นๆ",
+                "aliases": aliases,
+            }
+        )
+
+    return entries
+
+
+def prompt_catalog_entries() -> list[dict[str, Any]]:
+    """Cached, lazy DB-backed catalog entries.
+
+    Cleared by :func:`invalidate_cache` whenever ``products`` mutates.
+    """
+    global _prompt_entries_cache
+    if _prompt_entries_cache is None:
+        from ..database import SessionLocal
+
+        db = SessionLocal()
+        try:
+            _prompt_entries_cache = _build_prompt_entries(db)
+        finally:
+            db.close()
+    return _prompt_entries_cache
+
+
+def _format_markdown(entries: list[dict[str, Any]]) -> str:
+    """Render entries as the markdown table embedded in SYSTEM_INSTRUCTION.
+
+    The leading ``code`` column lets Gemini emit ``product_code`` directly per
+    item — see the schema rules in ``extraction._SYSTEM_INSTRUCTION_TAIL_TEMPLATE``.
+    """
+    lines = [
+        "## สินค้าเครือบุญรอด — ใช้ตารางนี้ map ชื่อย่อ/ลายมือ → ชื่อทางการ + product_code",
+        "",
+        "| product_code | ชื่อทางการ (product_name_normalized) | คำย่อ / ชื่อเล่น / ลายมือที่พบบ่อย | หมวด |",
+        "|--------------|--------------------------------------|--------------------------------------|------|",
+    ]
+    for e in entries:
+        aliases = ", ".join(e["aliases"]) if e["aliases"] else "-"
+        # Keep table cells single-line: replace newlines/pipes that would
+        # break markdown rendering.
+        code = (e.get("code") or "-").replace("|", "/").replace("\n", " ")
+        name = e["name"].replace("|", "/").replace("\n", " ")
+        aliases = aliases.replace("|", "/").replace("\n", " ")
+        category = (e["category"] or "").replace("|", "/").replace("\n", " ")
+        lines.append(f"| {code} | {name} | {aliases} | {category} |")
+    return "\n" + "\n".join(lines) + "\n"
+
+
+def prompt_catalog_markdown() -> str:
+    """Cached markdown table of the active catalog, for SYSTEM_INSTRUCTION."""
+    global _prompt_markdown_cache
+    if _prompt_markdown_cache is None:
+        _prompt_markdown_cache = _format_markdown(prompt_catalog_entries())
+    return _prompt_markdown_cache
