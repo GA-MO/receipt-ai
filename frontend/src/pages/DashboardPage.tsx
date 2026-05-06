@@ -79,6 +79,12 @@ const EXPORT_FORMAT_OPTIONS: { value: ExportFormat; label: string; hint: string 
   { value: "journal_entries", label: "บัญชีแบบ Dr/Cr", hint: "สำหรับลงสมุดบัญชี double-entry" },
 ];
 
+// Pitching mode — hides sections that are noisy/broken on a small demo dataset:
+// period comparison (calendar-month filter shows 0), category breakdown (1 cat),
+// VAT summary (BE-year display issues), spending heatmap (sparse), AI Health card.
+// Flip to false to restore the full dashboard.
+const PITCHING_MODE = true;
+
 export default function DashboardPage() {
   const [exportDateRange, setExportDateRange] = useState<[Date | null, Date | null]>([null, null]);
   const [exportFormat, setExportFormat] = useState<ExportFormat>("line_items");
@@ -227,44 +233,48 @@ export default function DashboardPage() {
             ภาพรวมข้อมูลยอดขายจากเอกสาร
           </Text>
         </div>
-        <Group gap="sm" wrap="wrap">
-          <DatePickerInput
-            type="range"
-            placeholder="เลือกช่วงวันที่"
-            value={exportDateRange}
-            onChange={(v) => setExportDateRange(v as [Date | null, Date | null])}
-            locale="th"
-            clearable
-            w={220}
-          />
-          <Select
-            placeholder="รูปแบบไฟล์"
-            w={220}
-            value={exportFormat}
-            onChange={(v) => v && setExportFormat(v as ExportFormat)}
-            data={EXPORT_FORMAT_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
-            description={EXPORT_FORMAT_OPTIONS.find((o) => o.value === exportFormat)?.hint}
-            allowDeselect={false}
-          />
-          <Button
-            component="a"
-            href={getExportUrl({
-              date_from: exportDateFrom || undefined,
-              date_to: exportDateTo || undefined,
-              format: exportFormat,
-            })}
-            color="green"
-            leftSection={<Download size={16} />}
-          >
-            Export CSV
-          </Button>
-        </Group>
+        {!PITCHING_MODE && (
+          <Group gap="sm" wrap="wrap">
+            <DatePickerInput
+              type="range"
+              placeholder="เลือกช่วงวันที่"
+              value={exportDateRange}
+              onChange={(v) => setExportDateRange(v as [Date | null, Date | null])}
+              locale="th"
+              clearable
+              w={220}
+            />
+            <Select
+              placeholder="รูปแบบไฟล์"
+              w={220}
+              value={exportFormat}
+              onChange={(v) => v && setExportFormat(v as ExportFormat)}
+              data={EXPORT_FORMAT_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+              description={EXPORT_FORMAT_OPTIONS.find((o) => o.value === exportFormat)?.hint}
+              allowDeselect={false}
+            />
+            <Button
+              component="a"
+              href={getExportUrl({
+                date_from: exportDateFrom || undefined,
+                date_to: exportDateTo || undefined,
+                format: exportFormat,
+              })}
+              color="green"
+              leftSection={<Download size={16} />}
+            >
+              Export CSV
+            </Button>
+          </Group>
+        )}
       </Group>
 
       {/* Period comparison */}
-      <div style={{ marginBottom: "var(--mantine-spacing-lg)" }}>
-        <PeriodComparisonCard />
-      </div>
+      {!PITCHING_MODE && (
+        <div style={{ marginBottom: "var(--mantine-spacing-lg)" }}>
+          <PeriodComparisonCard />
+        </div>
+      )}
 
       {/* Stats cards */}
       <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="md" mb="lg">
@@ -501,6 +511,7 @@ export default function DashboardPage() {
       </Paper>
 
       {/* Charts row 2: category breakdown + VAT summary */}
+      {!PITCHING_MODE && (
       <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md" mb="lg">
         <Paper withBorder p="md">
           <Text fw={600} mb="md">สัดส่วนค่าใช้จ่ายตามหมวดหมู่</Text>
@@ -615,17 +626,20 @@ export default function DashboardPage() {
           )}
         </Paper>
       </SimpleGrid>
+      )}
 
-      {/* Spending Heatmap + Fraud Summary */}
-      <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md" mb="lg">
-        <Paper withBorder p="md">
-          <Text fw={600} mb="md">Spending Heatmap (90 วัน)</Text>
-          {heatmapData.length === 0 ? (
-            <Text c="dimmed" size="sm" ta="center" py="xl">ยังไม่มีข้อมูล</Text>
-          ) : (
-            <SpendingHeatmap data={heatmapData} />
-          )}
-        </Paper>
+      {/* Spending Heatmap + Fraud Summary (heatmap hidden in pitching mode) */}
+      <SimpleGrid cols={{ base: 1, lg: PITCHING_MODE ? 1 : 2 }} spacing="md" mb="lg">
+        {!PITCHING_MODE && (
+          <Paper withBorder p="md">
+            <Text fw={600} mb="md">Spending Heatmap (90 วัน)</Text>
+            {heatmapData.length === 0 ? (
+              <Text c="dimmed" size="sm" ta="center" py="xl">ยังไม่มีข้อมูล</Text>
+            ) : (
+              <SpendingHeatmap data={heatmapData} />
+            )}
+          </Paper>
+        )}
 
         <Paper withBorder p="md">
           <Group gap="xs" mb="md">
@@ -714,7 +728,7 @@ export default function DashboardPage() {
       {/* Compact AI Health summary on dashboard — links to /ai-health for
           full detail. Admin observability content lives outside the dashboard
           so business analytics stay focused. */}
-      {(() => {
+      {!PITCHING_MODE && (() => {
         const gapCount = catalogGapsQuery.data?.gaps.length ?? 0;
         const gapHits = (catalogGapsQuery.data?.gaps ?? []).reduce((s, g) => s + g.hit_count, 0);
         const typoPatterns = typoRecoveriesQuery.data?.recoveries.length ?? 0;
