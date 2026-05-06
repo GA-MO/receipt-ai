@@ -4,14 +4,18 @@ import { format } from "date-fns";
 import {
   AlertCircle,
   BarChart3,
+  Brain,
   CheckCircle2,
+  ChevronRight,
   Download,
   FileText,
+  PackageSearch,
   Receipt,
   ShieldAlert,
   TrendingUp,
 } from "lucide-react";
 import {
+  ActionIcon,
   Badge,
   Button,
   Group,
@@ -37,6 +41,7 @@ import {
 } from "../api/client";
 import {
   useAiInsight,
+  useCatalogGaps,
   useCategoryBreakdown,
   useDailySales,
   useDashboardStats,
@@ -46,6 +51,7 @@ import {
   useSpendingHeatmap,
   useTopMerchants,
   useTopProducts,
+  useTypoRecoveries,
   useVatSummary,
 } from "../api/queries";
 import { PeriodComparisonCard } from "@/components/PeriodComparison";
@@ -87,11 +93,14 @@ export default function DashboardPage() {
   const dailyQuery = useDailySales(30);
   const topMerchantsQuery = useTopMerchants(5);
   const [topProductsScope, setTopProductsScope] = useState<"all" | "catalog">("all");
+  const [topProductsExpanded, setTopProductsExpanded] = useState(false);
   const topProductsQuery = useTopProducts(10, { catalog_only: topProductsScope === "catalog" });
   const categoriesQuery = useCategoryBreakdown();
   const vatQuery = useVatSummary();
   const fraudQuery = useFraudSummary();
   const heatmapQuery = useSpendingHeatmap(90);
+  const catalogGapsQuery = useCatalogGaps(30);
+  const typoRecoveriesQuery = useTypoRecoveries(30);
   const aiInsightMut = useAiInsight();
 
   const loading =
@@ -431,7 +440,7 @@ export default function DashboardPage() {
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {topProducts.map((p, i) => (
+              {(topProductsExpanded ? topProducts : topProducts.slice(0, 5)).map((p, i) => (
                 <Table.Tr key={p.product}>
                   <Table.Td>
                     <Badge
@@ -477,6 +486,17 @@ export default function DashboardPage() {
               ))}
             </Table.Tbody>
           </Table>
+        )}
+        {topProducts.length > 5 && (
+          <Group justify="center" mt="xs">
+            <Button
+              size="xs"
+              variant="subtle"
+              onClick={() => setTopProductsExpanded((v) => !v)}
+            >
+              {topProductsExpanded ? "ย่อ" : `ดูเพิ่มอีก ${topProducts.length - 5} รายการ`}
+            </Button>
+          </Group>
         )}
       </Paper>
 
@@ -690,6 +710,75 @@ export default function DashboardPage() {
           )}
         </Paper>
       </SimpleGrid>
+
+      {/* Compact AI Health summary on dashboard — links to /ai-health for
+          full detail. Admin observability content lives outside the dashboard
+          so business analytics stay focused. */}
+      {(() => {
+        const gapCount = catalogGapsQuery.data?.gaps.length ?? 0;
+        const gapHits = (catalogGapsQuery.data?.gaps ?? []).reduce((s, g) => s + g.hit_count, 0);
+        const typoPatterns = typoRecoveriesQuery.data?.recoveries.length ?? 0;
+        const typoHits = (typoRecoveriesQuery.data?.recoveries ?? []).reduce((s, r) => s + r.hit_count, 0);
+        const healthy = gapCount === 0 && typoPatterns === 0;
+        return (
+          <Paper
+            withBorder
+            p="md"
+            mb="lg"
+            component={Link}
+            to="/ai-health"
+            className="cursor-pointer hover:shadow-md transition-shadow no-underline"
+          >
+            <Group justify="space-between" wrap="nowrap">
+              <Group gap="md" wrap="nowrap">
+                <ThemeIcon
+                  size={36}
+                  radius="md"
+                  color={healthy ? "green" : "indigo"}
+                  variant="light"
+                >
+                  <Brain size={18} />
+                </ThemeIcon>
+                <div>
+                  <Text fw={600} size="sm">AI Health (30 วัน)</Text>
+                  <Text c="dimmed" size="xs">
+                    ระบบเฝ้าตัวเอง — กดเพื่อดูรายละเอียด
+                  </Text>
+                </div>
+              </Group>
+              <Group gap="lg" wrap="nowrap">
+                <Stack gap={2} align="flex-end">
+                  <Group gap={6} align="baseline">
+                    <PackageSearch size={12} className="text-(--mantine-color-dimmed)" />
+                    <Text size="lg" fw={700} c={gapCount > 0 ? "orange" : "green"}>
+                      {gapCount}
+                    </Text>
+                    {gapHits > 0 && (
+                      <Text size="xs" c="dimmed">({gapHits} hits)</Text>
+                    )}
+                  </Group>
+                  <Text size="xs" c="dimmed">Catalog gaps</Text>
+                </Stack>
+                <Stack gap={2} align="flex-end">
+                  <Group gap={6} align="baseline">
+                    <AlertCircle size={12} className="text-(--mantine-color-dimmed)" />
+                    <Text size="lg" fw={700} c={typoPatterns > 0 ? "yellow.7" : "green"}>
+                      {typoPatterns}
+                    </Text>
+                    {typoHits > 0 && (
+                      <Text size="xs" c="dimmed">({typoHits} hits)</Text>
+                    )}
+                  </Group>
+                  <Text size="xs" c="dimmed">Typo recoveries</Text>
+                </Stack>
+                <ActionIcon variant="subtle" color="gray" size="sm" aria-label="ดูรายละเอียด">
+                  <ChevronRight size={16} />
+                </ActionIcon>
+              </Group>
+            </Group>
+          </Paper>
+        );
+      })()}
 
       {/* Recent docs */}
       <Paper withBorder>

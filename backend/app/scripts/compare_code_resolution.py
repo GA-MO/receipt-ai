@@ -18,7 +18,7 @@ Then tabulate:
 Usage::
 
     .venv/bin/python -m app.scripts.compare_code_resolution \\
-        --dir ../dataTest/groupA --limit 5
+        --dir ../dataTest/demo --limit 5
 
 Run only against your own test data — each receipt is one Gemini call.
 """
@@ -120,23 +120,37 @@ def process_receipt(file_path: Path) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--dir", type=Path, required=True, help="Directory of receipt files.")
-    parser.add_argument("--limit", type=int, default=5, help="Max receipts to process.")
+    parser.add_argument("--dir", type=Path, default=None, help="Directory of receipt files.")
+    parser.add_argument(
+        "--files",
+        type=str,
+        default=None,
+        help="Comma-separated list of file paths (overrides --dir).",
+    )
+    parser.add_argument("--limit", type=int, default=5, help="Max receipts to process from --dir.")
     parser.add_argument("--out", type=Path, default=None, help="Write raw JSON results here.")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(message)s")
 
-    if not args.dir.is_dir():
-        sys.exit(f"Not a directory: {args.dir}")
+    if args.files:
+        files = [Path(p.strip()) for p in args.files.split(",") if p.strip()]
+        for f in files:
+            if not f.exists():
+                sys.exit(f"File not found: {f}")
+    elif args.dir:
+        if not args.dir.is_dir():
+            sys.exit(f"Not a directory: {args.dir}")
+        files = sorted(
+            f
+            for f in args.dir.iterdir()
+            if f.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp", ".pdf"}
+        )[: args.limit]
+    else:
+        sys.exit("Provide --dir or --files")
 
-    files = sorted(
-        f
-        for f in args.dir.iterdir()
-        if f.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp", ".pdf"}
-    )[: args.limit]
     if not files:
-        sys.exit(f"No receipt files in {args.dir}")
+        sys.exit("No receipt files to process")
 
     print(f"Processing {len(files)} receipt(s) from {args.dir}\n")
 

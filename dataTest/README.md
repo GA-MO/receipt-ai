@@ -1,115 +1,87 @@
 # Test Data Catalog
 
 ข้อมูลทดสอบสำหรับ Thai Receipt Intelligence
-อัปเดตล่าสุด: 2026-04-08 (Gemini 3 Flash, prompt v2 — ปรับ category + fraud sensitivity)
+อัปเดตล่าสุด: 2026-05-06 (curated set, 11 ไฟล์ + โมเดล `gemini-3.1-flash-lite-preview`)
 
-ผลรวม: **35 ไฟล์ tested** | Category อื่นๆ ลดจาก 76% → 26% | Fraud high risk ลดจาก 59% → 37%
+ทั้งหมดอยู่ใน `demo/` — ใช้สำหรับทั้ง pitching และ regression testing
+
+**Model ปัจจุบัน:** `google/gemini-3.1-flash-lite-preview` ผ่าน OpenRouter
+
+- Latency p50 ≈ 4.5s, p95 ≈ 6s (เร็วกว่า 2.5-flash ~45%)
+- Avg confidence ≈ 0.93
+
+**Filename convention:** ตั้งชื่อแบบ sequential `01.jpeg`–`11.jpeg` ตามลำดับเดโม — README นี้คือ source of truth สำหรับว่าแต่ละไฟล์โชว์อะไร
 
 ---
 
-## demo/ — ไฟล์สำหรับ Pitching Day
+## demo/ — ไฟล์ทดสอบทั้งหมด (11 ไฟล์)
 
-| ลำดับ | ไฟล์ | ใช้โชว์อะไร | ที่มา |
-|-------|------|-----------|-------|
-| 1 | `01_happy_path.webp` | **Happy path** — อัปโหลด → AI ดึงข้อมูลถูก | groupA/3.webp |
-| 2 | `02_happy_pdf.pdf` | **PDF support** | groupA/12.pdf |
-| 3 | `03_beer_clean.jpeg` | **หมวดเบียร์** — AI จัดหมวดสินค้าบุญรอดได้ | groupB (รวยสุรา) |
-| 4 | `04_spirits.jpeg` | **หมวดสุรา** — หงส์ทอง/แสงโสม | groupB (Elephant Brand) |
-| 5 | `05_water.jpeg` | **หมวดน้ำดื่ม** | groupB (มิตรราชบุรี) |
-| 6a-c | `06_same_merchant_*.jpeg` | **ร้านเดียวกัน 3 ใบ** — เทียบประวัติร้าน | groupB (รวยสุรา) |
-| 7a-b | `07_similar_*.png` | **ยอดเดียวกัน** — fraud จับซ้ำ | groupA (5+6.png) |
-| 8 | `08_fraud_vat.jpeg` | **Fraud: VAT ผิด** | groupB |
-| 9 | `09_fraud_price.jpeg` | **Fraud: ราคาผิดปกติ** | groupB (โจวบุ่งไช้) |
-| 10 | `10_multi_items.webp` | **หลายรายการ** | groupA/8.webp |
+### Pitching set — เรียงตามลำดับเดโม
 
-### Demo Script (15 นาที)
+| ไฟล์ | ร้านค้า | ยอดรวม | ใช้โชว์อะไร |
+| --- | --- | --- | --- |
+| `01.jpeg` | รวยสุรา | ฿7,010 | **AI ดึงข้อมูล + catalog match** — เครื่องดื่มบุญรอด, ~4-5s |
+| `02.jpeg` | มิตรราชบุรีเทรดดิ้ง | ฿1,308 | **หมวดน้ำดื่ม** — single item |
+| `03.jpeg` | รวยสุรา (ใบใหญ่) | ฿47,245 | **Merchant cluster** — ใบที่ 2 ของรวยสุรา |
+| `04.jpeg` | รวยสุรา (ใบเล็ก) | ฿7,895 | **Merchant cluster** — ใบที่ 3, normalize เป็น "รวยสุรา" |
+| `05.jpeg` | สุดาพาณิชย์ | ฿130,305 | **AI fraud detection** — risk 0.7 high "ปี พ.ศ. 68 ผิดปกติ" |
+| `06.jpeg` | โจวบุ่งใช้ | ฿30,829 | **OCR challenge / Human-in-the-loop** — บิลลายมือ มีบรั่นดีรีเจนซี่ 2 ลัง × 4,080 (ราคาถูกต้อง) แต่ AI อ่านเป็น "ลีโอแบน" → demo Review page: พิมพ์ "บรั่นดี" → autocomplete suggest "บรั่นดีรีเจนซี่" จาก catalog (`INT-SPIRIT-REGENCY`) |
 
+### Production-grade receipts (ใช้เพิ่มยอดให้ dashboard ดูสมจริง)
+
+| ไฟล์ | ร้านค้า | ยอดรวม | Tags |
+| --- | --- | --- | --- |
+| `07.jpeg` | จำปิสโตร์ | ฿184,640 | high-value |
+| `08.jpeg` | กวงเสิน | ฿16,905 | clean mid |
+| `09.jpeg` | ประสงค์การค้าแพร่ | ฿29,452 | mid |
+| `10.jpeg` | บ่อกุ้ง / 99999 | ฿4,200 | low-value clean |
+| `11.jpeg` | CSB | ฿178,322 | high-conf high-value |
+
+หมวดหมู่ทั้งหมดในชุดนี้: **เครื่องดื่ม**
+
+---
+
+## Demo Script
+
+```text
+1. Upload 01.jpeg → AI ดึงข้อมูลถูก, จัดหมวดสินค้าบุญรอด (~4-5s)
+2. Upload 02.jpeg → หมวดน้ำดื่ม
+3. Upload 03.jpeg + 04.jpeg → merchant_normalized = "รวยสุรา" ทั้งคู่ (cluster)
+4. Upload 05.jpeg (สุดาพาณิชย์) → AI flag fraud "ปี พ.ศ. 68 ผิดปกติ" risk 0.7 high
+5. Upload 06.jpeg → AI อ่านชื่อสินค้าเพี้ยน (ลีโอแบน — ที่จริงคือบรั่นดีรีเจนซี่)
+   → เปิด Review page → พิมพ์ "บรั่นดี" → autocomplete จาก catalog → save → demo human-in-the-loop
+6. Upload 07.jpeg–11.jpeg → เพิ่มยอดให้ dashboard ดูสมจริง
+7. Approve เอกสารผ่าน Review page (จำเป็นเพื่อให้ Dashboard ติดข้อมูล)
+8. Dashboard → ยอดรายวัน, top-merchants, top-products + catalog match, VAT รายเดือน, fraud summary, export CSV
 ```
-นาที 1-3:   ปัญหา → อัปโหลด 01 + 02 → AI ดึงข้อมูลเร็ว
-นาที 3-5:   Boonrawd category → อัปโหลด 03 + 04 + 05 → จัดหมวดถูก
-นาที 5-8:   Fraud Detection →
-             06a-c (ร้านเดียวกัน 3 ใบ → ดูประวัติ)
-             07a แล้ว 07b (ยอดเดียวกัน → fraud จับซ้ำ)
-นาที 8-10:  Fraud detail → 08 (VAT ผิด) + 09 (ราคาผิดปกติ)
-นาที 10-12: Dashboard → ยอดรายวัน, หมวดหมู่, fraud summary, export CSV
-นาที 12-15: Architecture + ROI + Q&A
+
+**Pitching prep checklist:**
+
+```bash
+# 1. Reset clean state
+backend/.venv/bin/python -c "import sqlite3; c=sqlite3.connect('backend/data/receipts.db').cursor(); [c.execute(f'DELETE FROM {t}') for t in ['document_items','documents','document_events','merchant_aliases']]; c.connection.commit()"
+find backend/uploads -mindepth 1 -maxdepth 1 -delete
+
+# 2. Run end-to-end + measure
+backend/.venv/bin/python scripts/pitching_test.py
+
+# 3. Approve all (so dashboard charts populate)
+curl -s 'http://localhost:8000/api/documents?limit=20' | backend/.venv/bin/python -c "import sys,json,urllib.request; [urllib.request.urlopen(urllib.request.Request(f'http://localhost:8000/api/documents/{d[\"id\"]}/approve',method='POST')) for d in json.load(sys.stdin)]"
 ```
 
 ---
-
-## Quick Reference — เลือกตาม Test Case
-
-| ต้องการทดสอบ | ไฟล์แนะนำ |
-|-------------|----------|
-| **Happy path** (clean, high conf) | `groupA/1.jpg` (0%), `groupA/2.webp` (0%), `groupA/10.jpg` (0%) |
-| **Fraud สูง (≥60%)** | `groupB/20260113180042082009.jpeg` (90%), `groupB/20260114001825677002.jpeg` (90%) |
-| **Fraud clean (0%)** | `groupB/20260109213556685004.jpeg`, `groupB/20260117165214163001.jpeg` |
-| **หมวดเบียร์** | `groupB/20260108153625237004.jpeg`, `groupB/20260109213556685004.jpeg`, `groupB/20260117165214163001.jpeg` |
-| **หมวดสุรา** | `groupB/20260113180042082011.jpeg`, `groupB/20260118123859593001.jpeg` |
-| **หมวดอาหาร** | `groupA/2.webp`, `groupA/7.png` |
-| **PDF** | `groupB/20260109160337353001.pdf`, `groupB/20260109161032808001.pdf`, `groupB/20260109223646691001.pdf` |
-| **Items เยอะ** | `groupB/20260110231354266001.jpeg` (117), `groupB/20260119161224458003.jpeg` (28) |
-| **ยอดสูง (≥฿100K)** | `groupB/20260110182412680001.jpeg` (฿485K), `groupB/20260117165214163001.jpeg` (฿178K) |
-| **Confidence ต่ำ** | `groupB/20260110231354266001.jpeg` (40%), `groupB/20260113211240781001.jpeg` (45%) |
-
----
-
-## groupA (7 files tested)
-
-| ไฟล์ | Format | ยอดรวม | ร้านค้า | หมวด | Items | Conf | Fraud | Tags |
-|------|--------|--------|---------|------|-------|------|-------|------|
-| `1.jpg` | JPG | ฿61,953 | SME MOVE | อื่นๆ | 1 | 90% | 0% | high-conf clean |
-| `2.webp` | WEBP | ฿3,000 | คุณยายเบเกอรี่ | อาหาร | 1 | 90% | 0% | high-conf clean |
-| `4.png` | PNG | ฿6,802,058 | บริษัท ตัวอย่าง | อื่นๆ | 5 | 60% | 75% | fraud-high high-value |
-| `7.png` | PNG | ฿12,500 | ESDES | อาหาร | 1 | 90% | 0% | high-conf clean |
-| `9.webp` | WEBP | ฿20,000 | GIGGLING PLATYPUS | อื่นๆ | 1 | 90% | 80% | fraud-high |
-| `10.jpg` | JPG | ฿51,360 | Apple Gump | อื่นๆ | 1 | 95% | 0% | high-conf clean |
-| `11.webp` | WEBP | ฿690 | อีซี่ คิดส์ | อื่นๆ | 1 | 90% | 85% | fraud-high low-value |
-
-## groupB (19 files tested)
-
-| ไฟล์ | Format | ยอดรวม | ร้านค้า | หมวด | Items | Conf | Fraud | Tags |
-|------|--------|--------|---------|------|-------|------|-------|------|
-| `20260108153625237004.jpeg` | JPEG | ฿203,210 | ณ บวร เทรดดิ้ง | **เบียร์** | 9 | 75% | 85% | fraud-high high-value |
-| `20260109160337353001.pdf` | PDF | ฿56,445 | สิงห์ สามารถ | **เบียร์** | 8 | 50% | 10% | clean |
-| `20260109161032808001.pdf` | PDF | ฿273,501 | สิงห์ สามารถ | เครื่องดื่มอื่นๆ | 94 | 60% | 77% | fraud-high high-value |
-| `20260109173123435001.jpeg` | JPEG | ฿184,640 | จำปิสโตร์ | **เบียร์** | 5 | 85% | 45% | fraud-mid high-value |
-| `20260109182259531002.jpeg` | JPEG | ฿685 | ร้านน้อยหน่า | **เบียร์** | 1 | 70% | 0% | **clean** low-value |
-| `20260109213556685004.jpeg` | JPEG | ฿16,105 | กว้างพาณิชย์ | **เบียร์** | 4 | 90% | 0% | **high-conf clean** |
-| `20260109223646691001.pdf` | PDF | ฿352,972 | อำ วิสกี้ | **เบียร์** | 13 | 50% | 35% | fraud-mid high-value |
-| `20260110101706330004.jpeg` | JPEG | ฿48,840 | ประสงค์การค้าแพร่ | **เบียร์** | 2 | 60% | 40% | fraud-mid |
-| `20260110105911473001.jpeg` | JPEG | ฿4,200 | รัก 99999 | อาหาร | 1 | 70% | 0% | clean |
-| `20260110182412680001.jpeg` | JPEG | ฿485,031 | - | **เบียร์** | 15 | 65% | 60% | fraud-high high-value |
-| `20260110231354266001.jpeg` | JPEG | - | สิงห์ชลบุรี | **เบียร์** | 117 | 40% | - | items มากสุด |
-| `20260113180042082009.jpeg` | JPEG | ฿21,342 | ร้านโจวบุ่งไช้ | อื่นๆ | 6 | 75% | 90% | fraud-high |
-| `20260113180042082011.jpeg` | JPEG | ฿30,431 | - | **สุรา** | 10 | 55% | 90% | fraud-high |
-| `20260113211240781001.jpeg` | JPEG | ฿186,770 | - | **เบียร์** | 7 | 45% | 75% | fraud-high high-value |
-| `20260114001825677002.jpeg` | JPEG | ฿26,475 | Shimgou izakaya | **เบียร์** | 6 | 65% | 90% | fraud-high |
-| `20260117165214163001.jpeg` | JPEG | ฿178,322 | CSB | **เบียร์** | 7 | 90% | 0% | **high-conf clean** high-value |
-| `20260117191638884001.jpeg` | JPEG | ฿7,470 | - | **สุรา** | 2 | 50% | 20% | clean |
-| `20260118123859593001.jpeg` | JPEG | ฿130,305 | ร้านสุดาพาณิชย์ | **สุรา** | 6 | 65% | 45% | fraud-mid high-value |
-| `20260119161224458003.jpeg` | JPEG | - | นครศรีเบเวอเรจ | **เบียร์** | 28 | 50% | - | low-conf |
-
----
-
-## สถิติ (prompt v2, 2026-04-08)
-
-| Metric | Before (v1) | After (v2) | Change |
-|--------|-------------|------------|--------|
-| Category "อื่นๆ" | 76% | **26%** | ลด 50% |
-| Boonrawd products | 16% | **60%** | เพิ่ม 4x |
-| Fraud high risk | 59% | **37%** | ลด 22% |
-| Avg risk score | 63% | **37%** | ลดเกือบครึ่ง |
 
 ## วิธีใช้
 
 ```bash
 # Upload ไฟล์เดียว
-curl -X POST http://localhost:8000/api/documents/upload -F "file=@dataTest/demo/01_happy_path.webp"
+curl -X POST http://localhost:8000/api/documents/upload -F "file=@dataTest/demo/01.jpeg"
 
 # Upload ทั้งหมดและเก็บผลลัพธ์
-cd backend && uv run python ../scripts/retest_all.py
-
-# ดูผลลัพธ์ละเอียด
-cat dataTest/test_results.json
+backend/.venv/bin/python scripts/pitching_test.py
 ```
+
+## โฟลเดอร์อื่น
+
+- `ground_truth/` — ground-truth JSON สำหรับ benchmark (`<doc_id>.json`)
+- `benchmark_results/` — ผล benchmark ย้อนหลัง (`<doc_id>_<timestamp>.json`)

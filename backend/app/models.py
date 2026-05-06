@@ -185,6 +185,49 @@ class ProductAlias(Base):
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
 
 
+class CatalogGapEvent(Base):
+    """One row per Gemini-emitted ``product_code`` that didn't match the
+    active products catalog (and where the name wasn't a typo recovery either).
+
+    Surfaces real catalog completeness gaps so admins can decide whether to
+    add the missing SKU. Written from
+    :func:`app.routers.documents._resolve_product_code`. Auto-resolved when
+    a matching SKU is later added to ``products`` (see
+    :func:`app.services.catalog.invalidate_cache`).
+    """
+
+    __tablename__ = "catalog_gap_events"
+
+    id = Column(String, primary_key=True, default=_gen_id)
+    document_id = Column(String, ForeignKey("documents.id", ondelete="CASCADE"), index=True)
+    emitted_code = Column(String, nullable=False, index=True)
+    product_name = Column(String, nullable=True)
+    product_name_raw = Column(String, nullable=True)
+    seen_at = Column(DateTime, default=_utcnow, index=True)
+    resolved_at = Column(DateTime, nullable=True, index=True)
+
+
+class TypoRecoveryEvent(Base):
+    """One row per smart-fallback "typo recovery" — Gemini emitted a
+    product_code that didn't exist in the catalog, but the normalized name
+    *was* an exact catalog match, so we trusted the name and recovered.
+
+    Recurring patterns here mean Gemini consistently typos a specific code,
+    which usually warrants a hint in SYSTEM_INSTRUCTION ("watch out for
+    code X being mis-typed as Y") or — more rarely — a real bug in our
+    catalog representation that confuses the model.
+    """
+
+    __tablename__ = "typo_recovery_events"
+
+    id = Column(String, primary_key=True, default=_gen_id)
+    document_id = Column(String, ForeignKey("documents.id", ondelete="CASCADE"), index=True)
+    emitted_code = Column(String, nullable=False, index=True)
+    recovered_code = Column(String, nullable=False, index=True)
+    product_name = Column(String, nullable=True)
+    seen_at = Column(DateTime, default=_utcnow, index=True)
+
+
 class PushSubscription(Base):
     """Web Push subscription record.
 

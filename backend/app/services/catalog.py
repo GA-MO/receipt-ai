@@ -18,7 +18,7 @@ from typing import Any, Iterable
 
 from sqlalchemy.orm import Session
 
-from ..models import Product, ProductAlias
+from ..models import CatalogGapEvent, Product, ProductAlias
 
 logger = logging.getLogger(__name__)
 
@@ -158,10 +158,52 @@ def _norm(text: str | None) -> str:
 
 
 def invalidate_cache() -> None:
+    """Clear all catalog caches and auto-resolve any catalog_gap_events that
+    now point at a SKU which has just become active.
+
+    Called from seed scripts and admin endpoints whenever ``products`` mutates.
+    The gap-resolve sweep is best-effort — failures are logged, not raised,
+    so cache invalidation always succeeds.
+    """
     global _canonical_cache, _prompt_entries_cache, _prompt_markdown_cache
     _canonical_cache = None
     _prompt_entries_cache = None
     _prompt_markdown_cache = None
+
+    try:
+        from ..database import SessionLocal
+
+        db = SessionLocal()
+        try:
+            now = _utcnow_naive()
+            updated = (
+                db.query(CatalogGapEvent)
+                .filter(CatalogGapEvent.resolved_at.is_(None))
+                .filter(
+                    CatalogGapEvent.emitted_code.in_(
+                        db.query(Product.code).filter(
+                            Product.active.is_(True),
+                            Product.code.isnot(None),
+                        )
+                    )
+                )
+                .update(
+                    {CatalogGapEvent.resolved_at: now},
+                    synchronize_session=False,
+                )
+            )
+            if updated:
+                db.commit()
+                logger.info("Auto-resolved %d catalog_gap_events after catalog mutation", updated)
+        finally:
+            db.close()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Gap auto-resolve sweep failed: %s", exc)
+
+
+def _utcnow_naive():
+    from datetime import datetime
+    return datetime.utcnow()
 
 
 def _load_canonicals(db: Session) -> frozenset[str]:

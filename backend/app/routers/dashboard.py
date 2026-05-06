@@ -10,7 +10,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models import Document, DocumentItem
+from ..models import CatalogGapEvent, Document, DocumentItem, TypoRecoveryEvent
 from ..schemas import DashboardStats
 from ..services import llm_client
 
@@ -900,3 +900,93 @@ def export_csv(
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
+
+
+@router.get("/catalog-gaps")
+def catalog_gaps(
+    days: int = Query(30, ge=1, le=365),
+    limit: int = Query(50, ge=1, le=500),
+    db: Session = Depends(get_db),
+):
+    """Top recurring catalog gaps from Gemini's product_code emissions.
+
+    Surfaces SKU codes the model emits that don't exist in our active catalog.
+    High-hit gaps suggest a real Boonrawd SKU we haven't seeded yet (e.g. a
+    new variant). Use this to drive catalog completeness, not as an alert.
+    """
+    cutoff = datetime.now(UTC) - timedelta(days=days)
+
+    rows = (
+        db.query(
+            CatalogGapEvent.emitted_code,
+            CatalogGapEvent.product_name,
+            func.count(CatalogGapEvent.id).label("hit_count"),
+            func.max(CatalogGapEvent.seen_at).label("last_seen"),
+        )
+        .filter(CatalogGapEvent.seen_at >= cutoff)
+        .filter(CatalogGapEvent.resolved_at.is_(None))
+        .group_by(CatalogGapEvent.emitted_code, CatalogGapEvent.product_name)
+        .order_by(func.count(CatalogGapEvent.id).desc())
+        .limit(limit)
+        .all()
+    )
+
+    return {
+        "window_days": days,
+        "gaps": [
+            {
+                "emitted_code": r.emitted_code,
+                "product_name": r.product_name,
+                "hit_count": r.hit_count,
+                "last_seen": r.last_seen.isoformat() if r.last_seen else None,
+            }
+            for r in rows
+        ],
+    }
+
+
+@router.get("/typo-recoveries")
+def typo_recoveries(
+    days: int = Query(30, ge=1, le=365),
+    limit: int = Query(50, ge=1, le=500),
+    db: Session = Depends(get_db),
+):
+    """Recurring typo recoveries — Gemini emits a wrong product_code but the
+    name matches catalog so we recover. High-hit patterns suggest the model
+    consistently mis-types a specific SKU (warrants a prompt hint) or that
+    two SKU codes are visually confusable (e.g. 10079770100 vs 10097730100).
+    """
+    cutoff = datetime.now(UTC) - timedelta(days=days)
+
+    rows = (
+        db.query(
+            TypoRecoveryEvent.emitted_code,
+            TypoRecoveryEvent.recovered_code,
+            TypoRecoveryEvent.product_name,
+            func.count(TypoRecoveryEvent.id).label("hit_count"),
+            func.max(TypoRecoveryEvent.seen_at).label("last_seen"),
+        )
+        .filter(TypoRecoveryEvent.seen_at >= cutoff)
+        .group_by(
+            TypoRecoveryEvent.emitted_code,
+            TypoRecoveryEvent.recovered_code,
+            TypoRecoveryEvent.product_name,
+        )
+        .order_by(func.count(TypoRecoveryEvent.id).desc())
+        .limit(limit)
+        .all()
+    )
+
+    return {
+        "window_days": days,
+        "recoveries": [
+            {
+                "emitted_code": r.emitted_code,
+                "recovered_code": r.recovered_code,
+                "product_name": r.product_name,
+                "hit_count": r.hit_count,
+                "last_seen": r.last_seen.isoformat() if r.last_seen else None,
+            }
+            for r in rows
+        ],
+    }

@@ -14,6 +14,8 @@ from the merchant version:
 from __future__ import annotations
 
 import logging
+import threading
+import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import Enum
@@ -34,11 +36,65 @@ logger = logging.getLogger(__name__)
 _SEMANTIC_JUMP_THRESHOLD = 50
 
 
+# ---------------------------------------------------------------------------
+# Auto-trigger background alias refresh
+# ---------------------------------------------------------------------------
+#
+# After every N successful user-confirmed alias upserts, fire the same logic
+# as ``make refresh-aliases-apply`` in a background thread. Closes the loop:
+#   user correct → ProductAlias row → counter++ → background mining →
+#   Product.aliases JSON updated → next extraction sees richer aliases.
+#
+# Rate-limited via ``_REFRESH_MIN_GAP_SECONDS`` so a burst of corrections
+# doesn't trigger N concurrent refreshes.
+
+_REFRESH_TRIGGER_THRESHOLD = 10
+_REFRESH_MIN_GAP_SECONDS = 600  # 10 min
+_corrections_counter = 0
+_last_refresh_at = 0.0
+_refresh_lock = threading.Lock()
+
+
+def _maybe_trigger_background_refresh() -> None:
+    """Increment the correction counter; fire refresh if threshold reached.
+
+    Idempotent and thread-safe. Failures are logged but never raised — alias
+    upsert is the user-facing operation and must not be blocked by mining.
+    """
+    global _corrections_counter, _last_refresh_at
+
+    with _refresh_lock:
+        _corrections_counter += 1
+        if _corrections_counter < _REFRESH_TRIGGER_THRESHOLD:
+            return
+        if time.monotonic() - _last_refresh_at < _REFRESH_MIN_GAP_SECONDS:
+            return
+        _corrections_counter = 0
+        _last_refresh_at = time.monotonic()
+
+    def _runner() -> None:
+        try:
+            from ..scripts.refresh_product_aliases import run_refresh
+
+            stats = run_refresh(apply=True)
+            logger.info(
+                "Auto alias refresh complete: %d products updated, %d aliases added",
+                stats.get("products_updated", 0),
+                stats.get("aliases_added", 0),
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Background alias refresh failed: %s", exc)
+
+    threading.Thread(target=_runner, daemon=True, name="alias-refresh").start()
+    logger.info("Triggered background alias refresh after %d corrections", _REFRESH_TRIGGER_THRESHOLD)
+
+
 class AliasSkipReason(str, Enum):
     CATALOG_CONFLICT = "catalog_conflict"
     SEMANTIC_JUMP = "semantic_jump"
     EMPTY = "empty"
     IDENTITY = "identity"
+    AMBIGUOUS_SOURCE = "ambiguous_source"
 
 
 @dataclass
@@ -207,6 +263,7 @@ def upsert_alias(
         existing.hit_count = int(existing.hit_count or 0) + 1
         existing.updated_at = datetime.now(UTC)
         db.commit()
+        _maybe_trigger_background_refresh()
         return UpsertResult(alias=existing)
 
     alias = ProductAlias(
@@ -219,6 +276,7 @@ def upsert_alias(
     db.commit()
     db.refresh(alias)
     logger.info("Learned new product alias: %r → %r (cat=%s)", key, canonical, category)
+    _maybe_trigger_background_refresh()
     return UpsertResult(alias=alias)
 
 

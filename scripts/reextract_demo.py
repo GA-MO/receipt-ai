@@ -14,21 +14,7 @@ import urllib.request
 
 API = "http://localhost:8000/api"
 
-DEMO_FILENAMES = [
-    "01_happy_path.webp",
-    "02_happy_pdf.pdf",
-    "03_beer_clean.jpeg",
-    "04_spirits.jpeg",
-    "05_water.jpeg",
-    "06_same_merchant_a.jpeg",
-    "06_same_merchant_b.jpeg",
-    "06_same_merchant_c.jpeg",
-    "07_similar_a.png",
-    "07_similar_b.png",
-    "08_fraud_vat.jpeg",
-    "09_fraud_price.jpeg",
-    "10_multi_items.webp",
-]
+DEMO_FILENAMES = [f"{i:02d}.jpeg" for i in range(1, 12)]
 
 
 def _http(method: str, url: str):

@@ -227,6 +227,43 @@ export function getPeriodComparison(period: "7d" | "30d" | "month" | "year" = "m
   );
 }
 
+export interface CatalogGap {
+  emitted_code: string;
+  product_name: string | null;
+  hit_count: number;
+  last_seen: string | null;
+}
+
+export interface CatalogGapsResponse {
+  window_days: number;
+  gaps: CatalogGap[];
+}
+
+export function getCatalogGaps(days = 30, limit = 50) {
+  return request<CatalogGapsResponse>(
+    `/dashboard/catalog-gaps?days=${days}&limit=${limit}`,
+  );
+}
+
+export interface TypoRecovery {
+  emitted_code: string;
+  recovered_code: string;
+  product_name: string | null;
+  hit_count: number;
+  last_seen: string | null;
+}
+
+export interface TypoRecoveriesResponse {
+  window_days: number;
+  recoveries: TypoRecovery[];
+}
+
+export function getTypoRecoveries(days = 30, limit = 50) {
+  return request<TypoRecoveriesResponse>(
+    `/dashboard/typo-recoveries?days=${days}&limit=${limit}`,
+  );
+}
+
 export function getDocumentImageUrl(id: string) {
   return `${API_BASE}/documents/${id}/image`;
 }

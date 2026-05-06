@@ -12,7 +12,7 @@ import {
   ThemeIcon,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { BarChart3, Bell, BellOff, Camera, FileText, Moon, Receipt, Sun, Trash2, Upload } from "lucide-react";
+import { BarChart3, Bell, BellOff, Brain, Camera, FileText, Moon, Receipt, Sun, Trash2, Upload } from "lucide-react";
 import classes from "./Layout.module.css";
 import { useWebPush } from "@/hooks/useWebPush";
 import { useToast } from "@/components/Toast";
@@ -23,6 +23,7 @@ const links = [
   { to: "/documents", label: "เอกสารทั้งหมด", icon: FileText },
   { to: "/dashboard", label: "Dashboard", icon: BarChart3 },
   { to: "/capture", label: "ถ่ายเอกสาร", icon: Camera },
+  { to: "/ai-health", label: "AI Health", icon: Brain },
   { to: "/trash", label: "ถังขยะ", icon: Trash2 },
 ] as const;
 

@@ -33,9 +33,11 @@ import {
   getAliasStats,
   getAliases,
   getProductAliases,
+  getCatalogGaps,
   getCategoryBreakdown,
   getDailySales,
   getDashboardStats,
+  getTypoRecoveries,
   getDocument,
   getDocumentCount,
   getDocumentHistory,
@@ -75,6 +77,8 @@ export const qk = {
     heatmap: (days: number) => ["dashboard", "heatmap", days] as const,
     insight: ["dashboard", "insight"] as const,
     period: (period: string) => ["dashboard", "period", period] as const,
+    catalogGaps: (days: number) => ["dashboard", "catalogGaps", days] as const,
+    typoRecoveries: (days: number) => ["dashboard", "typoRecoveries", days] as const,
   },
   aliases: {
     list: (limit: number) => ["aliases", "list", limit] as const,
@@ -346,6 +350,22 @@ export function usePeriodComparison(period: "7d" | "30d" | "month" | "year" = "m
 export function useAiInsight() {
   return useMutation({
     mutationFn: getAiInsight,
+  });
+}
+
+export function useCatalogGaps(days = 30) {
+  return useQuery({
+    queryKey: qk.dashboard.catalogGaps(days),
+    queryFn: () => getCatalogGaps(days, 50),
+    refetchInterval: 60_000,
+  });
+}
+
+export function useTypoRecoveries(days = 30) {
+  return useQuery({
+    queryKey: qk.dashboard.typoRecoveries(days),
+    queryFn: () => getTypoRecoveries(days, 50),
+    refetchInterval: 60_000,
   });
 }
 

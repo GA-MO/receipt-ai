@@ -208,6 +208,41 @@ def apply_proposals(
     }
 
 
+def run_refresh(
+    *,
+    apply: bool = True,
+    min_hits: int = 3,
+    min_dominance: float = 0.7,
+    min_user_hits: int = 2,
+    min_fuzzy: int = 50,
+    db: Session | None = None,
+) -> dict:
+    """Programmatic entrypoint — same flow as ``main()`` but callable from
+    routers / hooks. Safe to invoke from a background thread or task queue.
+
+    Opens its own SessionLocal when ``db`` is None.
+    """
+    owns_session = db is None
+    if owns_session:
+        db = SessionLocal()
+    try:
+        from_ext = mine_from_extractions(
+            db, min_hits=min_hits, min_dominance=min_dominance,
+        )
+        from_users, _rejected = mine_from_user_aliases(
+            db, min_user_hits=min_user_hits, min_fuzzy=min_fuzzy,
+        )
+        merged: dict[str, list[str]] = defaultdict(list)
+        for code, aliases in from_ext.items():
+            merged[code].extend(aliases)
+        for code, aliases in from_users.items():
+            merged[code].extend(aliases)
+        return apply_proposals(db, merged, dry_run=not apply)
+    finally:
+        if owns_session:
+            db.close()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Refresh products.aliases from extraction history + user corrections.",

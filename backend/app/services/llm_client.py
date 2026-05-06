@@ -282,7 +282,23 @@ def _generate_json_openrouter(
 
     messages: list[dict] = []
     if system_instruction:
-        messages.append({"role": "system", "content": system_instruction})
+        # Wrap the system text as a structured content block with a
+        # ``cache_control: ephemeral`` breakpoint so OpenRouter can cache the
+        # (large, stable) catalog/schema portion of the prompt.
+        # Anthropic / Gemini both honour this marker via OpenRouter; other
+        # providers ignore it. TTL on Gemini is ~5min.
+        messages.append(
+            {
+                "role": "system",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": system_instruction,
+                        "cache_control": {"type": "ephemeral"},
+                    }
+                ],
+            }
+        )
     messages.append({"role": "user", "content": user_content})
 
     client = _get_openai_client()
@@ -292,5 +308,14 @@ def _generate_json_openrouter(
         temperature=temperature,
         response_format={"type": "json_object"},
     )
+    # Surface cache hit details to logs so operators can see when the 5-min
+    # OpenRouter cache window is paying off.
+    if response.usage and response.usage.prompt_tokens_details:
+        details = response.usage.prompt_tokens_details
+        cached = getattr(details, "cached_tokens", 0) or 0
+        if cached:
+            logger.info(
+                "OpenRouter cache hit: cached=%d/%d tokens", cached, response.usage.prompt_tokens
+            )
     text = response.choices[0].message.content or ""
     return text.strip()

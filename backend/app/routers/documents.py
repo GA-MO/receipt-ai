@@ -52,29 +52,35 @@ from ..services.product_aliases import (
     upsert_alias as upsert_product_alias,
 )
 from ..services.audit import record as record_event
-from ..models import Product
-from ..services.catalog import find_code_by_name
+from ..models import CatalogGapEvent, Product, TypoRecoveryEvent
+from ..services.catalog import find_code_by_name, is_canonical_name
 from ..services.fraud import run_fraud_detection
 from ..services.merchants import assign_normalized_merchant
 from ..services.push import PushPayload, send_to_all as push_send_to_all
 
 
-def _resolve_product_code(db: Session, item: DocumentItemBase) -> str | None:
+def _resolve_product_code(
+    db: Session, item: DocumentItemBase, document_id: str | None = None
+) -> str | None:
     """Resolve a SKU code for an extracted line item.
 
     Trust order:
 
     1. Gemini-emitted ``product_code`` is *valid* (active row) → use it.
-    2. Gemini-emitted ``product_code`` is *invalid* (no such row) → return
-       ``None``. An invalid emit means "I see a product not represented in
-       our catalog" (e.g. receipt has 500ml but we only stock 600ml). Fuzzy
-       fallback at this point would silently pick a wrong-size SKU and bury
-       the catalog gap, so we stay honest and surface ``None``.
-    3. Gemini *abstained* (no code emitted) → fuzzy-match the normalized
+    2. Gemini-emitted ``product_code`` is *invalid* but the normalized name
+       has an *exact* catalog match → typo recovery. Trust the name over the
+       code (Gemini occasionally transposes digits; the name field is more
+       reliable). Returns the code resolved from the name.
+    3. Gemini-emitted ``product_code`` is *invalid* AND name has no exact
+       catalog match → genuine catalog gap. Return ``None``. Fuzzy fallback
+       here would silently pick a wrong-size or wrong-variant SKU.
+    4. Gemini *abstained* (no code emitted) → fuzzy-match the normalized
        name against ``products.canonical_name``/``display_name``. This
        handles older extraction paths and items where Gemini chose name-only.
     """
     emitted = (item.product_code or "").strip() or None
+    name = item.product_name_normalized
+
     if emitted:
         exists = (
             db.query(Product.code)
@@ -83,14 +89,50 @@ def _resolve_product_code(db: Session, item: DocumentItemBase) -> str | None:
         )
         if exists:
             return emitted
+        # Distinguish typo'd code from genuine catalog gap by checking
+        # whether the *name* the model emitted is itself a known canonical.
+        if name and is_canonical_name(db, name):
+            recovered = find_code_by_name(db, name)
+            if recovered:
+                logger.warning(
+                    "Recovered typo'd product_code %r → %r via exact name match (%r)",
+                    emitted, recovered, name,
+                )
+                # Log the recovery so admins can spot recurring typo patterns
+                # (Gemini consistently mis-types one specific code → warrants
+                # a hint in the prompt or a catalog representation tweak).
+                try:
+                    db.add(
+                        TypoRecoveryEvent(
+                            document_id=document_id,
+                            emitted_code=emitted,
+                            recovered_code=recovered,
+                            product_name=name,
+                        )
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("Failed to record typo_recovery_event: %s", exc)
+                return recovered
         logger.warning(
-            "Gemini emitted unknown product_code %r for %r — leaving unresolved "
-            "(catalog gap; do not fuzzy-fallback to a wrong-size SKU).",
-            emitted,
-            item.product_name_normalized,
+            "Gemini emitted unknown product_code %r for %r — catalog gap, leaving unresolved.",
+            emitted, name,
         )
+        # Log to catalog_gap_events so admins can review recurring gaps
+        # and add the missing SKU. Failure to write (e.g. session in odd
+        # state) must not block extraction itself.
+        try:
+            db.add(
+                CatalogGapEvent(
+                    document_id=document_id,
+                    emitted_code=emitted,
+                    product_name=name,
+                    product_name_raw=item.product_name_raw,
+                )
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Failed to record catalog_gap_event: %s", exc)
         return None
-    return find_code_by_name(db, item.product_name_normalized)
+    return find_code_by_name(db, name)
 
 
 def _resolve_extraction_mode() -> str:
@@ -263,7 +305,7 @@ def _run_processing(doc_id: str, file_path: str) -> None:
             # SKU resolution priority:
             # 1. Gemini-emitted product_code (from prompt catalog) when valid.
             # 2. Fuzzy fallback against products.canonical_name / display_name.
-            code = _resolve_product_code(db, item_data)
+            code = _resolve_product_code(db, item_data, document_id=doc_id)
             item = DocumentItem(
                 id=str(uuid.uuid4()),
                 document_id=doc_id,
@@ -786,7 +828,39 @@ def update_item(
             new_key = product_normalize_key(new_name)
             name_changed = raw_key and raw_key != new_key
             category_changed = bool(new_category) and (new_category or "") != (old_category or "")
-            if raw_key and (name_changed or category_changed):
+            # Ambiguity guard: if other items in this same document share the
+            # same raw text, the user's correction is per-document
+            # disambiguation (e.g. "เลมอนโซดา" and "เลมอนโซดา (เรด)" both
+            # extracted as "เลมอนโซดา"). Generalising would overwrite the
+            # alias for the OTHER variant on every future receipt.
+            sibling_raw_count = (
+                db.query(DocumentItem)
+                .filter(
+                    DocumentItem.document_id == doc_id,
+                    DocumentItem.id != item_id,
+                    DocumentItem.product_name_raw == raw_name,
+                )
+                .count()
+            ) if raw_key and (name_changed or category_changed) else 0
+
+            if sibling_raw_count > 0:
+                alias_status = {
+                    "learned": False,
+                    "skipped_reason": "ambiguous_source",
+                    "skipped_detail": (
+                        f"raw text {raw_name!r} appears in {sibling_raw_count} other item(s) "
+                        f"of this document — correction is per-doc, not generalised"
+                    ),
+                }
+                record_event(
+                    db, doc_id, "product_alias_skipped", actor="system",
+                    payload={
+                        "source": raw_name, "canonical": new_name,
+                        "reason": "ambiguous_source",
+                        "detail": f"{sibling_raw_count} sibling items share same raw",
+                    },
+                )
+            elif raw_key and (name_changed or category_changed):
                 res = upsert_product_alias(
                     db,
                     source_text=raw_name,
