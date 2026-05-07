@@ -283,48 +283,62 @@ def compute_history_fraud_checks(doc: Document, db: Session) -> list[dict]:
                 }
             )
 
-    # ---- Items-vs-grand_total mismatch check ----
-    # Thai receipts: line totals are typically VAT-inclusive, so sum(line_total)
-    # should match grand_total (not subtotal). Tolerance: 1% (handles rounding).
+    # ---- Items-vs-totals mismatch check ----
+    # Thai receipts vary: line totals can be VAT-exclusive (sum = subtotal,
+    # common in ใบกำกับภาษี) or VAT-inclusive (sum = grand_total). Accept either:
+    # only flag if items_sum matches NEITHER subtotal NOR grand_total within 1%.
     items = list(doc.items or [])
     if items:
         items_sum = sum(float(it.line_total or 0) for it in items)
         if items_sum > 0:
-            diff_pct = abs(items_sum - grand_total) / max(grand_total, 0.01)
-            if diff_pct > 0.10:
-                flags.append(
-                    {
-                        "type": "items_total_mismatch",
-                        "label": "ยอดรวมรายการต่างจากยอดรวมมาก",
-                        "severity": "high",
-                        "detail": (
-                            f"ผลรวมราคาสินค้า ฿{items_sum:,.2f} "
-                            f"ต่างจากยอดรวมในเอกสาร ฿{grand_total:,.2f} "
-                            f"ถึง {diff_pct * 100:.1f}% — อาจมีรายการตกหล่น/อ่านผิด หรือเอกสารถูกแก้ไข"
-                        ),
-                    }
-                )
-            elif diff_pct > 0.01:
-                flags.append(
-                    {
-                        "type": "items_total_mismatch",
-                        "label": "ยอดรวมรายการต่างจากยอดรวมเล็กน้อย",
-                        "severity": "medium",
-                        "detail": (
-                            f"ผลรวมราคาสินค้า ฿{items_sum:,.2f} "
-                            f"ต่างจากยอดรวมในเอกสาร ฿{grand_total:,.2f} "
-                            f"({diff_pct * 100:.1f}%) — อาจมี discount หรือ rounding ที่ไม่ได้ extract"
-                        ),
-                    }
-                )
+            sub = float(doc.subtotal) if doc.subtotal is not None else None
+            grand_diff_pct = abs(items_sum - grand_total) / max(grand_total, 0.01)
+            sub_diff_pct = (
+                abs(items_sum - sub) / max(sub, 0.01) if sub is not None else 1.0
+            )
+            if min(grand_diff_pct, sub_diff_pct) > 0.01:
+                # Pick the closer reference for the message
+                if sub is not None and sub_diff_pct < grand_diff_pct:
+                    reference, ref_label, diff_pct = sub, "ยอดก่อน VAT", sub_diff_pct
+                else:
+                    reference, ref_label, diff_pct = grand_total, "ยอดรวมในเอกสาร", grand_diff_pct
+                if diff_pct > 0.10:
+                    flags.append(
+                        {
+                            "type": "items_total_mismatch",
+                            "label": "ยอดรวมรายการต่างจากยอดรวมมาก",
+                            "severity": "high",
+                            "detail": (
+                                f"ผลรวมราคาสินค้า ฿{items_sum:,.2f} "
+                                f"ต่างจาก{ref_label} ฿{reference:,.2f} "
+                                f"ถึง {diff_pct * 100:.1f}% — อาจมีรายการตกหล่น/อ่านผิด หรือเอกสารถูกแก้ไข"
+                            ),
+                        }
+                    )
+                else:
+                    flags.append(
+                        {
+                            "type": "items_total_mismatch",
+                            "label": "ยอดรวมรายการต่างจากยอดรวมเล็กน้อย",
+                            "severity": "medium",
+                            "detail": (
+                                f"ผลรวมราคาสินค้า ฿{items_sum:,.2f} "
+                                f"ต่างจาก{ref_label} ฿{reference:,.2f} "
+                                f"({diff_pct * 100:.1f}%) — อาจมี discount หรือ rounding ที่ไม่ได้ extract"
+                            ),
+                        }
+                    )
 
     # ---- Duplicate detection: same merchant + date + total (± 1 baht) ----
-    if doc.document_date:
+    # Match on normalized merchant so different spellings of the same shop cluster.
+    merchant_match = doc.merchant_normalized or doc.merchant_name
+    if doc.document_date and merchant_match:
         duplicate_query = (
             db.query(Document)
             .filter(
                 Document.id != doc.id,
-                Document.merchant_name == doc.merchant_name,
+                (Document.merchant_normalized == merchant_match)
+                | (Document.merchant_name == merchant_match),
                 Document.document_date == doc.document_date,
                 Document.grand_total.isnot(None),
             )
@@ -347,15 +361,19 @@ def compute_history_fraud_checks(doc: Document, db: Session) -> list[dict]:
                 break
 
     # ---- Unusual amount: >5x the merchant's historical average ----
+    # Match on normalized merchant so different spellings count as same shop.
     history = (
         db.query(Document)
         .filter(
             Document.id != doc.id,
-            Document.merchant_name == doc.merchant_name,
+            (Document.merchant_normalized == merchant_match)
+            | (Document.merchant_name == merchant_match),
             Document.grand_total.isnot(None),
             Document.status.in_(["extracted", "reviewed"]),
         )
         .all()
+        if merchant_match
+        else []
     )
     if len(history) >= 3:
         totals = [float(h.grand_total) for h in history if h.grand_total]

@@ -60,31 +60,32 @@ export function validateTotals(input: ValidationInput): ValidationIssue[] {
   const grand = toNum(input.grand_total);
   const itemsTotal = toNum(input.items_total);
 
-  // Thai receipts: line totals are typically VAT-inclusive, so compare items
-  // against grand_total when VAT > 0. Only fall back to subtotal for receipts
-  // without VAT (where subtotal == grand_total anyway).
+  // Line totals can be VAT-exclusive (sum = subtotal, common in ใบกำกับภาษี)
+  // or VAT-inclusive (sum = grand_total). Accept either — only warn if items
+  // match neither reference.
   if (itemsTotal != null && itemsTotal > 0) {
-    const ref = vat != null && vat > 0 ? grand : (subtotal ?? grand);
-    const refLabel = vat != null && vat > 0 ? "ยอดรวมสุทธิ" : "ยอดก่อนภาษี";
-    if (ref != null) {
-      const diff = Math.abs(itemsTotal - ref);
+    const candidates: { value: number; label: string; isGrand: boolean }[] = [];
+    if (grand != null) candidates.push({ value: grand, label: "ยอดรวมสุทธิ", isGrand: true });
+    if (subtotal != null) candidates.push({ value: subtotal, label: "ยอดก่อนภาษี", isGrand: false });
+    if (candidates.length > 0) {
+      const closest = candidates.reduce((best, c) =>
+        Math.abs(itemsTotal - c.value) < Math.abs(itemsTotal - best.value) ? c : best,
+      );
+      const diff = Math.abs(itemsTotal - closest.value);
       if (diff > TOTAL_TOLERANCE_BAHT) {
-        const fixes: ValidationFix[] = [];
-        if (vat != null && vat > 0) {
-          fixes.push({
-            label: `ใช้ผลรวมรายการ ฿${fmt(itemsTotal)} เป็นยอดรวมสุทธิ`,
-            apply: { grand_total: round2(itemsTotal) },
-          });
-        } else {
-          fixes.push({
-            label: `ใช้ผลรวมรายการ ฿${fmt(itemsTotal)} เป็นยอดก่อนภาษี`,
-            apply: { subtotal: round2(itemsTotal) },
-          });
-        }
+        const fixes: ValidationFix[] = closest.isGrand
+          ? [{
+              label: `ใช้ผลรวมรายการ ฿${fmt(itemsTotal)} เป็นยอดรวมสุทธิ`,
+              apply: { grand_total: round2(itemsTotal) },
+            }]
+          : [{
+              label: `ใช้ผลรวมรายการ ฿${fmt(itemsTotal)} เป็นยอดก่อนภาษี`,
+              apply: { subtotal: round2(itemsTotal) },
+            }];
         issues.push({
           field: "items",
           severity: "warning",
-          message: `ผลรวมรายการสินค้า ฿${fmt(itemsTotal)} ไม่ตรงกับ${refLabel} ฿${fmt(ref)} (ต่าง ฿${fmt(diff)})`,
+          message: `ผลรวมรายการสินค้า ฿${fmt(itemsTotal)} ไม่ตรงกับ${closest.label} ฿${fmt(closest.value)} (ต่าง ฿${fmt(diff)})`,
           fixes,
         });
       }
