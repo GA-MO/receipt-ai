@@ -4,6 +4,7 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    public detail?: unknown,
   ) {
     super(message);
     this.name = "ApiError";
@@ -14,7 +15,26 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${url}`, init);
   if (!res.ok) {
     const text = await res.text();
-    throw new ApiError(res.status, text || res.statusText);
+    let message = text || res.statusText;
+    let detail: unknown;
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed && typeof parsed === "object" && "detail" in parsed) {
+        detail = (parsed as { detail: unknown }).detail;
+        if (typeof detail === "string") message = detail;
+        else if (
+          detail &&
+          typeof detail === "object" &&
+          "message" in detail &&
+          typeof (detail as { message: unknown }).message === "string"
+        ) {
+          message = (detail as { message: string }).message;
+        }
+      }
+    } catch {
+      // body wasn't JSON — fall through with raw text
+    }
+    throw new ApiError(res.status, message, detail);
   }
   return res.json();
 }

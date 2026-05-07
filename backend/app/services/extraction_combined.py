@@ -67,7 +67,16 @@ _FRAUD_SCHEMA_ADDITION = """
 - risk_score: 0.0 (ปลอดภัย) ถึง 1.0 (น่าสงสัยมาก)
 - risk_level: "low" (< 0.3), "medium" (0.3-0.6), "high" (> 0.6)
 - ถ้าไม่พบสิ่งผิดปกติ ให้ flags=[] และ summary อธิบายว่าปกติ
-- **วันที่วันนี้คือ __TODAY__** — ใช้เทียบเวลาตัดสินว่าวันที่ในเอกสาร "อนาคต" หรือ "เก่าเกินไป"
+- **Consistency rule (สำคัญมาก):** ถ้าใส่ข้อสังเกต/คำเตือนใน `notes` ของ extraction
+  (เช่น "VAT อาจไม่ตรง", "ยอดรวมไม่ตรง", "ลายมือไม่ชัด") ต้อง **flag ใน fraud_analysis ด้วย**
+  ห้ามให้ notes ขัดแย้งกับ fraud_analysis.summary
+  - ถ้า notes บอกว่าปกติ → fraud_analysis.summary ควรบอกว่าปกติ
+  - ถ้า notes มี ⚠️ หรือคำว่า "อาจ", "ไม่ตรง", "ไม่ชัด" → ต้องเพิ่ม flag ใน fraud_analysis.flags
+- **วันที่วันนี้คือ __TODAY__ (ค.ศ. __TODAY_CE__ / พ.ศ. __TODAY_BE__)**
+  - ใช้เทียบเฉพาะ `document_date` (รูปแบบ ค.ศ. YYYY-MM-DD ที่ extract แล้ว) เท่านั้น
+  - **ห้ามคำนวณ พ.ศ. เอง** เพื่อเทียบ — ใช้ ค.ศ. ที่ extract แล้วเทียบกับ ค.ศ. ของวันนี้เท่านั้น
+  - ตัวอย่าง: ปี พ.ศ. 2568 = ค.ศ. 2025 = **อดีต** (ไม่ใช่อนาคต) เพราะตอนนี้คือ พ.ศ. __TODAY_BE__ / ค.ศ. __TODAY_CE__
+  - flag "วันที่ในอนาคต" เฉพาะเมื่อ `document_date` (ค.ศ.) > วันนี้ (ค.ศ.) จริงๆ เท่านั้น
 
 บริบทธุรกิจ:
 - ใบเสร็จ/บิลเงินสดร้านค้าปลีกไทย ส่วนมากไม่มีเลขที่เอกสาร → ปกติ ไม่ flag
@@ -80,10 +89,12 @@ flag เฉพาะเคสจริงๆ เช่น:
   * วันที่ในอนาคต (หลัง {today})
   * วันที่เก่าเกิน 5 ปี (เอกสารปลอม?)
   * confidence < 40% (อ่านไม่ออกจริง)
+  * **ไม่พบยอดรวม (grand_total)** — เอกสารชำรุด หรืออาจไม่ใช่ใบเสร็จ
 - MEDIUM:
   * VAT คำนวณผิดเกิน 5%
   * ยอดรวมรายการไม่ตรงกับ grand_total เกิน 10%
   * รายการสินค้าราคาต่อหน่วยผิดปกติชัดเจน (เช่น เบียร์ขวดละ ฿10,000)
+  * **ไม่พบชื่อร้านค้า (merchant_name)** — กระทบการทำ ภ.พ.30 / audit ต้องตรวจมือ
 - LOW:
   * confidence 40-60%
   * ข้อสังเกตเล็กน้อย
@@ -103,8 +114,16 @@ def _build_system_instruction() -> str:
     contains literal ``{``/``}`` from the JSON example which ``format()``
     would treat as placeholders.
     """
-    today = datetime.now(UTC).strftime("%Y-%m-%d")
-    return build_system_instruction() + _FRAUD_SCHEMA_ADDITION.replace("__TODAY__", today)
+    now = datetime.now(UTC)
+    today = now.strftime("%Y-%m-%d")
+    today_ce = str(now.year)
+    today_be = str(now.year + 543)
+    return (
+        build_system_instruction()
+        + _FRAUD_SCHEMA_ADDITION.replace("__TODAY__", today)
+        .replace("__TODAY_CE__", today_ce)
+        .replace("__TODAY_BE__", today_be)
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -212,10 +231,92 @@ def compute_history_fraud_checks(doc: Document, db: Session) -> list[dict]:
     Gemini-produced ``fraud_analysis`` block.
     """
     flags: list[dict] = []
+
+    # Data quality flags — independent of merchant history
+    if not doc.merchant_name:
+        flags.append(
+            {
+                "type": "missing_merchant",
+                "label": "ไม่พบชื่อร้านค้า",
+                "severity": "medium",
+                "detail": "AI อ่านชื่อร้านไม่ได้ — กระทบการทำ ภ.พ.30 / audit ต้องตรวจสอบด้วยมือ",
+            }
+        )
+    if not doc.grand_total:
+        flags.append(
+            {
+                "type": "missing_total",
+                "label": "ไม่พบยอดรวม",
+                "severity": "high",
+                "detail": "เอกสารไม่มียอดรวม — อาจชำรุดหรือไม่ใช่ใบเสร็จที่สมบูรณ์",
+            }
+        )
+
     if not doc.merchant_name or not doc.grand_total:
         return flags
 
     grand_total = float(doc.grand_total)
+
+    # ---- VAT calculation check ----
+    # Thai VAT = 7%. If subtotal + vat ≠ grand_total (within tolerance), or
+    # vat ≠ 7% of subtotal (within tolerance), flag it.
+    if doc.subtotal is not None and doc.vat is not None and doc.vat > 0:
+        subtotal = float(doc.subtotal)
+        vat = float(doc.vat)
+        # Check 1: subtotal + vat = grand_total ?
+        sum_check_diff = abs((subtotal + vat) - grand_total)
+        sum_check_pct = sum_check_diff / max(grand_total, 0.01)
+        # Check 2: vat ≈ 7% of subtotal ?
+        expected_vat = subtotal * 0.07
+        vat_pct_diff = abs(expected_vat - vat) / max(expected_vat, 0.01)
+        if sum_check_pct > 0.01 or vat_pct_diff > 0.05:
+            flags.append(
+                {
+                    "type": "vat_mismatch",
+                    "label": "VAT คำนวณไม่ตรง 7%",
+                    "severity": "medium",
+                    "detail": (
+                        f"ยอดก่อน VAT ฿{subtotal:,.2f} + VAT ฿{vat:,.2f} = ฿{subtotal + vat:,.2f} "
+                        f"ไม่ตรงกับยอดรวม ฿{grand_total:,.2f} (ต่างกัน {sum_check_pct * 100:.1f}%) "
+                        f"หรือ VAT ที่ควรเป็น (7% ของ ฿{subtotal:,.2f}) = ฿{expected_vat:,.2f}"
+                    ),
+                }
+            )
+
+    # ---- Items-vs-grand_total mismatch check ----
+    # Thai receipts: line totals are typically VAT-inclusive, so sum(line_total)
+    # should match grand_total (not subtotal). Tolerance: 1% (handles rounding).
+    items = list(doc.items or [])
+    if items:
+        items_sum = sum(float(it.line_total or 0) for it in items)
+        if items_sum > 0:
+            diff_pct = abs(items_sum - grand_total) / max(grand_total, 0.01)
+            if diff_pct > 0.10:
+                flags.append(
+                    {
+                        "type": "items_total_mismatch",
+                        "label": "ยอดรวมรายการต่างจากยอดรวมมาก",
+                        "severity": "high",
+                        "detail": (
+                            f"ผลรวมราคาสินค้า ฿{items_sum:,.2f} "
+                            f"ต่างจากยอดรวมในเอกสาร ฿{grand_total:,.2f} "
+                            f"ถึง {diff_pct * 100:.1f}% — อาจมีรายการตกหล่น/อ่านผิด หรือเอกสารถูกแก้ไข"
+                        ),
+                    }
+                )
+            elif diff_pct > 0.01:
+                flags.append(
+                    {
+                        "type": "items_total_mismatch",
+                        "label": "ยอดรวมรายการต่างจากยอดรวมเล็กน้อย",
+                        "severity": "medium",
+                        "detail": (
+                            f"ผลรวมราคาสินค้า ฿{items_sum:,.2f} "
+                            f"ต่างจากยอดรวมในเอกสาร ฿{grand_total:,.2f} "
+                            f"({diff_pct * 100:.1f}%) — อาจมี discount หรือ rounding ที่ไม่ได้ extract"
+                        ),
+                    }
+                )
 
     # ---- Duplicate detection: same merchant + date + total (± 1 baht) ----
     if doc.document_date:
@@ -320,7 +421,11 @@ def merge_fraud_results(
         flags.extend(gemini_block.get("flags", []))
         ai_analysis = gemini_block.get("ai_analysis", ai_analysis)
 
-    flags.extend(history_flags)
+    seen_labels = {f.get("label") for f in flags if f.get("label")}
+    for f in history_flags:
+        if f.get("label") not in seen_labels:
+            flags.append(f)
+            seen_labels.add(f.get("label"))
 
     severities = [f.get("severity") for f in flags]
     if "high" in severities:

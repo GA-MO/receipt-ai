@@ -19,6 +19,15 @@ interface UploadEntry {
   status: Status;
   documentId?: string;
   error?: string;
+  existingDocumentId?: string;
+}
+
+function readExistingDocId(detail: unknown): string | undefined {
+  if (detail && typeof detail === "object" && "existing_document_id" in detail) {
+    const id = (detail as { existing_document_id: unknown }).existing_document_id;
+    if (typeof id === "string") return id;
+  }
+  return undefined;
 }
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
@@ -66,9 +75,12 @@ export default function UploadPage() {
           toast("success", `${file.name}: อัปโหลดสำเร็จ กำลังประมวลผล...`);
         } catch (err: unknown) {
           let msg = "เกิดข้อผิดพลาด";
+          let existingDocumentId: string | undefined;
           if (err instanceof ApiError) {
-            if (err.status === 409) msg = "เอกสารนี้เคยอัปโหลดแล้ว";
-            else if (err.status === 413) msg = "ไฟล์ใหญ่เกินกำหนด";
+            if (err.status === 409) {
+              msg = "เอกสารนี้เคยอัปโหลดแล้ว";
+              existingDocumentId = readExistingDocId(err.detail);
+            } else if (err.status === 413) msg = "ไฟล์ใหญ่เกินกำหนด";
             else msg = err.message;
           } else if (err instanceof Error) {
             msg = err.message;
@@ -76,7 +88,7 @@ export default function UploadPage() {
           setUploads((prev) =>
             prev.map((u) =>
               u.file === file
-                ? { ...u, status: "error" as Status, error: msg }
+                ? { ...u, status: "error" as Status, error: msg, existingDocumentId }
                 : u,
             ),
           );
@@ -183,6 +195,16 @@ export default function UploadPage() {
                         <Text size="sm" c="red" truncate className="max-w-[200px]">
                           {entry.error || "ผิดพลาด"}
                         </Text>
+                        {entry.existingDocumentId && (
+                          <Button
+                            variant="subtle"
+                            color="indigo"
+                            size="xs"
+                            onClick={() => navigate(`/documents/${entry.existingDocumentId}`)}
+                          >
+                            ดูเอกสารเดิม
+                          </Button>
+                        )}
                       </Group>
                     )}
                   </div>

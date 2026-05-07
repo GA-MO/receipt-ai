@@ -426,7 +426,11 @@ def upload_document(
     if existing:
         raise HTTPException(
             409,
-            f"เอกสารนี้เคยอัปโหลดแล้ว (ชื่อไฟล์เดิม: {existing.filename})",
+            detail={
+                "message": f"เอกสารนี้เคยอัปโหลดแล้ว (ชื่อไฟล์เดิม: {existing.filename})",
+                "existing_document_id": existing.id,
+                "existing_filename": existing.filename,
+            },
         )
 
     doc_id = str(uuid.uuid4())

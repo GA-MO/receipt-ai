@@ -59,7 +59,15 @@ export default function CapturePage() {
     } catch (err) {
       setStep("preview");
       if (err instanceof ApiError && err.status === 409) {
+        const existingId =
+          err.detail &&
+          typeof err.detail === "object" &&
+          "existing_document_id" in err.detail &&
+          typeof (err.detail as { existing_document_id: unknown }).existing_document_id === "string"
+            ? (err.detail as { existing_document_id: string }).existing_document_id
+            : undefined;
         toast("warning", "เอกสารนี้เคยอัปโหลดแล้ว");
+        if (existingId) navigate(`/documents/${existingId}`);
       } else if (err instanceof ApiError && err.status === 413) {
         toast("error", "ไฟล์ใหญ่เกินกำหนด");
       } else {

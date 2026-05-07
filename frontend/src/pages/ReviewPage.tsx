@@ -215,7 +215,16 @@ export default function ReviewPage() {
     let anyChange = false;
 
     if (itemsIssue && itemsTotal > 0) {
-      newSubtotal = round2(itemsTotal);
+      // Line items are VAT-inclusive: items_sum ≈ grand_total.
+      // If VAT > 0, fix grand_total + recompute pre-VAT subtotal.
+      // If no VAT, items_sum ≈ subtotal so just set subtotal.
+      if (newVat != null && newVat > 0) {
+        newGrand = round2(itemsTotal);
+        newSubtotal = round2(itemsTotal / 1.07);
+        newVat = round2(newGrand - newSubtotal);
+      } else {
+        newSubtotal = round2(itemsTotal);
+      }
       anyChange = true;
     }
     if (vatIssue && newSubtotal != null) {
@@ -598,7 +607,11 @@ export default function ReviewPage() {
             value={form.subtotal}
             onChange={(v) => setForm({ ...form, subtotal: v })}
             disabled={isProcessing}
-            warning={itemsIssue ? "ไม่ตรงกับผลรวมสินค้า" : undefined}
+            warning={
+              itemsIssue && (form.vat == null || form.vat === 0)
+                ? "ไม่ตรงกับผลรวมสินค้า"
+                : undefined
+            }
           />
           <AmountField
             label="ส่วนลด"
@@ -668,6 +681,11 @@ export default function ReviewPage() {
           {totalsIssue && expectedGrand != null && (
             <Text size="xs" c="orange.7" ta="right" mt={4}>
               ควรเป็น ฿{fmtBaht(expectedGrand)}
+            </Text>
+          )}
+          {itemsIssue && form.vat != null && form.vat > 0 && (
+            <Text size="xs" c="orange.7" ta="right" mt={4}>
+              ไม่ตรงกับผลรวมสินค้า ฿{fmtBaht(itemsTotal)}
             </Text>
           )}
         </Paper>

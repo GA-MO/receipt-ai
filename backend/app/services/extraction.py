@@ -1,5 +1,6 @@
 import json
 import logging
+from datetime import UTC, datetime
 from pathlib import Path
 
 from ..schemas import DocumentItemBase, ExtractionResult
@@ -134,10 +135,35 @@ _SYSTEM_INSTRUCTION_TAIL_TEMPLATE = """
     3. ถ้าเป็นของที่ระลึก / เสื้อผ้า / แก้ว / ของสะสม / merchandise ของสิงห์ → "สินค้าพรีเมียมสิงห์"
     4. ใช้ "สินค้าอื่นๆ" เฉพาะเมื่อไม่เข้าหมวด 1-3 เลยจริงๆ (ไม่ใช่ default)
   วิธีเลือก `category` (เอกสาร) : ใช้หมวดที่พบมากที่สุดใน items (by quantity หรือ line_total)
-- ถ้าเอกสารใช้ปี พ.ศ. ให้แปลงเป็น ค.ศ. (พ.ศ. - 543 = ค.ศ.)
-- ถ้าเจอวันที่เช่น 3 เม.ย. 69 ให้แปลงเป็น 2026-04-03
+- **การแปลงปีในเอกสาร** (สำคัญมาก — ผิดบ่อย):
+  - เอกสารการขายของไทย **เกือบทั้งหมดใช้ปี พ.ศ.** ไม่ว่าจะเขียนเต็ม (2568) หรือ 2 หลักท้าย (68)
+  - กฎ: `document_date` ต้องเป็น **ค.ศ. (Gregorian) เท่านั้น** ในรูปแบบ `YYYY-MM-DD`
+  - การแปลง:
+    1. ถ้าปีเป็นเลข 4 หลักและ ≥ 2500 → เป็น พ.ศ. → **ลบ 543** เพื่อได้ ค.ศ. (เช่น 2568 → 2025, 2569 → 2026)
+    2. ถ้าปีเป็นเลข 2 หลัก (60-99) บนใบเสร็จไทย → ตีความเป็น พ.ศ. 25XX → ค.ศ. = 25XX - 543
+       - "68" → พ.ศ. 2568 → ค.ศ. **2025** (ห้าม! ตอบ "2068")
+       - "69" → พ.ศ. 2569 → ค.ศ. **2026**
+       - "70" → พ.ศ. 2570 → ค.ศ. **2027**
+    3. ถ้าปีเป็นเลข 4 หลัก < 2500 (เช่น 2025, 2026) → เป็น ค.ศ. อยู่แล้ว ใช้เลย
+  - ตัวอย่าง:
+    - "30 ธ.ค. 68" → `2025-12-30` (ไม่ใช่ 2068-12-30)
+    - "3 เม.ย. 69" → `2026-04-03`
+    - "15/05/2568" → `2025-05-15`
+  - **Sanity check**: หลังแปลงแล้ว ถ้าปี ค.ศ. ที่ได้ห่างจากปีปัจจุบันเกิน 5 ปี (อนาคตหรืออดีต) ให้ทบทวนใหม่ — น่าจะลืมแปลง
 - ถ้าอ่านไม่ออกหรือไม่แน่ใจ ให้ใส่ null และเพิ่มชื่อ field ใน needs_review_fields
 - ตัวเลขเงินให้เป็นทศนิยม 2 ตำแหน่ง
+- **VAT semantics ที่ถูกต้อง** (สำคัญมาก — ผิดบ่อย):
+  - `subtotal` = **ยอดรวมก่อน VAT เสมอ** (pre-VAT amount)
+  - `vat` = ภาษีมูลค่าเพิ่ม (VAT amount)
+  - `grand_total` = ยอดสุทธิหลัง VAT (subtotal + vat - discount)
+  - **ถ้าเอกสารมี VAT > 0:** `subtotal` ห้ามเท่ากับ `grand_total` ต้องเป็น `grand_total - vat` (หรือ `grand_total / 1.07` ถ้า VAT 7%)
+  - **ถ้าเอกสารไม่มี VAT (vat = 0 หรือ null):** `subtotal` = `grand_total` ได้
+  - ตัวอย่าง: ใบเสร็จยอด ฿7,010 รวม VAT 7% แล้ว → subtotal=6551.40, vat=458.60, grand_total=7010.00
+  - **Sanity check**: ตรวจให้ `subtotal × 1.07 ≈ grand_total` (ผิดได้ <1%) ถ้าผิดเกิน ทบทวนใหม่
+- **ราคาสินค้าใน items** : โดยปกติ `unit_price` และ `line_total` บนใบเสร็จไทย **เป็นราคารวม VAT แล้ว** (VAT-inclusive)
+  - sum(items[].line_total) ปกติจะ ≈ `grand_total` (ไม่ใช่ subtotal)
+  - **ห้าม flag เป็น "ยอดรวมรายการไม่ตรงกับยอดรวม" ถ้า sum(line_total) ≈ grand_total** (ตรงกับ grand_total = ปกติ)
+  - flag เฉพาะเมื่อ sum(line_total) ≠ grand_total **และ** ≠ subtotal เกิน 1% เท่านั้น
 - confidence เป็นค่า 0.0 - 1.0 แสดงความมั่นใจโดยรวม
 - ถ้าเอกสารไม่ใช่ใบเสร็จ/บิลเงินสด/ใบกำกับภาษี/ใบส่งของ (เช่น เป็นรายงานสรุปยอด, สลิปโอนเงิน, เอกสารอื่น) ให้:
   * ยังคงพยายามดึงข้อมูลให้ได้มากที่สุด
@@ -178,7 +204,7 @@ _SYSTEM_INSTRUCTION_TAIL_TEMPLATE = """
       "line_total": 60.00
     }
   ],
-  "subtotal": 8316.00,
+  "subtotal": 7772.07,
   "discount": 0.00,
   "vat": 543.93,
   "grand_total": 8316.00,
@@ -186,7 +212,7 @@ _SYSTEM_INSTRUCTION_TAIL_TEMPLATE = """
   "notes": "เอกสารชัดเจน อ่านง่าย",
   "needs_review_fields": []
 }
-สังเกต: (1) แปลง 2568 → 2025, (2) สห์ใหญ่ → ชื่อทางการ + product_code จาก catalog, (3) น้ำคริสตัลไม่อยู่ใน catalog → product_code = null, normalized = raw, (4) merchant_normalized ตัด "บริษัท/จำกัด/(สำนักงานใหญ่)" ออก, (5) needs_review_fields ว่างเพราะมั่นใจหมด
+สังเกต: (1) แปลง 2568 → 2025, (2) สห์ใหญ่ → ชื่อทางการ + product_code จาก catalog, (3) น้ำคริสตัลไม่อยู่ใน catalog → product_code = null, normalized = raw, (4) merchant_normalized ตัด "บริษัท/จำกัด/(สำนักงานใหญ่)" ออก, (5) **VAT semantics**: subtotal=7772.07 (ก่อน VAT), vat=543.93, grand_total=8316.00 — `subtotal + vat = grand_total`, (6) needs_review_fields ว่างเพราะมั่นใจหมด
 """
 
 
@@ -293,6 +319,46 @@ def _parse_items(raw_items: object, default_category: str | None) -> list[Docume
     return items
 
 
+def _sanitize_document_date(raw_date: object) -> object:
+    """Recover from common AI year-conversion mistakes.
+
+    The model occasionally:
+      * forgets to convert พ.ศ. → ค.ศ. (returns "2568-12-30")
+      * treats 2-digit Thai BE year as CE (returns "2068-12-30" for "68")
+
+    Both cases produce a year far in the future. If the year exceeds
+    today + 5, try subtracting 543 — if the result falls within a
+    plausible window (5y past .. 1y future), use it. Otherwise leave
+    untouched and let validation/fraud surface the anomaly.
+    """
+    if not isinstance(raw_date, str) or len(raw_date) < 10:
+        return raw_date
+    try:
+        parts = raw_date.split("-")
+        year = int(parts[0])
+    except (ValueError, IndexError):
+        return raw_date
+
+    today_year = datetime.now(UTC).year
+    if year <= today_year + 1:
+        return raw_date
+
+    # Try two recovery interpretations, in order of likelihood:
+    #   (a) AI returned raw พ.ศ. without subtracting 543 (e.g. 2568 → 2025)
+    #   (b) AI saw 2-digit year "68" and prefixed "20" instead of "25"
+    #       (e.g. 2068 → really พ.ศ. 2568 → 2025). Equivalent to year - 43.
+    for candidate in (year - 543, year - 43):
+        if today_year - 5 <= candidate <= today_year + 1:
+            fixed = f"{candidate:04d}-{'-'.join(parts[1:])}"
+            logger.warning(
+                "Document date %s looked like a year-conversion error; rewrote to %s",
+                raw_date,
+                fixed,
+            )
+            return fixed
+    return raw_date
+
+
 def parse_extraction_payload(data: object) -> ExtractionResult:
     """Parse a raw JSON payload (already decoded) into an ExtractionResult.
 
@@ -308,7 +374,7 @@ def parse_extraction_payload(data: object) -> ExtractionResult:
         merchant_name=data.get("merchant_name"),
         merchant_normalized=data.get("merchant_normalized"),
         document_number=data.get("document_number"),
-        document_date=data.get("document_date"),
+        document_date=_sanitize_document_date(data.get("document_date")),
         category=category,
         items=items,
         subtotal=data.get("subtotal"),

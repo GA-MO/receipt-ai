@@ -60,20 +60,34 @@ export function validateTotals(input: ValidationInput): ValidationIssue[] {
   const grand = toNum(input.grand_total);
   const itemsTotal = toNum(input.items_total);
 
-  if (subtotal != null && itemsTotal != null && itemsTotal > 0) {
-    const diff = Math.abs(itemsTotal - subtotal);
-    if (diff > TOTAL_TOLERANCE_BAHT) {
-      issues.push({
-        field: "items",
-        severity: "warning",
-        message: `ผลรวมรายการสินค้า ฿${fmt(itemsTotal)} ไม่ตรงกับยอดก่อนภาษี ฿${fmt(subtotal)} (ต่าง ฿${fmt(diff)})`,
-        fixes: [
-          {
+  // Thai receipts: line totals are typically VAT-inclusive, so compare items
+  // against grand_total when VAT > 0. Only fall back to subtotal for receipts
+  // without VAT (where subtotal == grand_total anyway).
+  if (itemsTotal != null && itemsTotal > 0) {
+    const ref = vat != null && vat > 0 ? grand : (subtotal ?? grand);
+    const refLabel = vat != null && vat > 0 ? "ยอดรวมสุทธิ" : "ยอดก่อนภาษี";
+    if (ref != null) {
+      const diff = Math.abs(itemsTotal - ref);
+      if (diff > TOTAL_TOLERANCE_BAHT) {
+        const fixes: ValidationFix[] = [];
+        if (vat != null && vat > 0) {
+          fixes.push({
+            label: `ใช้ผลรวมรายการ ฿${fmt(itemsTotal)} เป็นยอดรวมสุทธิ`,
+            apply: { grand_total: round2(itemsTotal) },
+          });
+        } else {
+          fixes.push({
             label: `ใช้ผลรวมรายการ ฿${fmt(itemsTotal)} เป็นยอดก่อนภาษี`,
             apply: { subtotal: round2(itemsTotal) },
-          },
-        ],
-      });
+          });
+        }
+        issues.push({
+          field: "items",
+          severity: "warning",
+          message: `ผลรวมรายการสินค้า ฿${fmt(itemsTotal)} ไม่ตรงกับ${refLabel} ฿${fmt(ref)} (ต่าง ฿${fmt(diff)})`,
+          fixes,
+        });
+      }
     }
   }
 

@@ -7,7 +7,13 @@ def validate_extraction(result: ExtractionResult) -> list[str]:
 
     if result.items and result.grand_total:
         items_total = sum(it.line_total or 0 for it in result.items)
-        ref = result.subtotal or result.grand_total
+        # Thai receipts: line totals are typically VAT-inclusive, so compare
+        # against grand_total when VAT is present. Only fall back to subtotal
+        # for VAT-exempt receipts where the two are equal anyway.
+        if result.vat and result.vat > 0:
+            ref = result.grand_total
+        else:
+            ref = result.subtotal or result.grand_total
         if abs(items_total - ref) > 1.0:
             warnings.append("ยอดรวมรายการสินค้าไม่ตรงกับยอดรวมในเอกสาร")
 
