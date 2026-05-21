@@ -4,6 +4,7 @@ import { useDropzone } from "react-dropzone";
 import { format } from "date-fns";
 import {
   ActionIcon,
+  Badge,
   Button,
   Card,
   Group,
@@ -292,14 +293,25 @@ export default function VisitDetailPage() {
                                       >
                                         {d.filename}
                                       </Text>
-                                      <Tooltip label={sLabel?.label || d.status}>
-                                        <span
-                                          className="inline-block w-2 h-2 rounded-full shrink-0"
-                                          style={{
-                                            backgroundColor: `var(--mantine-color-${sLabel?.color || "gray"}-6)`,
-                                          }}
-                                        />
-                                      </Tooltip>
+                                      {d.status === "reviewed" ? (
+                                        <Badge
+                                          size="xs"
+                                          color="green"
+                                          variant="light"
+                                          leftSection={<CheckCircle2 size={9} />}
+                                        >
+                                          ตรวจแล้ว
+                                        </Badge>
+                                      ) : (
+                                        <Tooltip label={sLabel?.label || d.status}>
+                                          <span
+                                            className="inline-block w-2 h-2 rounded-full shrink-0"
+                                            style={{
+                                              backgroundColor: `var(--mantine-color-${sLabel?.color || "gray"}-6)`,
+                                            }}
+                                          />
+                                        </Tooltip>
+                                      )}
                                     </Group>
                                   );
                                 })}
@@ -405,14 +417,25 @@ export default function VisitDetailPage() {
                       )}
                     </div>
                     <Group gap={6} wrap="nowrap">
-                      <Tooltip label={STATUS_LABEL[d.status]?.label || d.status}>
-                        <span
-                          className="inline-block w-2 h-2 rounded-full shrink-0"
-                          style={{
-                            backgroundColor: `var(--mantine-color-${STATUS_LABEL[d.status]?.color || "gray"}-6)`,
-                          }}
-                        />
-                      </Tooltip>
+                      {d.status === "reviewed" ? (
+                        <Badge
+                          size="sm"
+                          color="green"
+                          variant="light"
+                          leftSection={<CheckCircle2 size={10} />}
+                        >
+                          ตรวจแล้ว
+                        </Badge>
+                      ) : (
+                        <Tooltip label={STATUS_LABEL[d.status]?.label || d.status}>
+                          <span
+                            className="inline-block w-2 h-2 rounded-full shrink-0"
+                            style={{
+                              backgroundColor: `var(--mantine-color-${STATUS_LABEL[d.status]?.color || "gray"}-6)`,
+                            }}
+                          />
+                        </Tooltip>
+                      )}
                       <ActionIcon
                         size="sm"
                         variant="subtle"
