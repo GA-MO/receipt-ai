@@ -1,7 +1,8 @@
 /**
- * Floating badge + modal showing both merchant and product corrections the
- * system has "learned" from operators. Clicking opens a tabbed list where
- * each row can be deleted.
+ * Floating badge + modal showing product-name corrections the system has
+ * "learned" from operators. (Merchant-name corrections used to be tracked
+ * here too but are now handled via the Store master, so only products
+ * remain.) Clicking opens a list where each row can be deleted.
  */
 
 import { useState } from "react";
@@ -15,15 +16,12 @@ import {
   ScrollArea,
   Stack,
   Table,
-  Tabs,
   Text,
   Tooltip,
 } from "@mantine/core";
-import { Brain, Package, Store, Trash2 } from "lucide-react";
+import { Brain, Trash2 } from "lucide-react";
 import {
   useAliasStats,
-  useAliases,
-  useDeleteAlias,
   useDeleteProductAlias,
   useProductAliases,
 } from "@/api/queries";
@@ -33,16 +31,14 @@ import type { MerchantAliasItem } from "@/api/client";
 export function LearnedAliasesBadge() {
   const [open, setOpen] = useState(false);
   const { data: stats } = useAliasStats();
-  const total = stats?.total_aliases ?? 0;
-  const hits = stats?.total_hits ?? 0;
+  const total = stats?.products.total_aliases ?? 0;
+  const hits = stats?.products.total_hits ?? 0;
 
   if (total === 0) return null;
 
-  const tip = `${stats?.merchants.total_aliases ?? 0} ร้าน · ${stats?.products.total_aliases ?? 0} สินค้า · ใช้ไป ${hits} ครั้ง`;
-
   return (
     <>
-      <Tooltip label={tip}>
+      <Tooltip label={`${total} สินค้า · ใช้ไป ${hits} ครั้ง`}>
         <Badge
           leftSection={<Brain size={12} />}
           size="sm"
@@ -66,9 +62,6 @@ function LearnedAliasesModal({
   opened: boolean;
   onClose: () => void;
 }) {
-  const [tab, setTab] = useState<"merchants" | "products">("merchants");
-  const { data: stats } = useAliasStats();
-
   return (
     <Modal
       opened={opened}
@@ -76,7 +69,7 @@ function LearnedAliasesModal({
       title={
         <Group gap="xs">
           <Brain size={18} />
-          <Text fw={600}>รายการที่ AI เรียนรู้จากคุณ</Text>
+          <Text fw={600}>สินค้าที่ AI เรียนรู้จากคุณ</Text>
         </Group>
       }
       size="lg"
@@ -85,27 +78,12 @@ function LearnedAliasesModal({
       <Stack gap="sm">
         <Paper withBorder p="sm" bg="var(--mantine-color-indigo-0)">
           <Text size="xs" c="dimmed">
-            เมื่อคุณแก้ชื่อร้าน ชื่อสินค้า หรือหมวดหมู่ ระบบจะจำไว้ —
-            ครั้งถัดไปที่ AI เจอข้อความเดิมจะเติมให้อัตโนมัติ
+            เมื่อคุณแก้ชื่อสินค้าในใบเสร็จ ระบบจะจำไว้ — ครั้งถัดไปที่ AI
+            เจอข้อความเดิมจะเติมให้อัตโนมัติ
           </Text>
         </Paper>
 
-        <Tabs value={tab} onChange={(v) => v && setTab(v as typeof tab)}>
-          <Tabs.List grow>
-            <Tabs.Tab value="merchants" leftSection={<Store size={14} />}>
-              ร้านค้า ({stats?.merchants.total_aliases ?? 0})
-            </Tabs.Tab>
-            <Tabs.Tab value="products" leftSection={<Package size={14} />}>
-              สินค้า ({stats?.products.total_aliases ?? 0})
-            </Tabs.Tab>
-          </Tabs.List>
-          <Tabs.Panel value="merchants" pt="sm">
-            <MerchantList />
-          </Tabs.Panel>
-          <Tabs.Panel value="products" pt="sm">
-            <ProductList />
-          </Tabs.Panel>
-        </Tabs>
+        <ProductList />
 
         <Group justify="flex-end">
           <Button variant="subtle" onClick={onClose}>ปิด</Button>
@@ -179,23 +157,6 @@ function AliasTable({
         </Table.Tbody>
       </Table>
     </ScrollArea>
-  );
-}
-
-function MerchantList() {
-  const { data = [], isPending } = useAliases(200);
-  const del = useDeleteAlias();
-  const { toast } = useToast();
-  return (
-    <AliasTable
-      rows={data}
-      loading={isPending}
-      onDelete={async (id) => {
-        try { await del.mutateAsync(id); toast("success", "ลบแล้ว"); }
-        catch { toast("error", "ลบไม่สำเร็จ"); }
-      }}
-      emptyHint="ยังไม่มีร้านที่เรียนรู้ — ลองแก้ชื่อร้านในเอกสารสักใบ"
-    />
   );
 }
 

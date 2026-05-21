@@ -36,11 +36,7 @@ from ..schemas import (
 )
 from ..services.extraction import extract_receipt
 from ..services.extraction_agentic import extract_agentic
-from ..services.aliases import (
-    apply_alias_to_extraction,
-    normalize_key as alias_normalize_key,
-    upsert_alias,
-)
+from ..services.aliases import apply_alias_to_extraction
 from ..services.product_aliases import (
     apply_aliases_to_items as apply_product_aliases,
     normalize_key as product_normalize_key,
@@ -582,21 +578,6 @@ def get_document(doc_id: str, db: Session = Depends(get_db)):
     return doc
 
 
-def _parse_raw_extraction(doc: Document) -> dict:
-    """Parse the Gemini extraction JSON, safely returning an empty dict."""
-    if not doc.raw_extraction:
-        return {}
-    try:
-        return json.loads(doc.raw_extraction) or {}
-    except (ValueError, TypeError):
-        return {}
-
-
-def _extract_raw_merchant(doc: Document) -> str | None:
-    raw = _parse_raw_extraction(doc)
-    return raw.get("merchant_name") or raw.get("merchant_normalized")
-
-
 @router.put("/{doc_id}", response_model=DocumentResponse)
 def update_document(
     doc_id: str,
@@ -607,12 +588,7 @@ def update_document(
     if not doc:
         raise HTTPException(404, "ไม่พบเอกสาร")
 
-    raw = _parse_raw_extraction(doc)
-    raw_merchant = raw.get("merchant_name") or raw.get("merchant_normalized")
-    raw_category = raw.get("category")
     incoming = update.model_dump(exclude_unset=True)
-    new_merchant = incoming.get("merchant_name", doc.merchant_name)
-    new_category = incoming.get("category", doc.category)
 
     # Capture before-state so the audit entry records what actually changed.
     diff: dict[str, dict[str, object]] = {}
@@ -633,38 +609,10 @@ def update_document(
     if diff:
         record_event(db, doc_id, "edited", actor="user", payload={"changed": diff})
 
-    # Learn from the correction, but only when the user actually changed the
-    # merchant or category compared to what Gemini produced. Otherwise a plain
-    # no-op save (or re-saving the AI's own output) would inflate hit_count.
-    try:
-        source = raw_merchant or doc.merchant_name
-        if source and new_merchant:
-            raw_key = alias_normalize_key(source)
-            new_key = alias_normalize_key(new_merchant)
-            merchant_changed = raw_key and raw_key != new_key
-            category_changed = bool(new_category) and (new_category or "") != (raw_category or "")
-            if raw_key and (merchant_changed or category_changed):
-                alias = upsert_alias(
-                    db,
-                    source_text=source,
-                    canonical_name=new_merchant,
-                    category=new_category,
-                )
-                if alias:
-                    record_event(
-                        db,
-                        doc_id,
-                        "alias_learned",
-                        actor="user",
-                        payload={
-                            "source": source,
-                            "canonical": new_merchant,
-                            "category": new_category,
-                            "hit_count": int(alias.hit_count or 0),
-                        },
-                    )
-    except Exception as alias_exc:  # noqa: BLE001
-        logger.warning("Failed to record alias for %s: %s", doc_id, alias_exc)
+    # Merchant-alias learning was removed when Store master became the
+    # source of truth for merchant identity. Existing aliases are still
+    # *applied* during extraction (see ``_run_processing``) so historical
+    # learning is not lost, but no new merchant aliases are added here.
 
     return doc
 
