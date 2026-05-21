@@ -248,6 +248,10 @@ class Visit(Base):
     store_id = Column(String, ForeignKey("stores.id"), nullable=True, index=True)
     store_key = Column(String, nullable=True, index=True)
     store_label = Column(String, nullable=True)
+    # Reporting period the visit covers, format ``YYYY-MM``. Receipts whose
+    # ``document_date`` falls outside this month are flagged after extraction
+    # so the reviewer can move them to a different visit or correct the date.
+    report_period = Column(String, nullable=True, index=True)
     rep_name = Column(String, nullable=True)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=_utcnow, index=True)

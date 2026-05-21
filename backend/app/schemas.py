@@ -185,6 +185,7 @@ class VisitListItem(BaseModel):
     store_id: str | None = None
     store_key: str | None = None
     store_label: str | None = None
+    report_period: str | None = None
     rep_name: str | None = None
     notes: str | None = None
     created_at: datetime
@@ -214,6 +215,7 @@ class VisitDetail(BaseModel):
     store_id: str | None = None
     store_key: str | None = None
     store_label: str | None = None
+    report_period: str | None = None
     rep_name: str | None = None
     notes: str | None = None
     created_at: datetime

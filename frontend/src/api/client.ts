@@ -259,6 +259,7 @@ export interface VisitListItem {
   store_id: string | null;
   store_key: string | null;
   store_label: string | null;
+  report_period: string | null;
   rep_name: string | null;
   notes: string | null;
   created_at: string;
@@ -286,6 +287,7 @@ export interface VisitDetail {
   store_id: string | null;
   store_key: string | null;
   store_label: string | null;
+  report_period: string | null;
   rep_name: string | null;
   notes: string | null;
   created_at: string;
