@@ -4,7 +4,6 @@ import { useDropzone } from "react-dropzone";
 import { format } from "date-fns";
 import {
   ActionIcon,
-  Badge,
   Button,
   Card,
   Group,
@@ -25,8 +24,8 @@ import {
   ChevronRight,
   FileImage,
   FileText,
+  HelpCircle,
   RefreshCw,
-  Store,
   Trash2,
   Upload as UploadIcon,
   User,
@@ -118,22 +117,20 @@ export default function VisitDetailPage() {
               กลับไป {visit.store_label || "ร้าน"}
             </Button>
           )}
-          <Group gap="sm">
+          <Group gap="sm" align="baseline">
             <Title order={2}>{visit.store_label || visit.store_key || "(ไม่ระบุร้าน)"}</Title>
             {visit.report_period && (
-              <Badge size="lg" variant="light" color="grape">
-                {visit.report_period}
-              </Badge>
+              <Text size="lg" c="dimmed" fw={500}>
+                · {visit.report_period}
+              </Text>
             )}
-            {stillProcessing && <Badge color="blue">กำลังประมวลผล...</Badge>}
+            {stillProcessing && (
+              <Text size="sm" c="blue">
+                กำลังประมวลผล...
+              </Text>
+            )}
           </Group>
           <Group gap="lg" mt={4}>
-            {visit.store_key && (
-              <Group gap={4}>
-                <Store size={14} className="text-gray-500" />
-                <Text size="sm" c="dimmed">{visit.store_key}</Text>
-              </Group>
-            )}
             {visit.rep_name && (
               <Group gap={4}>
                 <User size={14} className="text-gray-500" />
@@ -166,52 +163,34 @@ export default function VisitDetailPage() {
         </Group>
       </Group>
 
-      {/* Summary chips */}
-      <Group gap="sm" mb="md">
-        <Badge size="lg" variant="light" color="indigo">
-          {docs.length} ใบ
-        </Badge>
-        <Badge
-          size="lg"
-          variant="light"
-          color={
-            docs.length === 0
-              ? "gray"
-              : visit.reviewed_count === docs.length
-                ? "green"
-                : "yellow"
-          }
-        >
-          ตรวจสอบแล้ว {visit.reviewed_count}/{docs.length}
-        </Badge>
-        <Badge size="lg" variant="light" color="grape">
-          {visit.aggregate.length} สินค้า
-        </Badge>
-        <Badge size="lg" variant="light" color="teal">
-          รวม {totalQty.toFixed(0)} หน่วย
-        </Badge>
-        {catalogCount > 0 && (
-          <Badge size="lg" variant="light" color="green">
-            in catalog: {catalogCount}
-          </Badge>
-        )}
-        {unknownCount > 0 && (
-          <Badge size="lg" variant="light" color="orange">
-            ไม่อยู่ catalog: {unknownCount}
-          </Badge>
-        )}
-        {periodMismatchCount > 0 && (
-          <Badge
-            size="lg"
-            variant="light"
-            color="orange"
-            leftSection={<AlertTriangle size={12} />}
-          >
-            นอกเดือน: {periodMismatchCount}
-          </Badge>
-        )}
-        {isFetching && <Loader size="xs" />}
-      </Group>
+      {/* Summary — calm stat blocks, no chips */}
+      <Card withBorder radius="md" p="md" mb="md">
+        <Group gap="xl" align="flex-start" wrap="wrap">
+          <Stat value={docs.length} label="ใบเสร็จ" />
+          <Stat
+            value={`${visit.reviewed_count}/${docs.length}`}
+            label="ตรวจสอบแล้ว"
+            color={
+              docs.length > 0 && visit.reviewed_count === docs.length
+                ? "green.7"
+                : undefined
+            }
+          />
+          <Stat value={visit.aggregate.length} label="สินค้า" />
+          <Stat value={totalQty.toFixed(0)} label="หน่วยรวม" />
+          {unknownCount > 0 && (
+            <Stat value={unknownCount} label="ไม่อยู่ catalog" color="orange.7" />
+          )}
+          {periodMismatchCount > 0 && (
+            <Stat value={periodMismatchCount} label="นอกเดือน" color="orange.7" />
+          )}
+          {isFetching && (
+            <div className="self-center">
+              <Loader size="xs" />
+            </div>
+          )}
+        </Group>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Aggregate table — main pane */}
@@ -232,6 +211,7 @@ export default function VisitDetailPage() {
                 <Table.Thead>
                   <Table.Tr>
                     <Table.Th w={32}></Table.Th>
+                    <Table.Th w={24}></Table.Th>
                     <Table.Th>สินค้า</Table.Th>
                     <Table.Th>ผู้ผลิต</Table.Th>
                     <Table.Th ta="right">จำนวน</Table.Th>
@@ -252,31 +232,29 @@ export default function VisitDetailPage() {
                               {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                             </ActionIcon>
                           </Table.Td>
+                          <Table.Td ta="center">
+                            {row.is_catalog_match ? (
+                              <Tooltip
+                                label={row.product_code ? `SKU ${row.product_code}` : "อยู่ใน catalog"}
+                              >
+                                <CheckCircle2 size={14} className="text-green-600" />
+                              </Tooltip>
+                            ) : (
+                              <Tooltip label="ไม่อยู่ใน catalog">
+                                <HelpCircle size={14} className="text-orange-500" />
+                              </Tooltip>
+                            )}
+                          </Table.Td>
                           <Table.Td>
-                            <Group gap={6}>
-                              <Text fw={500}>{row.display_name}</Text>
-                              {!row.is_catalog_match && (
-                                <Badge size="xs" color="orange" variant="light">
-                                  ไม่อยู่ catalog
-                                </Badge>
-                              )}
-                            </Group>
+                            <Text fw={500}>{row.display_name}</Text>
                             {row.product_code && (
                               <Text size="xs" c="dimmed">SKU {row.product_code}</Text>
                             )}
                           </Table.Td>
                           <Table.Td>
-                            {row.manufacturer ? (
-                              <Badge
-                                size="sm"
-                                color={row.manufacturer.toLowerCase() === "boonrawd" ? "indigo" : "gray"}
-                                variant="light"
-                              >
-                                {row.manufacturer}
-                              </Badge>
-                            ) : (
-                              <Text size="sm" c="dimmed">—</Text>
-                            )}
+                            <Text size="sm" c="dimmed">
+                              {row.manufacturer || "—"}
+                            </Text>
                           </Table.Td>
                           <Table.Td ta="right">
                             <Text fw={600}>{row.total_quantity.toFixed(row.total_quantity % 1 ? 2 : 0)}</Text>
@@ -292,17 +270,18 @@ export default function VisitDetailPage() {
                             </Group>
                           </Table.Td>
                           <Table.Td ta="right">
-                            <Badge variant="default">{row.source_count}</Badge>
+                            <Text fw={500}>{row.source_count}</Text>
                           </Table.Td>
                         </Table.Tr>
                         {open && (
                           <Table.Tr>
                             <Table.Td></Table.Td>
-                            <Table.Td colSpan={5}>
+                            <Table.Td colSpan={6}>
                               <Stack gap={4} py="xs">
                                 {row.source_doc_ids.map((did) => {
                                   const d = docsById.get(did);
                                   if (!d) return null;
+                                  const sLabel = STATUS_LABEL[d.status];
                                   return (
                                     <Group key={did} gap="sm" wrap="nowrap">
                                       <FileText size={14} className="text-gray-500 shrink-0" />
@@ -313,9 +292,14 @@ export default function VisitDetailPage() {
                                       >
                                         {d.filename}
                                       </Text>
-                                      <Badge size="xs" color={STATUS_LABEL[d.status]?.color || "gray"}>
-                                        {STATUS_LABEL[d.status]?.label || d.status}
-                                      </Badge>
+                                      <Tooltip label={sLabel?.label || d.status}>
+                                        <span
+                                          className="inline-block w-2 h-2 rounded-full shrink-0"
+                                          style={{
+                                            backgroundColor: `var(--mantine-color-${sLabel?.color || "gray"}-6)`,
+                                          }}
+                                        />
+                                      </Tooltip>
                                     </Group>
                                   );
                                 })}
@@ -420,10 +404,15 @@ export default function VisitDetailPage() {
                         </Group>
                       )}
                     </div>
-                    <Group gap={4} wrap="nowrap">
-                      <Badge size="sm" color={STATUS_LABEL[d.status]?.color || "gray"} variant="light">
-                        {STATUS_LABEL[d.status]?.label || d.status}
-                      </Badge>
+                    <Group gap={6} wrap="nowrap">
+                      <Tooltip label={STATUS_LABEL[d.status]?.label || d.status}>
+                        <span
+                          className="inline-block w-2 h-2 rounded-full shrink-0"
+                          style={{
+                            backgroundColor: `var(--mantine-color-${STATUS_LABEL[d.status]?.color || "gray"}-6)`,
+                          }}
+                        />
+                      </Tooltip>
                       <ActionIcon
                         size="sm"
                         variant="subtle"
@@ -451,6 +440,27 @@ export default function VisitDetailPage() {
         visitId={visit.id}
         onUploaded={() => refetch()}
       />
+    </div>
+  );
+}
+
+function Stat({
+  value,
+  label,
+  color,
+}: {
+  value: number | string;
+  label: string;
+  color?: string;
+}) {
+  return (
+    <div>
+      <Text size="xl" fw={700} c={color} lh={1.1}>
+        {value}
+      </Text>
+      <Text size="xs" c="dimmed">
+        {label}
+      </Text>
     </div>
   );
 }
