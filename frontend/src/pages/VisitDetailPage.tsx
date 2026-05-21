@@ -26,7 +26,6 @@ import {
   FileImage,
   FileText,
   HelpCircle,
-  RefreshCw,
   Trash2,
   Upload as UploadIcon,
   User,
@@ -34,7 +33,6 @@ import {
 import { getDocumentImageUrl, uploadDocumentsToVisit } from "../api/client";
 import {
   useDeleteDocument,
-  useRecomputeVisitLabel,
   useVisit,
 } from "../api/queries";
 import { useToast } from "@/components/Toast";
@@ -52,7 +50,6 @@ export default function VisitDetailPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { data: visit, isPending, isFetching, refetch } = useVisit(id);
-  const recomputeMut = useRecomputeVisitLabel(id ?? "");
   const deleteDocMut = useDeleteDocument();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -143,25 +140,12 @@ export default function VisitDetailPage() {
             </Text>
           </Group>
         </div>
-        <Group>
-          <Button
-            leftSection={<UploadIcon size={14} />}
-            onClick={() => setUploadOpen(true)}
-          >
-            อัปโหลดใบเสร็จเพิ่ม
-          </Button>
-          <Tooltip label="ดึงชื่อร้านจากใบเสร็จที่ extract แล้ว">
-            <Button
-              variant="default"
-              size="xs"
-              leftSection={<RefreshCw size={14} />}
-              onClick={() => recomputeMut.mutate()}
-              loading={recomputeMut.isPending}
-            >
-              อัปเดตชื่อร้าน
-            </Button>
-          </Tooltip>
-        </Group>
+        <Button
+          leftSection={<UploadIcon size={14} />}
+          onClick={() => setUploadOpen(true)}
+        >
+          อัปโหลดใบเสร็จเพิ่ม
+        </Button>
       </Group>
 
       {/* Summary — calm stat blocks, no chips */}
