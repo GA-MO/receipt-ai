@@ -225,7 +225,6 @@ export default function VisitReviewPage() {
             <DocHeaderSummary
               merchant={doc.merchant_name}
               docDate={doc.document_date}
-              grandTotal={doc.grand_total}
             />
           </Group>
           <div className="flex-1 overflow-auto">
@@ -240,13 +239,11 @@ export default function VisitReviewPage() {
 function DocHeaderSummary({
   merchant,
   docDate,
-  grandTotal,
 }: {
   merchant: string | null;
   docDate: string | null;
-  grandTotal: number | null;
 }) {
-  if (!merchant && !docDate && grandTotal == null) return null;
+  if (!merchant && !docDate) return null;
   return (
     <Group gap="md">
       {merchant && (
@@ -257,11 +254,6 @@ function DocHeaderSummary({
       {docDate && (
         <Text size="xs" c="dimmed">
           วันที่: <b>{docDate}</b>
-        </Text>
-      )}
-      {grandTotal != null && (
-        <Text size="xs" c="dimmed">
-          ยอด: <b>฿{grandTotal.toLocaleString()}</b>
         </Text>
       )}
     </Group>
@@ -346,15 +338,13 @@ function ItemsTable({
             <Table.Th>สินค้า</Table.Th>
             <Table.Th w={100} ta="right">จำนวน</Table.Th>
             <Table.Th w={90}>หน่วย</Table.Th>
-            <Table.Th w={110} ta="right">ราคา/หน่วย</Table.Th>
-            <Table.Th w={110} ta="right">รวม</Table.Th>
             <Table.Th w={36}></Table.Th>
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
           {items.length === 0 ? (
             <Table.Tr>
-              <Table.Td colSpan={7}>
+              <Table.Td colSpan={5}>
                 <Text c="dimmed" ta="center" py="lg">
                   ยังไม่มีรายการ — กด "เพิ่มสินค้า"
                 </Text>
@@ -388,16 +378,12 @@ function ItemRow({
   const [name, setName] = useState(item.product_name_normalized ?? "");
   const [qty, setQty] = useState<number | string>(item.quantity ?? "");
   const [unit, setUnit] = useState(item.unit ?? "");
-  const [unitPrice, setUnitPrice] = useState<number | string>(item.unit_price ?? "");
-  const [lineTotal, setLineTotal] = useState<number | string>(item.line_total ?? "");
   const [suggestions, setSuggestions] = useState<string[]>([]);
 
   useEffect(() => {
     setName(item.product_name_normalized ?? "");
     setQty(item.quantity ?? "");
     setUnit(item.unit ?? "");
-    setUnitPrice(item.unit_price ?? "");
-    setLineTotal(item.line_total ?? "");
   }, [item]);
 
   // Live catalog suggestions while typing.
@@ -481,38 +467,6 @@ function ItemRow({
           onChange={(e) => setUnit(e.currentTarget.value)}
           onBlur={() => {
             if (unit !== (item.unit ?? "")) onSave({ unit });
-          }}
-        />
-      </Table.Td>
-      <Table.Td>
-        <NumberInput
-          size="sm"
-          variant="unstyled"
-          value={unitPrice}
-          min={0}
-          decimalScale={2}
-          hideControls
-          styles={{ input: { textAlign: "right" } }}
-          onChange={(v) => setUnitPrice(v as number | string)}
-          onBlur={() => {
-            const next = numOrNull(unitPrice);
-            if (next !== item.unit_price) onSave({ unit_price: next });
-          }}
-        />
-      </Table.Td>
-      <Table.Td>
-        <NumberInput
-          size="sm"
-          variant="unstyled"
-          value={lineTotal}
-          min={0}
-          decimalScale={2}
-          hideControls
-          styles={{ input: { textAlign: "right" } }}
-          onChange={(v) => setLineTotal(v as number | string)}
-          onBlur={() => {
-            const next = numOrNull(lineTotal);
-            if (next !== item.line_total) onSave({ line_total: next });
           }}
         />
       </Table.Td>
