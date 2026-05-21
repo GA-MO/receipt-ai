@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { format } from "date-fns";
 import {
   ActionIcon,
+  Autocomplete,
   Badge,
   Button,
   Card,
@@ -20,18 +21,22 @@ import {
 } from "@mantine/core";
 import {
   AlertTriangle,
+  CheckCircle2,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   ExternalLink,
   FileText,
+  HelpCircle,
   Plus,
   RefreshCw,
   Store,
   Trash2,
   User,
 } from "lucide-react";
-import { getDocumentImageUrl, type DocumentItemData } from "../api/client";
+import { getAutocomplete, getDocumentImageUrl, type DocumentItemData } from "../api/client";
 import {
+  useApproveDocument,
   useCreateItem,
   useDeleteItem,
   useDocument,
@@ -54,7 +59,7 @@ export default function VisitDetailPage() {
   const { data: visit, isPending, isFetching, refetch } = useVisit(id);
   const recomputeMut = useRecomputeVisitLabel(id ?? "");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [drawerDocId, setDrawerDocId] = useState<string | null>(null);
+  const [drawerIndex, setDrawerIndex] = useState<number | null>(null);
 
   // Auto-poll while any doc is still processing — cheap, demo-friendly.
   const stillProcessing = useMemo(
@@ -70,8 +75,16 @@ export default function VisitDetailPage() {
   if (isPending) return <Loader />;
   if (!visit) return <Text c="red">ไม่พบ visit</Text>;
 
-  const docsById = new Map(visit.documents.map((d) => [d.id, d]));
-  const drawerDoc = drawerDocId ? docsById.get(drawerDocId) : null;
+  const docs = visit.documents;
+  const docsById = new Map(docs.map((d) => [d.id, d]));
+  const drawerDoc =
+    drawerIndex !== null && drawerIndex >= 0 && drawerIndex < docs.length
+      ? docs[drawerIndex]
+      : null;
+  const openDocById = (docId: string) => {
+    const idx = docs.findIndex((d) => d.id === docId);
+    if (idx >= 0) setDrawerIndex(idx);
+  };
 
   const totalQty = visit.aggregate.reduce((sum, r) => sum + r.total_quantity, 0);
   const catalogCount = visit.aggregate.filter((r) => r.is_catalog_match).length;
@@ -130,7 +143,20 @@ export default function VisitDetailPage() {
       {/* Summary chips */}
       <Group gap="sm" mb="md">
         <Badge size="lg" variant="light" color="indigo">
-          {visit.documents.length} ใบ
+          {docs.length} ใบ
+        </Badge>
+        <Badge
+          size="lg"
+          variant="light"
+          color={
+            docs.length === 0
+              ? "gray"
+              : visit.reviewed_count === docs.length
+                ? "green"
+                : "yellow"
+          }
+        >
+          ตรวจสอบแล้ว {visit.reviewed_count}/{docs.length}
         </Badge>
         <Badge size="lg" variant="light" color="grape">
           {visit.aggregate.length} สินค้า
@@ -247,7 +273,7 @@ export default function VisitDetailPage() {
                                       <Text
                                         size="sm"
                                         className="flex-1 truncate cursor-pointer hover:underline"
-                                        onClick={() => setDrawerDocId(did)}
+                                        onClick={() => openDocById(did)}
                                       >
                                         {d.filename}
                                       </Text>
@@ -275,18 +301,31 @@ export default function VisitDetailPage() {
           <Card withBorder radius="md" p={0}>
             <Group justify="space-between" p="md" pb="sm">
               <Title order={4}>ใบเสร็จในชุดนี้</Title>
-              <Text size="xs" c="dimmed">{visit.documents.length} ใบ</Text>
+              <Text size="xs" c="dimmed">{docs.length} ใบ</Text>
             </Group>
+            {docs.length > 0 && (
+              <Group p="md" pt={0}>
+                <Button
+                  fullWidth
+                  variant="filled"
+                  color="indigo"
+                  size="sm"
+                  onClick={() => setDrawerIndex(0)}
+                >
+                  เริ่มไล่ตรวจสอบ ({docs.length} ใบ)
+                </Button>
+              </Group>
+            )}
             <Stack gap={0}>
-              {visit.documents.length === 0 && (
+              {docs.length === 0 && (
                 <Text c="dimmed" p="md" ta="center">ยังไม่มีใบเสร็จ</Text>
               )}
-              {visit.documents.map((d) => (
+              {docs.map((d, idx) => (
                 <Paper
                   key={d.id}
                   p="sm"
                   className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 border-t"
-                  onClick={() => setDrawerDocId(d.id)}
+                  onClick={() => setDrawerIndex(idx)}
                   style={{ borderRadius: 0 }}
                 >
                   <Group justify="space-between" wrap="nowrap">
@@ -315,13 +354,41 @@ export default function VisitDetailPage() {
       </div>
 
       <Drawer
-        opened={drawerDocId !== null}
-        onClose={() => setDrawerDocId(null)}
-        title={drawerDoc?.filename || "เอกสาร"}
+        opened={drawerDoc !== null}
+        onClose={() => setDrawerIndex(null)}
+        title={
+          drawerDoc ? (
+            <Group gap="xs" wrap="nowrap">
+              <Text size="sm" c="dimmed">
+                ใบที่ {(drawerIndex ?? 0) + 1} จาก {docs.length}
+              </Text>
+              <Text fw={600} truncate>
+                {drawerDoc.filename}
+              </Text>
+            </Group>
+          ) : (
+            "เอกสาร"
+          )
+        }
         position="right"
         size="xl"
       >
-        {drawerDocId && <DocumentDrawerContent docId={drawerDocId} />}
+        {drawerDoc && drawerIndex !== null && (
+          <DocumentDrawerContent
+            docId={drawerDoc.id}
+            index={drawerIndex}
+            total={docs.length}
+            onPrev={
+              drawerIndex > 0 ? () => setDrawerIndex(drawerIndex - 1) : undefined
+            }
+            onNext={
+              drawerIndex < docs.length - 1
+                ? () => setDrawerIndex(drawerIndex + 1)
+                : undefined
+            }
+            onClose={() => setDrawerIndex(null)}
+          />
+        )}
       </Drawer>
     </div>
   );
@@ -336,13 +403,67 @@ function DocumentImagePreview({ docId }: { docId: string }) {
   );
 }
 
-function DocumentDrawerContent({ docId }: { docId: string }) {
+function DocumentDrawerContent({
+  docId,
+  index,
+  total,
+  onPrev,
+  onNext,
+  onClose,
+}: {
+  docId: string;
+  index: number;
+  total: number;
+  onPrev?: () => void;
+  onNext?: () => void;
+  onClose: () => void;
+}) {
   const { data: doc, isPending } = useDocument(docId);
+  const approveMut = useApproveDocument();
+  const { toast } = useToast();
+  const reviewed = doc?.status === "reviewed";
+
+  const handleApprove = async () => {
+    try {
+      await approveMut.mutateAsync(docId);
+      toast("success", "บันทึกว่าตรวจสอบแล้ว");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "บันทึกไม่สำเร็จ";
+      toast("error", msg);
+    }
+  };
+
   if (isPending || !doc) {
     return <Loader />;
   }
+
   return (
     <Stack>
+      {/* Nav strip: prev/next + position */}
+      <Group justify="space-between" wrap="nowrap">
+        <Button
+          variant="default"
+          size="xs"
+          leftSection={<ChevronLeft size={14} />}
+          onClick={onPrev}
+          disabled={!onPrev}
+        >
+          ก่อนหน้า
+        </Button>
+        <Text size="sm" c="dimmed">
+          {index + 1} / {total}
+        </Text>
+        <Button
+          variant="default"
+          size="xs"
+          rightSection={<ChevronRight size={14} />}
+          onClick={onNext}
+          disabled={!onNext}
+        >
+          ถัดไป
+        </Button>
+      </Group>
+
       <Group justify="space-between">
         <Group gap="xs">
           <Badge color={STATUS_LABEL[doc.status]?.color || "gray"}>
@@ -383,6 +504,34 @@ function DocumentDrawerContent({ docId }: { docId: string }) {
         </Stack>
       </Card>
       <EditableItemsTable docId={doc.id} items={doc.items} />
+
+      {/* Sticky-feel action bar at the bottom of the drawer body */}
+      <Group justify="space-between" mt="sm">
+        <Button variant="subtle" onClick={onClose}>
+          ปิด
+        </Button>
+        {reviewed ? (
+          <Group gap="xs">
+            <Badge color="green" leftSection={<CheckCircle2 size={14} />}>
+              ตรวจสอบแล้ว
+            </Badge>
+            {onNext && (
+              <Button size="sm" onClick={onNext} rightSection={<ChevronRight size={14} />}>
+                ใบถัดไป
+              </Button>
+            )}
+          </Group>
+        ) : (
+          <Button
+            color="green"
+            leftSection={<CheckCircle2 size={16} />}
+            onClick={handleApprove}
+            loading={approveMut.isPending}
+          >
+            บันทึกว่าตรวจสอบแล้ว
+          </Button>
+        )}
+      </Group>
     </Stack>
   );
 }
@@ -430,10 +579,25 @@ function EditableItemsTable({
     }
   };
 
+  const matchedCount = items.filter((i) => i.product_code).length;
+  const unknownCount = items.length - matchedCount;
+
   return (
     <Card withBorder radius="md" p={0}>
       <Group justify="space-between" p="md" pb="sm">
-        <Text fw={600}>รายการสินค้า ({items.length})</Text>
+        <Group gap="xs">
+          <Text fw={600}>รายการสินค้า ({items.length})</Text>
+          {matchedCount > 0 && (
+            <Badge size="sm" color="green" variant="light" leftSection={<CheckCircle2 size={10} />}>
+              {matchedCount} matched
+            </Badge>
+          )}
+          {unknownCount > 0 && (
+            <Badge size="sm" color="orange" variant="light" leftSection={<HelpCircle size={10} />}>
+              {unknownCount} unknown
+            </Badge>
+          )}
+        </Group>
         <Button
           size="xs"
           variant="light"
@@ -447,6 +611,7 @@ function EditableItemsTable({
       <Table verticalSpacing="xs" striped>
         <Table.Thead>
           <Table.Tr>
+            <Table.Th w={28}></Table.Th>
             <Table.Th>สินค้า</Table.Th>
             <Table.Th w={90} ta="right">จำนวน</Table.Th>
             <Table.Th w={80}>หน่วย</Table.Th>
@@ -480,6 +645,7 @@ function EditableItemRow({
   const [name, setName] = useState(item.product_name_normalized ?? "");
   const [qty, setQty] = useState<number | string>(item.quantity ?? "");
   const [unit, setUnit] = useState(item.unit ?? "");
+  const [suggestions, setSuggestions] = useState<string[]>([]);
 
   // Keep local state in sync if the row is replaced by a server refetch.
   useEffect(() => {
@@ -488,26 +654,65 @@ function EditableItemRow({
     setUnit(item.unit ?? "");
   }, [item.product_name_normalized, item.quantity, item.unit]);
 
+  // Live-fetch catalog suggestions as the user types. Debounce-light via the
+  // server query being cached for 60s in queries.ts.
+  useEffect(() => {
+    const q = name.trim();
+    if (q.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+    let cancelled = false;
+    const t = setTimeout(() => {
+      getAutocomplete("product", q, 8)
+        .then((opts) => {
+          if (!cancelled) setSuggestions(opts.map((o) => o.value));
+        })
+        .catch(() => {
+          /* ignore — autocomplete is best-effort */
+        });
+    }, 150);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [name]);
+
   const saveIfChanged = (patch: Record<string, unknown>) => {
     onSave(patch);
   };
 
+  const matched = !!item.product_code;
+
   return (
     <Table.Tr>
+      <Table.Td ta="center">
+        {matched ? (
+          <Tooltip label={`SKU ${item.product_code}`}>
+            <CheckCircle2 size={16} className="text-green-600" />
+          </Tooltip>
+        ) : (
+          <Tooltip label="ยังไม่ match catalog — แก้ชื่อให้ตรง SKU ถ้าทำได้">
+            <HelpCircle size={16} className="text-orange-500" />
+          </Tooltip>
+        )}
+      </Table.Td>
       <Table.Td>
-        <TextInput
+        <Autocomplete
           size="xs"
           variant="unstyled"
           value={name}
-          onChange={(e) => setName(e.currentTarget.value)}
+          onChange={setName}
+          data={suggestions}
           onBlur={() => {
             if (name !== (item.product_name_normalized ?? "")) {
               saveIfChanged({ product_name_normalized: name });
             }
           }}
+          limit={8}
         />
-        {!item.product_code && (
-          <Text size="xs" c="orange">ไม่อยู่ใน catalog</Text>
+        {item.product_name_raw && item.product_name_raw !== item.product_name_normalized && (
+          <Text size="xs" c="dimmed">raw: {item.product_name_raw}</Text>
         )}
       </Table.Td>
       <Table.Td>
