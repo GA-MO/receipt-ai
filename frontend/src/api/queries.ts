@@ -32,8 +32,6 @@ import {
   getAliasStats,
   getAliases,
   getProductAliases,
-  getCatalogGaps,
-  getTypoRecoveries,
   getDocument,
   getDocumentCount,
   getDocumentHistory,
@@ -45,7 +43,6 @@ import {
   restoreDocument,
   updateDocument,
   updateItem,
-  uploadDocument,
   createVisit,
   deleteVisit,
   getVisit,
@@ -70,10 +67,6 @@ export const qk = {
   documentCount: (params?: Record<string, unknown>) =>
     ["documents", "count", params] as const,
   document: (id: string) => ["documents", id] as const,
-  aiHealth: {
-    catalogGaps: (days: number) => ["ai-health", "catalogGaps", days] as const,
-    typoRecoveries: (days: number) => ["ai-health", "typoRecoveries", days] as const,
-  },
   aliases: {
     list: (limit: number) => ["aliases", "list", limit] as const,
     products: (limit: number) => ["aliases", "products", limit] as const,
@@ -143,14 +136,6 @@ export function useDocumentHistory(id: string | undefined) {
     queryKey: ["documents", id, "history"] as const,
     queryFn: () => getDocumentHistory(id!),
     enabled: !!id,
-  });
-}
-
-export function useUploadDocument() {
-  const invalidate = useInvalidate();
-  return useMutation({
-    mutationFn: (file: File) => uploadDocument(file),
-    onSuccess: () => invalidate.afterMutation(),
   });
 }
 
@@ -271,24 +256,6 @@ export function useTrashCount() {
     queryKey: ["trash", "count"] as const,
     queryFn: getTrashCount,
     refetchInterval: 30_000,
-  });
-}
-
-// ---------- AI Health ----------
-
-export function useCatalogGaps(days = 30) {
-  return useQuery({
-    queryKey: qk.aiHealth.catalogGaps(days),
-    queryFn: () => getCatalogGaps(days, 50),
-    refetchInterval: 60_000,
-  });
-}
-
-export function useTypoRecoveries(days = 30) {
-  return useQuery({
-    queryKey: qk.aiHealth.typoRecoveries(days),
-    queryFn: () => getTypoRecoveries(days, 50),
-    refetchInterval: 60_000,
   });
 }
 

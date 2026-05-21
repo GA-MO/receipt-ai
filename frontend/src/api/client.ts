@@ -50,15 +50,6 @@ function buildQs(params: Record<string, string | number | undefined | null>) {
 
 // ---------- Documents ----------
 
-export function uploadDocument(file: File) {
-  const form = new FormData();
-  form.append("file", file);
-  return request<DocumentResponse>("/documents/upload", {
-    method: "POST",
-    body: form,
-  });
-}
-
 export function getDocuments(params?: {
   skip?: number;
   limit?: number;
@@ -367,45 +358,6 @@ export function recomputeVisitLabel(id: string) {
   return request<{ id: string; store_key: string | null; store_label: string | null }>(
     `/visits/${id}/recompute-label`,
     { method: "POST" },
-  );
-}
-
-// ---------- AI Health ----------
-
-export interface CatalogGap {
-  emitted_code: string;
-  product_name: string | null;
-  hit_count: number;
-  last_seen: string | null;
-}
-
-export interface CatalogGapsResponse {
-  window_days: number;
-  gaps: CatalogGap[];
-}
-
-export function getCatalogGaps(days = 30, limit = 50) {
-  return request<CatalogGapsResponse>(
-    `/ai-health/catalog-gaps?days=${days}&limit=${limit}`,
-  );
-}
-
-export interface TypoRecovery {
-  emitted_code: string;
-  recovered_code: string;
-  product_name: string | null;
-  hit_count: number;
-  last_seen: string | null;
-}
-
-export interface TypoRecoveriesResponse {
-  window_days: number;
-  recoveries: TypoRecovery[];
-}
-
-export function getTypoRecoveries(days = 30, limit = 50) {
-  return request<TypoRecoveriesResponse>(
-    `/ai-health/typo-recoveries?days=${days}&limit=${limit}`,
   );
 }
 
