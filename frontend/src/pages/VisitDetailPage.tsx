@@ -362,7 +362,12 @@ export default function VisitDetailPage() {
                   p="sm"
                   className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 border-t"
                   onClick={() => openReview(d.id)}
-                  style={{ borderRadius: 0 }}
+                  style={{
+                    borderRadius: 0,
+                    borderLeft: d.period_mismatch
+                      ? "4px solid var(--mantine-color-orange-5)"
+                      : "4px solid transparent",
+                  }}
                 >
                   <Group gap="sm" wrap="nowrap" align="flex-start">
                     {d.file_type === "pdf" ? (
@@ -384,44 +389,54 @@ export default function VisitDetailPage() {
                       <Text size="sm" fw={500} truncate>
                         {d.filename}
                       </Text>
-                      <Group gap="sm" mt={2}>
-                        <Text size="xs" c="dimmed">
+                      <Group gap="sm" mt={2} wrap="nowrap">
+                        <Text size="xs" c="dimmed" truncate>
                           {d.merchant_name || "—"}
                         </Text>
                         <Text size="xs" c="dimmed">
                           {d.item_count} รายการ
                         </Text>
                       </Group>
-                    </div>
-                    <Stack gap={2} align="flex-end">
-                      <Group gap={4} wrap="nowrap">
-                        <Badge size="sm" color={STATUS_LABEL[d.status]?.color || "gray"} variant="light">
-                          {STATUS_LABEL[d.status]?.label || d.status}
-                        </Badge>
-                        <ActionIcon
-                          size="sm"
-                          variant="subtle"
-                          color="red"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteDoc(d.id, d.filename);
-                          }}
-                          aria-label="ลบใบเสร็จ"
-                        >
-                          <Trash2 size={12} />
-                        </ActionIcon>
-                      </Group>
-                      {d.period_mismatch && (
-                        <Badge
-                          size="xs"
-                          color="orange"
-                          variant="light"
-                          leftSection={<AlertTriangle size={10} />}
-                        >
-                          นอกเดือน
-                        </Badge>
+                      {d.document_date && (
+                        <Group gap={4} mt={2} wrap="nowrap">
+                          <Text
+                            size="xs"
+                            ff="monospace"
+                            fw={d.period_mismatch ? 700 : 400}
+                            c={d.period_mismatch ? "orange.7" : "dimmed"}
+                          >
+                            {d.document_date}
+                          </Text>
+                          {d.period_mismatch && (
+                            <Tooltip
+                              label={`นอกเดือนรายงาน ${visit.report_period ?? ""}`}
+                            >
+                              <AlertTriangle
+                                size={12}
+                                className="text-orange-500 shrink-0"
+                              />
+                            </Tooltip>
+                          )}
+                        </Group>
                       )}
-                    </Stack>
+                    </div>
+                    <Group gap={4} wrap="nowrap">
+                      <Badge size="sm" color={STATUS_LABEL[d.status]?.color || "gray"} variant="light">
+                        {STATUS_LABEL[d.status]?.label || d.status}
+                      </Badge>
+                      <ActionIcon
+                        size="sm"
+                        variant="subtle"
+                        color="red"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteDoc(d.id, d.filename);
+                        }}
+                        aria-label="ลบใบเสร็จ"
+                      >
+                        <Trash2 size={12} />
+                      </ActionIcon>
+                    </Group>
                   </Group>
                 </Paper>
               ))}
