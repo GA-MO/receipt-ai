@@ -191,10 +191,72 @@ export function getTrashCount() {
   return request<{ count: number }>(`/documents/trash/count`);
 }
 
+// ---------- Stores ----------
+
+export interface StoreListItem {
+  id: string;
+  code: string | null;
+  name: string;
+  normalized_name: string | null;
+  address: string | null;
+  notes: string | null;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+  visit_count: number;
+}
+
+export interface StoreInput {
+  name: string;
+  code?: string | null;
+  normalized_name?: string | null;
+  address?: string | null;
+  notes?: string | null;
+}
+
+export interface StorePatch extends Partial<StoreInput> {
+  active?: boolean;
+}
+
+export function getStores(params?: { q?: string; include_inactive?: boolean }) {
+  const qs: Record<string, string | number | undefined | null> = {};
+  if (params?.q) qs.q = params.q;
+  if (params?.include_inactive) qs.include_inactive = "true";
+  return request<StoreListItem[]>(`/stores${buildQs(qs)}`);
+}
+
+export function getStore(id: string) {
+  return request<StoreListItem>(`/stores/${id}`);
+}
+
+export function createStore(body: StoreInput) {
+  return request<StoreListItem>("/stores", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export function updateStore(id: string, body: StorePatch) {
+  return request<StoreListItem>(`/stores/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export function deleteStore(id: string) {
+  return request<{ id: string; status: "deleted" | "deactivated"; visit_count?: number }>(
+    `/stores/${id}`,
+    { method: "DELETE" },
+  );
+}
+
 // ---------- Visits ----------
 
 export interface VisitListItem {
   id: string;
+  store_id: string | null;
   store_key: string | null;
   store_label: string | null;
   rep_name: string | null;
@@ -202,6 +264,7 @@ export interface VisitListItem {
   created_at: string;
   updated_at: string;
   document_count: number;
+  reviewed_count: number;
   earliest_doc_date: string | null;
   latest_doc_date: string | null;
 }
@@ -220,6 +283,7 @@ export interface VisitAggregateRow {
 
 export interface VisitDetail {
   id: string;
+  store_id: string | null;
   store_key: string | null;
   store_label: string | null;
   rep_name: string | null;
@@ -228,6 +292,7 @@ export interface VisitDetail {
   updated_at: string;
   documents: DocumentListItem[];
   aggregate: VisitAggregateRow[];
+  reviewed_count: number;
 }
 
 export interface VisitUploadResult {
@@ -237,7 +302,12 @@ export interface VisitUploadResult {
   failures: { filename: string; detail: string }[];
 }
 
-export function createVisit(body: { store_label?: string; rep_name?: string; notes?: string }) {
+export function createVisit(body: {
+  store_id?: string;
+  store_label?: string;
+  rep_name?: string;
+  notes?: string;
+}) {
   return request<VisitListItem>("/visits", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -255,7 +325,13 @@ export function getVisit(id: string, params?: { date_from?: string; date_to?: st
 
 export function updateVisit(
   id: string,
-  body: { store_label?: string; store_key?: string; rep_name?: string; notes?: string },
+  body: {
+    store_id?: string;
+    store_label?: string;
+    store_key?: string;
+    rep_name?: string;
+    notes?: string;
+  },
 ) {
   return request<VisitListItem>(`/visits/${id}`, {
     method: "PATCH",

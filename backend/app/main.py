@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
 from .database import SessionLocal, create_tables
-from .routers import aliases, autocomplete, dashboard, documents, products, push, visits
+from .routers import aliases, autocomplete, dashboard, documents, products, push, stores, visits
 from .scripts.seed_products import seed_if_empty
 
 logging.basicConfig(
@@ -55,6 +55,7 @@ app.add_middleware(
 )
 
 app.include_router(documents.router, prefix="/api/documents", tags=["documents"])
+app.include_router(stores.router, prefix="/api/stores", tags=["stores"])
 app.include_router(visits.router, prefix="/api/visits", tags=["visits"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
 app.include_router(push.router, prefix="/api/push", tags=["push"])

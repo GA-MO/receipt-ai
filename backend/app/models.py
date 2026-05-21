@@ -234,15 +234,18 @@ class TypoRecoveryEvent(Base):
 class Visit(Base):
     """Groups multiple receipt documents collected during one store visit.
 
-    A Visit's ``store_key`` mirrors ``Document.merchant_normalized`` so the
-    store identity is shared with existing dashboards. ``store_label`` is the
-    raw merchant text used for display. The Visit has no time scope — date
-    range filtering is done at query time against ``document_date``.
+    A Visit links to a :class:`Store` (admin-managed master) via ``store_id``.
+    ``store_key`` mirrors the canonical ``merchant_normalized`` for fast joins
+    with the legacy documents table; ``store_label`` keeps a friendly display
+    string (snapshot from the store at the time of the visit). The Visit has
+    no time scope — date range filtering is done at query time against
+    ``document_date``.
     """
 
     __tablename__ = "visits"
 
     id = Column(String, primary_key=True, default=_gen_id)
+    store_id = Column(String, ForeignKey("stores.id"), nullable=True, index=True)
     store_key = Column(String, nullable=True, index=True)
     store_label = Column(String, nullable=True)
     rep_name = Column(String, nullable=True)
@@ -252,6 +255,31 @@ class Visit(Base):
     deleted_at = Column(DateTime, nullable=True, index=True)
 
     documents = relationship("Document", back_populates="visit")
+    store = relationship("Store", back_populates="visits")
+
+
+class Store(Base):
+    """Admin-managed master record for a retail customer site / merchant.
+
+    A Store may have many :class:`Visit` rows over time. ``normalized_name``
+    is the canonical key used to match against ``Document.merchant_normalized``
+    from extracted receipts; ``code`` is an optional human-readable id
+    (e.g. route number) that field reps can quote.
+    """
+
+    __tablename__ = "stores"
+
+    id = Column(String, primary_key=True, default=_gen_id)
+    code = Column(String, nullable=True, index=True, unique=True)
+    name = Column(String, nullable=False)
+    normalized_name = Column(String, nullable=True, index=True)
+    address = Column(String, nullable=True)
+    notes = Column(Text, nullable=True)
+    active = Column(Boolean, default=True, index=True)
+    created_at = Column(DateTime, default=_utcnow)
+    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
+
+    visits = relationship("Visit", back_populates="store")
 
 
 class PushSubscription(Base):

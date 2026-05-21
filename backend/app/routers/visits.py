@@ -30,7 +30,7 @@ from sse_starlette.sse import EventSourceResponse
 from ..config import settings
 from ..database import get_db
 from ..events import event_bus
-from ..models import Document, DocumentItem, Visit
+from ..models import Document, DocumentItem, Store, Visit
 from ..schemas import (
     DocumentListItem,
     VisitCreate,
@@ -79,9 +79,30 @@ def _latest_date_sub():
     )
 
 
-def _to_list_item(visit: Visit, doc_count: int, earliest: str | None, latest: str | None) -> VisitListItem:
+def _reviewed_count_sub():
+    return (
+        select(func.count(Document.id))
+        .where(
+            Document.visit_id == Visit.id,
+            Document.deleted_at.is_(None),
+            Document.status == "reviewed",
+        )
+        .correlate(Visit)
+        .scalar_subquery()
+        .label("reviewed_count")
+    )
+
+
+def _to_list_item(
+    visit: Visit,
+    doc_count: int,
+    earliest: str | None,
+    latest: str | None,
+    reviewed_count: int = 0,
+) -> VisitListItem:
     return VisitListItem(
         id=visit.id,
+        store_id=visit.store_id,
         store_key=visit.store_key,
         store_label=visit.store_label,
         rep_name=visit.rep_name,
@@ -89,6 +110,7 @@ def _to_list_item(visit: Visit, doc_count: int, earliest: str | None, latest: st
         created_at=visit.created_at,
         updated_at=visit.updated_at,
         document_count=doc_count,
+        reviewed_count=reviewed_count,
         earliest_doc_date=earliest,
         latest_doc_date=latest,
     )
@@ -115,34 +137,49 @@ def _doc_to_list_item(doc: Document, item_count: int) -> DocumentListItem:
 
 @router.post("", response_model=VisitListItem)
 def create_visit(body: VisitCreate, db: Session = Depends(get_db)):
+    store_id = body.store_id
+    store_label = body.store_label
+    store_key = None
+    if store_id:
+        store = db.query(Store).filter(Store.id == store_id).first()
+        if not store:
+            raise HTTPException(404, f"Store {store_id} not found")
+        store_label = store_label or store.name
+        store_key = store.normalized_name or store.name
     visit = Visit(
         id=str(uuid.uuid4()),
-        store_label=body.store_label,
+        store_id=store_id,
+        store_key=store_key,
+        store_label=store_label,
         rep_name=body.rep_name,
         notes=body.notes,
     )
     db.add(visit)
     db.commit()
     db.refresh(visit)
-    return _to_list_item(visit, 0, None, None)
+    return _to_list_item(visit, 0, None, None, 0)
 
 
 @router.get("", response_model=list[VisitListItem])
 def list_visits(
     skip: int = 0,
     limit: int = 50,
+    store_id: str | None = None,
     store_key: str | None = None,
     rep_name: str | None = None,
     db: Session = Depends(get_db),
 ):
     doc_count = _doc_count_subquery()
+    reviewed = _reviewed_count_sub()
     earliest = _earliest_date_sub()
     latest = _latest_date_sub()
 
     q = (
-        db.query(Visit, doc_count, earliest, latest)
+        db.query(Visit, doc_count, reviewed, earliest, latest)
         .filter(Visit.deleted_at.is_(None))
     )
+    if store_id:
+        q = q.filter(Visit.store_id == store_id)
     if store_key:
         q = q.filter(Visit.store_key == store_key)
     if rep_name:
@@ -154,7 +191,7 @@ def list_visits(
         .limit(limit)
         .all()
     )
-    return [_to_list_item(v, c or 0, e, l) for v, c, e, l in rows]
+    return [_to_list_item(v, c or 0, e, l, r or 0) for v, c, r, e, l in rows]
 
 
 @router.get("/{visit_id}", response_model=VisitDetail)
@@ -185,9 +222,11 @@ def get_visit(
         .order_by(Document.document_date.desc().nullslast(), Document.uploaded_at.desc())
         .all()
     )
+    reviewed_count = sum(1 for d, _ in doc_rows if d.status == "reviewed")
 
     return VisitDetail(
         id=visit.id,
+        store_id=visit.store_id,
         store_key=visit.store_key,
         store_label=visit.store_label,
         rep_name=visit.rep_name,
@@ -196,6 +235,7 @@ def get_visit(
         updated_at=visit.updated_at,
         documents=[_doc_to_list_item(d, c or 0) for d, c in doc_rows],
         aggregate=aggregate_visit(db, visit_id, date_from=date_from, date_to=date_to),
+        reviewed_count=reviewed_count,
     )
 
 
@@ -209,6 +249,14 @@ def update_visit(visit_id: str, body: VisitUpdate, db: Session = Depends(get_db)
     if not visit:
         raise HTTPException(404, "Visit not found")
 
+    if body.store_id is not None:
+        store = db.query(Store).filter(Store.id == body.store_id).first()
+        if not store:
+            raise HTTPException(404, f"Store {body.store_id} not found")
+        visit.store_id = store.id
+        visit.store_key = store.normalized_name or store.name
+        if visit.store_label is None or visit.store_label == "":
+            visit.store_label = store.name
     if body.store_label is not None:
         visit.store_label = body.store_label
     if body.store_key is not None:
@@ -225,8 +273,18 @@ def update_visit(visit_id: str, body: VisitUpdate, db: Session = Depends(get_db)
         .scalar()
         or 0
     )
+    reviewed = (
+        db.query(func.count(Document.id))
+        .filter(
+            Document.visit_id == visit_id,
+            Document.deleted_at.is_(None),
+            Document.status == "reviewed",
+        )
+        .scalar()
+        or 0
+    )
     earliest, latest = visit_doc_date_range(db, visit_id)
-    return _to_list_item(visit, doc_count, earliest, latest)
+    return _to_list_item(visit, doc_count, earliest, latest, reviewed)
 
 
 @router.delete("/{visit_id}")

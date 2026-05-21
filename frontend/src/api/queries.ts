@@ -63,7 +63,14 @@ import {
   recomputeVisitLabel,
   updateVisit,
   uploadDocumentsToVisit,
+  createStore,
+  deleteStore,
+  getStore,
+  getStores,
+  updateStore,
   type DocumentResponse,
+  type StoreInput,
+  type StorePatch,
 } from "./client";
 
 // ---------- Query keys ----------
@@ -423,6 +430,57 @@ export function useDeleteProductAlias() {
   });
 }
 
+// ---------- Stores ----------
+
+export const storesKey = {
+  list: (params?: Record<string, unknown>) => ["stores", params] as const,
+  detail: (id: string) => ["stores", id] as const,
+};
+
+export function useStores(params?: { q?: string; include_inactive?: boolean }) {
+  return useQuery({
+    queryKey: storesKey.list(params as Record<string, unknown>),
+    queryFn: () => getStores(params),
+  });
+}
+
+export function useStore(id: string | undefined) {
+  return useQuery({
+    queryKey: storesKey.detail(id ?? ""),
+    queryFn: () => getStore(id!),
+    enabled: !!id,
+  });
+}
+
+function useInvalidateStores() {
+  const qc = useQueryClient();
+  return () => qc.invalidateQueries({ queryKey: ["stores"] });
+}
+
+export function useCreateStore() {
+  const invalidate = useInvalidateStores();
+  return useMutation({
+    mutationFn: (body: StoreInput) => createStore(body),
+    onSuccess: () => invalidate(),
+  });
+}
+
+export function useUpdateStore(id: string) {
+  const invalidate = useInvalidateStores();
+  return useMutation({
+    mutationFn: (body: StorePatch) => updateStore(id, body),
+    onSuccess: () => invalidate(),
+  });
+}
+
+export function useDeleteStore() {
+  const invalidate = useInvalidateStores();
+  return useMutation({
+    mutationFn: (id: string) => deleteStore(id),
+    onSuccess: () => invalidate(),
+  });
+}
+
 // ---------- Visits ----------
 
 export const visitsKey = {
@@ -457,8 +515,12 @@ function useInvalidateVisits() {
 export function useCreateVisit() {
   const invalidate = useInvalidateVisits();
   return useMutation({
-    mutationFn: (body: { store_label?: string; rep_name?: string; notes?: string }) =>
-      createVisit(body),
+    mutationFn: (body: {
+      store_id?: string;
+      store_label?: string;
+      rep_name?: string;
+      notes?: string;
+    }) => createVisit(body),
     onSuccess: () => invalidate(),
   });
 }
@@ -466,8 +528,13 @@ export function useCreateVisit() {
 export function useUpdateVisit(id: string) {
   const invalidate = useInvalidateVisits();
   return useMutation({
-    mutationFn: (body: { store_label?: string; store_key?: string; rep_name?: string; notes?: string }) =>
-      updateVisit(id, body),
+    mutationFn: (body: {
+      store_id?: string;
+      store_label?: string;
+      store_key?: string;
+      rep_name?: string;
+      notes?: string;
+    }) => updateVisit(id, body),
     onSuccess: () => invalidate(id),
   });
 }

@@ -125,16 +125,55 @@ class DocumentListItem(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ---------- Stores ----------
+
+
+class StoreCreate(BaseModel):
+    name: str
+    code: str | None = None
+    normalized_name: str | None = None
+    address: str | None = None
+    notes: str | None = None
+
+
+class StoreUpdate(BaseModel):
+    name: str | None = None
+    code: str | None = None
+    normalized_name: str | None = None
+    address: str | None = None
+    notes: str | None = None
+    active: bool | None = None
+
+
+class StoreListItem(BaseModel):
+    id: str
+    code: str | None = None
+    name: str
+    normalized_name: str | None = None
+    address: str | None = None
+    notes: str | None = None
+    active: bool = True
+    created_at: datetime
+    updated_at: datetime
+    visit_count: int = 0
+
+    model_config = {"from_attributes": True}
+
+
 # ---------- Visits ----------
 
 
 class VisitCreate(BaseModel):
+    store_id: str | None = None
+    # Free-text fallback when the user types a brand-new store name and the
+    # frontend hasn't promoted it to a Store row yet.
     store_label: str | None = None
     rep_name: str | None = None
     notes: str | None = None
 
 
 class VisitUpdate(BaseModel):
+    store_id: str | None = None
     store_label: str | None = None
     store_key: str | None = None
     rep_name: str | None = None
@@ -143,6 +182,7 @@ class VisitUpdate(BaseModel):
 
 class VisitListItem(BaseModel):
     id: str
+    store_id: str | None = None
     store_key: str | None = None
     store_label: str | None = None
     rep_name: str | None = None
@@ -150,6 +190,7 @@ class VisitListItem(BaseModel):
     created_at: datetime
     updated_at: datetime
     document_count: int = 0
+    reviewed_count: int = 0
     earliest_doc_date: str | None = None
     latest_doc_date: str | None = None
 
@@ -170,6 +211,7 @@ class VisitAggregateRow(BaseModel):
 
 class VisitDetail(BaseModel):
     id: str
+    store_id: str | None = None
     store_key: str | None = None
     store_label: str | None = None
     rep_name: str | None = None
@@ -178,6 +220,7 @@ class VisitDetail(BaseModel):
     updated_at: datetime
     documents: list[DocumentListItem] = []
     aggregate: list[VisitAggregateRow] = []
+    reviewed_count: int = 0
 
 
 # ---------- Dashboard ----------

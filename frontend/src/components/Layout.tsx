@@ -20,6 +20,7 @@ import { LearnedAliasesBadge } from "@/components/LearnedAliasesPanel";
 
 const links = [
   { to: "/visits", label: "การเยี่ยมร้าน", icon: Store },
+  { to: "/stores", label: "Store master", icon: Store },
   { to: "/upload", label: "อัปโหลดเดี่ยว", icon: Upload },
   { to: "/documents", label: "เอกสารทั้งหมด", icon: FileText },
   { to: "/dashboard", label: "Dashboard", icon: BarChart3 },
@@ -145,7 +146,9 @@ export default function Layout() {
           {links.map(({ to, label, icon: Icon }) => {
             const active =
               to === "/visits"
-                ? location.pathname === "/" || location.pathname.startsWith("/visits")
+                ? location.pathname === "/" ||
+                  (location.pathname.startsWith("/visits") &&
+                    !location.pathname.startsWith("/stores"))
                 : location.pathname.startsWith(to);
             return (
               <RouterNavLink

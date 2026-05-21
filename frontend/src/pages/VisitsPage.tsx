@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -9,6 +9,7 @@ import {
   Group,
   Loader,
   Paper,
+  Select,
   Stack,
   Table,
   Text,
@@ -19,6 +20,7 @@ import {
 import { FileImage, Plus, Store, Upload, User } from "lucide-react";
 import {
   useCreateVisit,
+  useStores,
   useVisits,
 } from "../api/queries";
 import { uploadDocumentsToVisit } from "../api/client";
@@ -36,12 +38,22 @@ export default function VisitsPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { data: visits, isPending } = useVisits({ limit: 50 });
+  const { data: stores } = useStores();
   const createMut = useCreateVisit();
 
-  const [storeLabel, setStoreLabel] = useState("");
+  const [storeId, setStoreId] = useState<string | null>(null);
   const [repName, setRepName] = useState("");
   const [files, setFiles] = useState<PendingFile[]>([]);
   const [submitting, setSubmitting] = useState(false);
+
+  const storeOptions = useMemo(
+    () =>
+      (stores ?? []).map((s) => ({
+        value: s.id,
+        label: s.code ? `${s.name} (${s.code})` : s.name,
+      })),
+    [stores],
+  );
 
   const onDrop = useCallback(
     (accepted: File[], rejected: readonly { file: File; errors: readonly { message: string }[] }[]) => {
@@ -78,6 +90,10 @@ export default function VisitsPage() {
   });
 
   const handleStartVisit = async () => {
+    if (!storeId) {
+      toast("error", "เลือกร้านก่อน — ถ้ายังไม่มีให้ไปเพิ่มที่ Store master");
+      return;
+    }
     if (files.length === 0) {
       toast("error", "เพิ่มไฟล์อย่างน้อย 1 รูปก่อนเริ่ม visit");
       return;
@@ -85,7 +101,7 @@ export default function VisitsPage() {
     setSubmitting(true);
     try {
       const visit = await createMut.mutateAsync({
-        store_label: storeLabel.trim() || undefined,
+        store_id: storeId,
         rep_name: repName.trim() || undefined,
       });
       const data = await uploadDocumentsToVisit(
@@ -138,13 +154,19 @@ export default function VisitsPage() {
               สร้าง visit + อัปโหลด {files.length > 0 ? `(${files.length})` : ""}
             </Button>
           </Group>
-          <Group gap="md" grow>
-            <TextInput
-              label="ชื่อร้าน (optional)"
-              placeholder="เช่น ร้านสมชายเทรดดิ้ง"
-              value={storeLabel}
-              onChange={(e) => setStoreLabel(e.currentTarget.value)}
+          <Group gap="md" grow align="flex-end">
+            <Select
+              label="ร้าน (เลือกจาก Store master)"
+              required
+              placeholder={storeOptions.length ? "เลือกร้าน" : "ยังไม่มีร้าน — เพิ่มที่หน้า Store master ก่อน"}
+              data={storeOptions}
+              value={storeId}
+              onChange={setStoreId}
+              searchable
+              clearable
+              nothingFoundMessage="ไม่พบร้าน"
               leftSection={<Store size={14} />}
+              disabled={storeOptions.length === 0}
             />
             <TextInput
               label="คนเก็บ (optional)"
@@ -154,6 +176,14 @@ export default function VisitsPage() {
               leftSection={<User size={14} />}
             />
           </Group>
+          {storeOptions.length === 0 && (
+            <Text size="xs" c="orange">
+              ยังไม่มีร้านในระบบ —{" "}
+              <Link to="/stores" className="underline">
+                ไปที่หน้า Store master เพื่อเพิ่มร้าน
+              </Link>
+            </Text>
+          )}
 
           <Paper
             {...getRootProps()}
@@ -211,6 +241,7 @@ export default function VisitsPage() {
                 <Table.Th>ร้านค้า</Table.Th>
                 <Table.Th>คนเก็บ</Table.Th>
                 <Table.Th ta="right">ใบ</Table.Th>
+                <Table.Th ta="right">ตรวจแล้ว</Table.Th>
                 <Table.Th>ช่วงวันที่</Table.Th>
                 <Table.Th>สร้างเมื่อ</Table.Th>
               </Table.Tr>
@@ -236,6 +267,20 @@ export default function VisitsPage() {
                     <Table.Td ta="right">
                       <Badge variant="light" color={v.document_count > 0 ? "indigo" : "gray"}>
                         {v.document_count}
+                      </Badge>
+                    </Table.Td>
+                    <Table.Td ta="right">
+                      <Badge
+                        variant="light"
+                        color={
+                          v.document_count === 0
+                            ? "gray"
+                            : v.reviewed_count === v.document_count
+                              ? "green"
+                              : "yellow"
+                        }
+                      >
+                        {v.reviewed_count}/{v.document_count}
                       </Badge>
                     </Table.Td>
                     <Table.Td><Text size="sm">{dateRange}</Text></Table.Td>

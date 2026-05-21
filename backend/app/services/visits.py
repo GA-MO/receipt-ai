@@ -11,7 +11,7 @@ from typing import Iterable
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from ..models import Document, Visit
+from ..models import Document, Store, Visit
 
 logger = logging.getLogger(__name__)
 
@@ -39,10 +39,18 @@ def get_or_create_visit_for_merchant(
             visit.store_label = store_label
         return visit
 
+    # If a Store master row matches this normalized merchant, link the new
+    # Visit to it so the admin sees auto-discovered stores under their entry.
+    matching_store = (
+        db.query(Store)
+        .filter(Store.normalized_name == store_key, Store.active.is_(True))
+        .first()
+    )
     visit = Visit(
         id=str(uuid.uuid4()),
+        store_id=matching_store.id if matching_store else None,
         store_key=store_key,
-        store_label=store_label or store_key,
+        store_label=store_label or (matching_store.name if matching_store else store_key),
     )
     db.add(visit)
     db.flush()
