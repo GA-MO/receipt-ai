@@ -113,9 +113,14 @@ export default function VisitReviewPage() {
       {/* Top bar */}
       <Group justify="space-between" mb="md" wrap="nowrap">
         <Group gap="sm" wrap="nowrap" className="min-w-0">
-          <ActionIcon variant="default" onClick={goBack} aria-label="ย้อนกลับไป visit">
-            <ArrowLeft size={16} />
-          </ActionIcon>
+          <Button
+            variant="default"
+            size="xs"
+            leftSection={<ArrowLeft size={14} />}
+            onClick={goBack}
+          >
+            กลับเดือน {visit.report_period ?? ""}
+          </Button>
           <div className="min-w-0">
             <Group gap="xs" wrap="nowrap">
               <Text fw={600} truncate>

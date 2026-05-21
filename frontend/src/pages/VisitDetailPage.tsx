@@ -104,15 +104,14 @@ export default function VisitDetailPage() {
         <div>
           {visit.store_id && (
             <Button
-              variant="subtle"
+              variant="default"
               size="xs"
               component={Link}
               to={`/stores/${visit.store_id}`}
-              leftSection={<ArrowLeft size={12} />}
-              px={4}
-              mb={2}
+              leftSection={<ArrowLeft size={14} />}
+              mb="xs"
             >
-              กลับไป {visit.store_label || "ร้าน"}
+              กลับ {visit.store_label || "ร้าน"}
             </Button>
           )}
           <Group gap="sm" align="baseline">
