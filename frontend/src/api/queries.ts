@@ -103,6 +103,8 @@ function useInvalidate() {
       qc.invalidateQueries({ queryKey: ["documents"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["trash"] });
+      // Item edits change the visit aggregate, so refresh every visit query.
+      qc.invalidateQueries({ queryKey: ["visits"] });
       if (docId) qc.invalidateQueries({ queryKey: qk.document(docId) });
     },
   };

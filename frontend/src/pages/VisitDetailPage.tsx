@@ -9,10 +9,12 @@ import {
   Drawer,
   Group,
   Loader,
+  NumberInput,
   Paper,
   Stack,
   Table,
   Text,
+  TextInput,
   Title,
   Tooltip,
 } from "@mantine/core";
@@ -22,15 +24,22 @@ import {
   ChevronRight,
   ExternalLink,
   FileText,
+  Plus,
   RefreshCw,
   Store,
+  Trash2,
   User,
 } from "lucide-react";
-import { getDocumentImageUrl } from "../api/client";
+import { getDocumentImageUrl, type DocumentItemData } from "../api/client";
 import {
+  useCreateItem,
+  useDeleteItem,
+  useDocument,
   useRecomputeVisitLabel,
+  useUpdateItem,
   useVisit,
 } from "../api/queries";
+import { useToast } from "@/components/Toast";
 
 const STATUS_LABEL: Record<string, { color: string; label: string }> = {
   pending: { color: "gray", label: "รอ" },
@@ -312,47 +321,7 @@ export default function VisitDetailPage() {
         position="right"
         size="xl"
       >
-        {drawerDoc && (
-          <Stack>
-            <Group justify="space-between">
-              <Group gap="xs">
-                <Badge color={STATUS_LABEL[drawerDoc.status]?.color || "gray"}>
-                  {STATUS_LABEL[drawerDoc.status]?.label || drawerDoc.status}
-                </Badge>
-                {drawerDoc.confidence != null && (
-                  <Badge variant="default">
-                    confidence {(drawerDoc.confidence * 100).toFixed(0)}%
-                  </Badge>
-                )}
-              </Group>
-              <Button
-                component={Link}
-                to={`/documents?search=${drawerDoc.id}`}
-                variant="subtle"
-                size="xs"
-                rightSection={<ExternalLink size={14} />}
-              >
-                ดูในรายการเอกสาร
-              </Button>
-            </Group>
-            <DocumentImagePreview docId={drawerDoc.id} />
-            <Card withBorder radius="md">
-              <Stack gap="xs">
-                <Text size="sm" c="dimmed">
-                  ร้านค้า: <b>{drawerDoc.merchant_name || "—"}</b>
-                </Text>
-                {drawerDoc.grand_total != null && (
-                  <Text size="sm" c="dimmed">
-                    ยอดรวม: <b>{drawerDoc.grand_total.toLocaleString()} บาท</b>
-                  </Text>
-                )}
-                <Text size="sm" c="dimmed">
-                  {drawerDoc.item_count} รายการ
-                </Text>
-              </Stack>
-            </Card>
-          </Stack>
-        )}
+        {drawerDocId && <DocumentDrawerContent docId={drawerDocId} />}
       </Drawer>
     </div>
   );
@@ -364,5 +333,225 @@ function DocumentImagePreview({ docId }: { docId: string }) {
     <Paper withBorder radius="md" className="overflow-hidden">
       <img src={url} alt="receipt" style={{ width: "100%", display: "block" }} />
     </Paper>
+  );
+}
+
+function DocumentDrawerContent({ docId }: { docId: string }) {
+  const { data: doc, isPending } = useDocument(docId);
+  if (isPending || !doc) {
+    return <Loader />;
+  }
+  return (
+    <Stack>
+      <Group justify="space-between">
+        <Group gap="xs">
+          <Badge color={STATUS_LABEL[doc.status]?.color || "gray"}>
+            {STATUS_LABEL[doc.status]?.label || doc.status}
+          </Badge>
+          {doc.confidence != null && (
+            <Badge variant="default">
+              confidence {(doc.confidence * 100).toFixed(0)}%
+            </Badge>
+          )}
+        </Group>
+        <Button
+          component={Link}
+          to={`/documents?search=${doc.id}`}
+          variant="subtle"
+          size="xs"
+          rightSection={<ExternalLink size={14} />}
+        >
+          ดูในรายการเอกสาร
+        </Button>
+      </Group>
+      <DocumentImagePreview docId={doc.id} />
+      <Card withBorder radius="md">
+        <Stack gap={4}>
+          <Text size="sm" c="dimmed">
+            ร้านค้า: <b>{doc.merchant_name || "—"}</b>
+          </Text>
+          {doc.document_date && (
+            <Text size="sm" c="dimmed">
+              วันที่: <b>{doc.document_date}</b>
+            </Text>
+          )}
+          {doc.grand_total != null && (
+            <Text size="sm" c="dimmed">
+              ยอดรวม: <b>{doc.grand_total.toLocaleString()} บาท</b>
+            </Text>
+          )}
+        </Stack>
+      </Card>
+      <EditableItemsTable docId={doc.id} items={doc.items} />
+    </Stack>
+  );
+}
+
+function EditableItemsTable({
+  docId,
+  items,
+}: {
+  docId: string;
+  items: DocumentItemData[];
+}) {
+  const updateMut = useUpdateItem(docId);
+  const deleteMut = useDeleteItem(docId);
+  const createMut = useCreateItem(docId);
+  const { toast } = useToast();
+
+  const handleSave = async (itemId: string, data: Record<string, unknown>) => {
+    try {
+      await updateMut.mutateAsync({ itemId, data });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "บันทึกล้มเหลว";
+      toast("error", msg);
+    }
+  };
+
+  const handleDelete = async (itemId: string) => {
+    try {
+      await deleteMut.mutateAsync(itemId);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "ลบล้มเหลว";
+      toast("error", msg);
+    }
+  };
+
+  const handleAdd = async () => {
+    try {
+      await createMut.mutateAsync({
+        product_name_normalized: "(สินค้าใหม่)",
+        quantity: 1,
+        unit: "ขวด",
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "เพิ่มล้มเหลว";
+      toast("error", msg);
+    }
+  };
+
+  return (
+    <Card withBorder radius="md" p={0}>
+      <Group justify="space-between" p="md" pb="sm">
+        <Text fw={600}>รายการสินค้า ({items.length})</Text>
+        <Button
+          size="xs"
+          variant="light"
+          leftSection={<Plus size={14} />}
+          onClick={handleAdd}
+          loading={createMut.isPending}
+        >
+          เพิ่มสินค้า
+        </Button>
+      </Group>
+      <Table verticalSpacing="xs" striped>
+        <Table.Thead>
+          <Table.Tr>
+            <Table.Th>สินค้า</Table.Th>
+            <Table.Th w={90} ta="right">จำนวน</Table.Th>
+            <Table.Th w={80}>หน่วย</Table.Th>
+            <Table.Th w={36}></Table.Th>
+          </Table.Tr>
+        </Table.Thead>
+        <Table.Tbody>
+          {items.map((it) => (
+            <EditableItemRow
+              key={it.id}
+              item={it}
+              onSave={(data) => handleSave(it.id, data)}
+              onDelete={() => handleDelete(it.id)}
+            />
+          ))}
+        </Table.Tbody>
+      </Table>
+    </Card>
+  );
+}
+
+function EditableItemRow({
+  item,
+  onSave,
+  onDelete,
+}: {
+  item: DocumentItemData;
+  onSave: (data: Record<string, unknown>) => void;
+  onDelete: () => void;
+}) {
+  const [name, setName] = useState(item.product_name_normalized ?? "");
+  const [qty, setQty] = useState<number | string>(item.quantity ?? "");
+  const [unit, setUnit] = useState(item.unit ?? "");
+
+  // Keep local state in sync if the row is replaced by a server refetch.
+  useEffect(() => {
+    setName(item.product_name_normalized ?? "");
+    setQty(item.quantity ?? "");
+    setUnit(item.unit ?? "");
+  }, [item.product_name_normalized, item.quantity, item.unit]);
+
+  const saveIfChanged = (patch: Record<string, unknown>) => {
+    onSave(patch);
+  };
+
+  return (
+    <Table.Tr>
+      <Table.Td>
+        <TextInput
+          size="xs"
+          variant="unstyled"
+          value={name}
+          onChange={(e) => setName(e.currentTarget.value)}
+          onBlur={() => {
+            if (name !== (item.product_name_normalized ?? "")) {
+              saveIfChanged({ product_name_normalized: name });
+            }
+          }}
+        />
+        {!item.product_code && (
+          <Text size="xs" c="orange">ไม่อยู่ใน catalog</Text>
+        )}
+      </Table.Td>
+      <Table.Td>
+        <NumberInput
+          size="xs"
+          variant="unstyled"
+          value={qty}
+          min={0}
+          decimalScale={3}
+          hideControls
+          styles={{ input: { textAlign: "right" } }}
+          onChange={(v) => setQty(v as number | string)}
+          onBlur={() => {
+            const next = typeof qty === "string" && qty === "" ? null : Number(qty);
+            if (next !== item.quantity) {
+              saveIfChanged({ quantity: next });
+            }
+          }}
+        />
+      </Table.Td>
+      <Table.Td>
+        <TextInput
+          size="xs"
+          variant="unstyled"
+          value={unit}
+          onChange={(e) => setUnit(e.currentTarget.value)}
+          onBlur={() => {
+            if (unit !== (item.unit ?? "")) {
+              saveIfChanged({ unit });
+            }
+          }}
+        />
+      </Table.Td>
+      <Table.Td>
+        <ActionIcon
+          color="red"
+          variant="subtle"
+          size="sm"
+          onClick={onDelete}
+          aria-label="ลบรายการ"
+        >
+          <Trash2 size={14} />
+        </ActionIcon>
+      </Table.Td>
+    </Table.Tr>
   );
 }
