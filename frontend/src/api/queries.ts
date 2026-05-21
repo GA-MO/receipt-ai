@@ -29,27 +29,17 @@ import {
   deleteItem,
   deleteProductAlias,
   getAutocomplete,
-  getAiInsight,
   getAliasStats,
   getAliases,
   getProductAliases,
   getCatalogGaps,
-  getCategoryBreakdown,
-  getDailySales,
-  getDashboardStats,
   getTypoRecoveries,
   getDocument,
   getDocumentCount,
   getDocumentHistory,
   getDocuments,
-  getFraudSummary,
-  getPeriodComparison,
-  getSpendingHeatmap,
-  getTopMerchants,
-  getTopProducts,
   getTrash,
   getTrashCount,
-  getVatSummary,
   purgeDocument,
   reextractDocument,
   restoreDocument,
@@ -80,19 +70,9 @@ export const qk = {
   documentCount: (params?: Record<string, unknown>) =>
     ["documents", "count", params] as const,
   document: (id: string) => ["documents", id] as const,
-  dashboard: {
-    stats: ["dashboard", "stats"] as const,
-    dailySales: (days: number) => ["dashboard", "dailySales", days] as const,
-    topMerchants: (limit: number) => ["dashboard", "topMerchants", limit] as const,
-    topProducts: (limit: number) => ["dashboard", "topProducts", limit] as const,
-    categories: (mode?: string) => ["dashboard", "categories", mode] as const,
-    vat: (params?: Record<string, unknown>) => ["dashboard", "vat", params] as const,
-    fraud: ["dashboard", "fraud"] as const,
-    heatmap: (days: number) => ["dashboard", "heatmap", days] as const,
-    insight: ["dashboard", "insight"] as const,
-    period: (period: string) => ["dashboard", "period", period] as const,
-    catalogGaps: (days: number) => ["dashboard", "catalogGaps", days] as const,
-    typoRecoveries: (days: number) => ["dashboard", "typoRecoveries", days] as const,
+  aiHealth: {
+    catalogGaps: (days: number) => ["ai-health", "catalogGaps", days] as const,
+    typoRecoveries: (days: number) => ["ai-health", "typoRecoveries", days] as const,
   },
   aliases: {
     list: (limit: number) => ["aliases", "list", limit] as const,
@@ -108,7 +88,6 @@ function useInvalidate() {
   return {
     afterMutation: (docId?: string) => {
       qc.invalidateQueries({ queryKey: ["documents"] });
-      qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["trash"] });
       // Item edits change the visit aggregate, so refresh every visit query.
       qc.invalidateQueries({ queryKey: ["visits"] });
@@ -295,83 +274,11 @@ export function useTrashCount() {
   });
 }
 
-// ---------- Dashboard ----------
-
-export function useDashboardStats() {
-  return useQuery({
-    queryKey: qk.dashboard.stats,
-    queryFn: getDashboardStats,
-  });
-}
-
-export function useDailySales(days = 30) {
-  return useQuery({
-    queryKey: qk.dashboard.dailySales(days),
-    queryFn: () => getDailySales(days),
-  });
-}
-
-export function useTopMerchants(limit = 10) {
-  return useQuery({
-    queryKey: qk.dashboard.topMerchants(limit),
-    queryFn: () => getTopMerchants(limit),
-  });
-}
-
-export function useTopProducts(
-  limit = 10,
-  params?: { catalog_only?: boolean },
-) {
-  return useQuery({
-    queryKey: ["dashboard", "topProducts", limit, params?.catalog_only] as const,
-    queryFn: () => getTopProducts(limit, params),
-  });
-}
-
-export function useCategoryBreakdown() {
-  return useQuery({
-    queryKey: qk.dashboard.categories(),
-    queryFn: getCategoryBreakdown,
-  });
-}
-
-export function useVatSummary(params?: { date_from?: string; date_to?: string }) {
-  return useQuery({
-    queryKey: qk.dashboard.vat(params as Record<string, unknown>),
-    queryFn: () => getVatSummary(params),
-  });
-}
-
-export function useFraudSummary() {
-  return useQuery({
-    queryKey: qk.dashboard.fraud,
-    queryFn: getFraudSummary,
-  });
-}
-
-export function useSpendingHeatmap(days = 90) {
-  return useQuery({
-    queryKey: qk.dashboard.heatmap(days),
-    queryFn: () => getSpendingHeatmap(days),
-  });
-}
-
-export function usePeriodComparison(period: "7d" | "30d" | "month" | "year" = "month") {
-  return useQuery({
-    queryKey: qk.dashboard.period(period),
-    queryFn: () => getPeriodComparison(period),
-  });
-}
-
-export function useAiInsight() {
-  return useMutation({
-    mutationFn: getAiInsight,
-  });
-}
+// ---------- AI Health ----------
 
 export function useCatalogGaps(days = 30) {
   return useQuery({
-    queryKey: qk.dashboard.catalogGaps(days),
+    queryKey: qk.aiHealth.catalogGaps(days),
     queryFn: () => getCatalogGaps(days, 50),
     refetchInterval: 60_000,
   });
@@ -379,7 +286,7 @@ export function useCatalogGaps(days = 30) {
 
 export function useTypoRecoveries(days = 30) {
   return useQuery({
-    queryKey: qk.dashboard.typoRecoveries(days),
+    queryKey: qk.aiHealth.typoRecoveries(days),
     queryFn: () => getTypoRecoveries(days, 50),
     refetchInterval: 60_000,
   });

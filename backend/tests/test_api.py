@@ -144,12 +144,11 @@ class TestUpdateDocument:
 
         resp = client.put(
             f"/api/documents/{doc_id}",
-            json={"merchant_name": "Updated Store", "grand_total": 999.99},
+            json={"merchant_name": "Updated Store"},
         )
         assert resp.status_code == 200
         data = resp.json()
         assert data["merchant_name"] == "Updated Store"
-        assert data["grand_total"] == 999.99
 
     def test_update_nonexistent_document_404(self, client):
         resp = client.put(
@@ -202,48 +201,4 @@ class TestDeleteDocument:
         assert resp.status_code == 404
 
 
-# ---------------------------------------------------------------------------
-# Dashboard stats
-# ---------------------------------------------------------------------------
 
-
-class TestDashboardStats:
-    def test_stats_empty_db(self, client):
-        resp = client.get("/api/dashboard/stats")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["total_documents"] == 0
-        assert data["pending_review"] == 0
-        assert data["reviewed"] == 0
-        assert data["total_sales"] == 0.0
-        assert data["avg_confidence"] == 0.0
-        assert data["documents_today"] == 0
-
-    def test_stats_after_upload_and_approve(self, client):
-        upload_resp = _upload_document(client)
-        doc_id = upload_resp.json()["id"]
-
-        # Set grand_total and approve
-        client.put(
-            f"/api/documents/{doc_id}",
-            json={"grand_total": 500.0},
-        )
-        client.post(f"/api/documents/{doc_id}/approve")
-
-        resp = client.get("/api/dashboard/stats")
-        data = resp.json()
-        assert data["total_documents"] == 1
-        assert data["reviewed"] == 1
-        assert data["total_sales"] == 500.0
-
-
-# ---------------------------------------------------------------------------
-# Export CSV
-# ---------------------------------------------------------------------------
-
-
-class TestExportCSV:
-    def test_export_empty(self, client):
-        resp = client.get("/api/dashboard/export")
-        assert resp.status_code == 200
-        assert "text/csv" in resp.headers["content-type"]

@@ -61,7 +61,7 @@ _AGENTIC_SYSTEM_INSTRUCTION = """\
   * "อาหาร และของว่าง" — อาหาร, ขนม, snack
   * "สินค้าพรีเมียมสิงห์" — merchandise, ของสะสม
   * "สินค้าอื่นๆ" — ไม่เข้าหมวดข้างบน (ไม่ใช่ default)
-- `category` ของเอกสาร: ใช้หมวดที่พบมากที่สุดใน items (by line_total)
+- `category` ของเอกสาร: ใช้หมวดที่พบมากที่สุดใน items (by quantity)
 - ถ้าปี พ.ศ. ให้แปลงเป็น ค.ศ. (พ.ศ. - 543); วันที่รูปแบบ YYYY-MM-DD
 - merchant_normalized: ตัด prefix "บริษัท/ร้าน/หจก.", suffix "จำกัด/(สำนักงานใหญ่)"
 

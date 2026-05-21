@@ -136,12 +136,10 @@ def _doc_to_list_item(
         merchant_name=doc.merchant_name,
         merchant_normalized=doc.merchant_normalized,
         document_date=doc.document_date,
-        grand_total=float(doc.grand_total) if doc.grand_total is not None else None,
         category=doc.category,
         confidence=doc.confidence,
         needs_review=doc.needs_review,
         item_count=item_count,
-        fraud_flags=doc.fraud_flags,
         visit_id=doc.visit_id,
         period_mismatch=mismatch,
     )

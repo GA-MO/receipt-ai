@@ -68,19 +68,17 @@ _SYSTEM_INSTRUCTION_TAIL_TEMPLATE = """
       "product_code": "SKU code ของสินค้า (string | null) — ดูจากคอลัมน์ product_code ของตาราง PRODUCT_CATALOG; ใส่เฉพาะเมื่อมั่นใจว่า match จริง ไม่ใช่ทุกบรรทัดต้องมี",
       "category": "หมวดหมู่ของรายการนี้ (string จาก allowed categories)",
       "quantity": 0,
-      "unit": "หน่วย เช่น ขวด ลัง แพ็ค กระป๋อง",
-      "unit_price": 0.00,
-      "line_total": 0.00
+      "unit": "หน่วย เช่น ขวด ลัง แพ็ค กระป๋อง"
     }
   ],
-  "subtotal": 0.00,
-  "discount": 0.00,
-  "vat": 0.00,
-  "grand_total": 0.00,
   "confidence": 0.85,
   "notes": "หมายเหตุเพิ่มเติม",
   "needs_review_fields": ["field ที่ไม่มั่นใจ"]
 }
+
+## โจทย์: ดึง **ชื่อสินค้า + จำนวน + หน่วย** เท่านั้น
+ระบบไม่ใช้ข้อมูลราคา (subtotal, discount, vat, grand_total, unit_price, line_total) — ห้าม emit
+หรือลงทุนเวลาอ่านมัน. โฟกัสกับการ map สินค้าเข้า catalog และนับจำนวนให้ถูก.
 
 ## กฎสำคัญ
 - **ภาษาที่ใช้ตอบ** : ข้อความทุก field ที่เป็นคำอธิบาย/หมายเหตุ (`notes`, `needs_review_fields` ถ้าต้องอธิบาย)
@@ -141,7 +139,7 @@ _SYSTEM_INSTRUCTION_TAIL_TEMPLATE = """
     2. ถ้าเป็นอาหาร / ของว่าง / ขนม / snack / ของกิน → "อาหาร และของว่าง"
     3. ถ้าเป็นของที่ระลึก / เสื้อผ้า / แก้ว / ของสะสม / merchandise ของสิงห์ → "สินค้าพรีเมียมสิงห์"
     4. ใช้ "สินค้าอื่นๆ" เฉพาะเมื่อไม่เข้าหมวด 1-3 เลยจริงๆ (ไม่ใช่ default)
-  วิธีเลือก `category` (เอกสาร) : ใช้หมวดที่พบมากที่สุดใน items (by quantity หรือ line_total)
+  วิธีเลือก `category` (เอกสาร) : ใช้หมวดที่พบมากที่สุดใน items (by quantity)
 - **การแปลงปีในเอกสาร** (สำคัญมาก — ผิดบ่อย):
   - เอกสารการขายของไทย **เกือบทั้งหมดใช้ปี พ.ศ.** ไม่ว่าจะเขียนเต็ม (2568) หรือ 2 หลักท้าย (68)
   - กฎ: `document_date` ต้องเป็น **ค.ศ. (Gregorian) เท่านั้น** ในรูปแบบ `YYYY-MM-DD`
@@ -158,11 +156,6 @@ _SYSTEM_INSTRUCTION_TAIL_TEMPLATE = """
     - "15/05/2568" → `2025-05-15`
   - **Sanity check**: หลังแปลงแล้ว ถ้าปี ค.ศ. ที่ได้ห่างจากปีปัจจุบันเกิน 5 ปี (อนาคตหรืออดีต) ให้ทบทวนใหม่ — น่าจะลืมแปลง
 - ถ้าอ่านไม่ออกหรือไม่แน่ใจ ให้ใส่ null และเพิ่มชื่อ field ใน needs_review_fields
-- ตัวเลขเงินให้เป็นทศนิยม 2 ตำแหน่ง
-- **VAT**: `subtotal` = ก่อน VAT, `vat` = ภาษี, `grand_total` = สุทธิ
-  ถ้าเอกสารมี VAT > 0 → `subtotal = grand_total - vat` (≈ `grand_total / 1.07` สำหรับ VAT 7%)
-  ถ้าไม่มี VAT → `subtotal = grand_total` ได้
-  `line_total` ของรายการบนใบเสร็จไทยมักรวม VAT แล้ว (sum(line_total) ≈ grand_total)
 - confidence เป็นค่า 0.0 - 1.0 แสดงความมั่นใจโดยรวม
 - ถ้าเอกสารไม่ใช่ใบเสร็จ/บิลเงินสด/ใบกำกับภาษี/ใบส่งของ (เช่น เป็นรายงานสรุปยอด, สลิปโอนเงิน, เอกสารอื่น) ให้:
   * ยังคงพยายามดึงข้อมูลให้ได้มากที่สุด
@@ -173,7 +166,7 @@ _SYSTEM_INSTRUCTION_TAIL_TEMPLATE = """
 - ตอบเป็น JSON เท่านั้น ห้ามมี markdown code fence หรือข้อความอื่น
 
 ## ตัวอย่าง output ที่ถูกต้อง (one-shot example)
-ใบเสร็จที่ขายเบียร์สิงห์ขวดใหญ่ 12 ขวด @688 และน้ำเปล่ายี่ห้ออื่นที่ไม่อยู่ใน catalog 1 แพ็ค
+ใบเสร็จที่ขายเบียร์สิงห์ขวดใหญ่ 12 ขวด และน้ำเปล่ายี่ห้ออื่นที่ไม่อยู่ใน catalog 1 แพ็ค
 ออกบิล 30 ธ.ค. 2568 (พ.ศ.) ที่ "บริษัท สมชายเทรดดิ้ง จำกัด (สำนักงานใหญ่)" → ต้องตอบดังนี้:
 {
   "merchant_name": "บริษัท สมชายเทรดดิ้ง จำกัด (สำนักงานใหญ่)",
@@ -188,9 +181,7 @@ _SYSTEM_INSTRUCTION_TAIL_TEMPLATE = """
       "product_code": "INT-BEER-SINGHA-L",
       "category": "เครื่องดื่ม",
       "quantity": 12,
-      "unit": "ขวด",
-      "unit_price": 688.00,
-      "line_total": 8256.00
+      "unit": "ขวด"
     },
     {
       "product_name_raw": "น้ำคริสตัล แพ็ค",
@@ -198,20 +189,14 @@ _SYSTEM_INSTRUCTION_TAIL_TEMPLATE = """
       "product_code": null,
       "category": "เครื่องดื่ม",
       "quantity": 1,
-      "unit": "แพ็ค",
-      "unit_price": 60.00,
-      "line_total": 60.00
+      "unit": "แพ็ค"
     }
   ],
-  "subtotal": 7772.07,
-  "discount": 0.00,
-  "vat": 543.93,
-  "grand_total": 8316.00,
   "confidence": 0.92,
   "notes": "เอกสารชัดเจน อ่านง่าย",
   "needs_review_fields": []
 }
-สังเกต: (1) แปลง 2568 → 2025, (2) สห์ใหญ่ → ชื่อทางการ + product_code จาก catalog, (3) น้ำคริสตัลไม่อยู่ใน catalog → product_code = null, normalized = raw, (4) merchant_normalized ตัด "บริษัท/จำกัด/(สำนักงานใหญ่)" ออก, (5) **VAT semantics**: subtotal=7772.07 (ก่อน VAT), vat=543.93, grand_total=8316.00 — `subtotal + vat = grand_total`, (6) needs_review_fields ว่างเพราะมั่นใจหมด
+สังเกต: (1) แปลง 2568 → 2025, (2) สห์ใหญ่ → ชื่อทางการ + product_code จาก catalog, (3) น้ำคริสตัลไม่อยู่ใน catalog → product_code = null, normalized = raw, (4) merchant_normalized ตัด "บริษัท/จำกัด/(สำนักงานใหญ่)" ออก, (5) ไม่มีฟิลด์ราคา — ระบบไม่ใช้
 """
 
 
@@ -311,8 +296,6 @@ def _parse_items(raw_items: object, default_category: str | None) -> list[Docume
                 category=cat,
                 quantity=it.get("quantity"),
                 unit=it.get("unit"),
-                unit_price=it.get("unit_price"),
-                line_total=it.get("line_total"),
             )
         )
     return items
@@ -328,7 +311,7 @@ def _sanitize_document_date(raw_date: object) -> object:
     Both cases produce a year far in the future. If the year exceeds
     today + 5, try subtracting 543 — if the result falls within a
     plausible window (5y past .. 1y future), use it. Otherwise leave
-    untouched and let validation/fraud surface the anomaly.
+    untouched and let validation surface the anomaly.
     """
     if not isinstance(raw_date, str) or len(raw_date) < 10:
         return raw_date
@@ -376,10 +359,6 @@ def parse_extraction_payload(data: object) -> ExtractionResult:
         document_date=_sanitize_document_date(data.get("document_date")),
         category=category,
         items=items,
-        subtotal=data.get("subtotal"),
-        discount=data.get("discount"),
-        vat=data.get("vat"),
-        grand_total=data.get("grand_total"),
         confidence=data.get("confidence", 0.0),
         notes=data.get("notes"),
         needs_review_fields=data.get("needs_review_fields", []),
@@ -411,9 +390,8 @@ def extract_receipt(file_path: str) -> ExtractionResult:
     result = parse_extraction_payload(data)
 
     logger.info(
-        "Extraction complete: merchant=%s, total=%s, confidence=%.2f, items=%d",
+        "Extraction complete: merchant=%s, confidence=%.2f, items=%d",
         result.merchant_name,
-        result.grand_total,
         result.confidence,
         len(result.items),
     )

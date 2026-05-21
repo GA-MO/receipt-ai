@@ -12,8 +12,6 @@ class DocumentItemBase(BaseModel):
     category: str | None = None
     quantity: float | None = None
     unit: str | None = None
-    unit_price: float | None = None
-    line_total: float | None = None
 
 
 class DocumentItemResponse(DocumentItemBase):
@@ -35,8 +33,6 @@ class DocumentItemUpdate(BaseModel):
     category: str | None = None
     quantity: float | None = None
     unit: str | None = None
-    unit_price: float | None = None
-    line_total: float | None = None
     needs_review: bool | None = None
 
 
@@ -49,8 +45,6 @@ class DocumentItemCreate(BaseModel):
     category: str | None = None
     quantity: float | None = None
     unit: str | None = None
-    unit_price: float | None = None
-    line_total: float | None = None
 
 
 # ---------- Documents ----------
@@ -71,13 +65,8 @@ class DocumentResponse(BaseModel):
     merchant_normalized: str | None = None
     document_number: str | None = None
     document_date: str | None = None
-    subtotal: float | None = None
-    discount: float | None = None
-    vat: float | None = None
-    grand_total: float | None = None
     category: str | None = None
     notes: str | None = None
-    fraud_flags: str | None = None
     items: list[DocumentItemResponse] = []
 
     model_config = {"from_attributes": True}
@@ -88,10 +77,6 @@ class DocumentUpdate(BaseModel):
     merchant_normalized: str | None = None
     document_number: str | None = None
     document_date: str | None = None
-    subtotal: float | None = None
-    discount: float | None = None
-    vat: float | None = None
-    grand_total: float | None = None
     category: str | None = None
     notes: str | None = None
 
@@ -115,12 +100,10 @@ class DocumentListItem(BaseModel):
     merchant_name: str | None = None
     merchant_normalized: str | None = None
     document_date: str | None = None
-    grand_total: float | None = None
     category: str | None = None
     confidence: float | None = None
     needs_review: bool = True
     item_count: int = 0
-    fraud_flags: str | None = None
     visit_id: str | None = None
     period_mismatch: bool = False
 
@@ -231,18 +214,6 @@ class VisitDetail(BaseModel):
     reviewed_count: int = 0
 
 
-# ---------- Dashboard ----------
-
-
-class DashboardStats(BaseModel):
-    total_documents: int
-    pending_review: int
-    reviewed: int
-    total_sales: float
-    avg_confidence: float
-    documents_today: int
-
-
 # ---------- Extraction ----------
 
 
@@ -253,10 +224,6 @@ class ExtractionResult(BaseModel):
     document_date: str | None = None
     category: str | None = None
     items: list[DocumentItemBase] = []
-    subtotal: float | None = None
-    discount: float | None = None
-    vat: float | None = None
-    grand_total: float | None = None
     confidence: float = 0.0
     notes: str | None = None
     needs_review_fields: list[str] = []

@@ -21,13 +21,8 @@ class TestParseExtractionPayload:
                     "category": "เครื่องดื่ม",
                     "quantity": 2,
                     "unit": "ขวด",
-                    "unit_price": 85.0,
-                    "line_total": 170.0,
                 },
             ],
-            "subtotal": 170.0,
-            "vat": 11.9,
-            "grand_total": 181.9,
             "confidence": 0.95,
         }
         result = parse_extraction_payload(payload)

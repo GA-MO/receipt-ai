@@ -147,7 +147,6 @@ export default function TrashPage() {
                 <Table.Th w={60} />
                 <Table.Th>เอกสาร</Table.Th>
                 <Table.Th>ร้านค้า</Table.Th>
-                <Table.Th ta="right">ยอดรวม</Table.Th>
                 <Table.Th ta="right">รายการ</Table.Th>
               </Table.Tr>
             </Table.Thead>
@@ -187,13 +186,6 @@ export default function TrashPage() {
                       </Text>
                     </Table.Td>
                     <Table.Td>{doc.merchant_name || "-"}</Table.Td>
-                    <Table.Td ta="right">
-                      <Text size="sm" ff="monospace">
-                        {doc.grand_total != null
-                          ? `฿${doc.grand_total.toLocaleString("th-TH", { minimumFractionDigits: 2 })}`
-                          : "-"}
-                      </Text>
-                    </Table.Td>
                     <Table.Td ta="right">{doc.item_count}</Table.Td>
                   </Table.Tr>
                 );

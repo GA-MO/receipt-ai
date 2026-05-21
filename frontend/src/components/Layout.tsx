@@ -12,7 +12,7 @@ import {
   ThemeIcon,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { BarChart3, Bell, BellOff, Brain, Camera, FileText, Moon, Receipt, Store, Sun, Trash2, Upload } from "lucide-react";
+import { Bell, BellOff, Brain, Camera, FileText, Moon, Receipt, Store, Sun, Trash2, Upload } from "lucide-react";
 import classes from "./Layout.module.css";
 import { useWebPush } from "@/hooks/useWebPush";
 import { useToast } from "@/components/Toast";
@@ -20,7 +20,6 @@ import { LearnedAliasesBadge } from "@/components/LearnedAliasesPanel";
 
 const links = [
   { to: "/stores", label: "ร้านค้า", icon: Store },
-  { to: "/dashboard", label: "Dashboard", icon: BarChart3 },
   { to: "/documents", label: "เอกสารทั้งหมด", icon: FileText },
   { to: "/upload", label: "อัปโหลดเดี่ยว", icon: Upload },
   { to: "/capture", label: "ถ่ายเอกสาร", icon: Camera },

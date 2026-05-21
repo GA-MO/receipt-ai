@@ -217,10 +217,6 @@ def _run_processing(doc_id: str, file_path: str) -> None:
         doc.merchant_name = result.merchant_name
         doc.document_number = result.document_number
         doc.document_date = result.document_date
-        doc.subtotal = result.subtotal
-        doc.discount = result.discount
-        doc.vat = result.vat
-        doc.grand_total = result.grand_total
         doc.category = result.category
         doc.confidence = result.confidence
         doc.notes = result.notes
@@ -255,8 +251,6 @@ def _run_processing(doc_id: str, file_path: str) -> None:
                 product_code=code,
                 quantity=item_data.quantity,
                 unit=item_data.unit,
-                unit_price=item_data.unit_price,
-                line_total=item_data.line_total,
                 category=item_data.category,
                 confidence=result.confidence,
             )
@@ -288,7 +282,6 @@ def _run_processing(doc_id: str, file_path: str) -> None:
             payload={
                 "confidence": doc.confidence,
                 "merchant": doc.merchant_name,
-                "grand_total": float(doc.grand_total) if doc.grand_total is not None else None,
                 "items": len(doc.items or []),
             },
         )
@@ -437,7 +430,6 @@ _SORTABLE_COLUMNS = {
     "uploaded_at": Document.uploaded_at,
     "document_date": Document.document_date,
     "merchant_name": Document.merchant_name,
-    "grand_total": Document.grand_total,
     "confidence": Document.confidence,
     "status": Document.status,
     "category": Document.category,
@@ -488,12 +480,11 @@ def list_documents(
             uploaded_at=d.uploaded_at,
             merchant_name=d.merchant_name,
             merchant_normalized=d.merchant_normalized,
-            grand_total=float(d.grand_total) if d.grand_total is not None else None,
+            document_date=d.document_date,
             category=d.category,
             confidence=d.confidence,
             needs_review=d.needs_review,
             item_count=item_count,
-            fraud_flags=d.fraud_flags,
             visit_id=d.visit_id,
         )
         for d, item_count in rows
@@ -544,12 +535,11 @@ def list_trash(
             uploaded_at=d.uploaded_at,
             merchant_name=d.merchant_name,
             merchant_normalized=d.merchant_normalized,
-            grand_total=float(d.grand_total) if d.grand_total is not None else None,
+            document_date=d.document_date,
             category=d.category,
             confidence=d.confidence,
             needs_review=d.needs_review,
             item_count=item_count,
-            fraud_flags=d.fraud_flags,
             visit_id=d.visit_id,
         )
         for d, item_count in rows
@@ -639,8 +629,6 @@ def create_item(
         product_code=resolved_code,
         quantity=payload.quantity,
         unit=payload.unit,
-        unit_price=payload.unit_price,
-        line_total=payload.line_total,
         category=payload.category,
         needs_review=True,
     )

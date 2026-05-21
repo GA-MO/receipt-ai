@@ -2,7 +2,6 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
 import AIHealthPage from "./pages/AIHealthPage";
 import CapturePage from "./pages/CapturePage";
-import DashboardPage from "./pages/DashboardPage";
 import DocumentsPage from "./pages/DocumentsPage";
 import StoreDetailPage from "./pages/StoreDetailPage";
 import StoresPage from "./pages/StoresPage";
@@ -26,7 +25,6 @@ export default function App() {
           <Route path="/upload" element={<UploadPage />} />
           <Route path="/documents" element={<DocumentsPage />} />
           <Route path="/trash" element={<TrashPage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/ai-health" element={<AIHealthPage />} />
         </Route>
         {/* Capture page has its own full-screen layout (no sidebar) */}

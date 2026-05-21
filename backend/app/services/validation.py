@@ -5,16 +5,6 @@ def validate_extraction(result: ExtractionResult) -> list[str]:
     """Run business-rule checks and return Thai-language warnings."""
     warnings: list[str] = []
 
-    if result.items and result.grand_total:
-        items_total = sum(it.line_total or 0 for it in result.items)
-        # Line totals can be VAT-exclusive (sum = subtotal) or VAT-inclusive
-        # (sum = grand_total). Accept either — only warn if neither matches.
-        candidates = [result.grand_total]
-        if result.subtotal is not None:
-            candidates.append(result.subtotal)
-        if min(abs(items_total - c) for c in candidates) > 1.0:
-            warnings.append("ยอดรวมรายการสินค้าไม่ตรงกับยอดรวมในเอกสาร")
-
     if result.document_date:
         try:
             year = int(result.document_date.split("-")[0])
@@ -25,8 +15,6 @@ def validate_extraction(result: ExtractionResult) -> list[str]:
 
     if not result.merchant_name:
         warnings.append("ไม่พบชื่อร้านค้า")
-    if not result.grand_total:
-        warnings.append("ไม่พบยอดรวมสุทธิ")
     if not result.items:
         warnings.append("ไม่พบรายการสินค้า")
 
@@ -35,10 +23,5 @@ def validate_extraction(result: ExtractionResult) -> list[str]:
             warnings.append(f"รายการที่ {i}: ไม่มีชื่อสินค้า")
         if item.quantity is None or item.quantity <= 0:
             warnings.append(f"รายการที่ {i}: จำนวนสินค้าไม่ถูกต้อง")
-
-    if result.vat and result.subtotal:
-        expected_vat = result.subtotal * 0.07
-        if abs(result.vat - expected_vat) > 1.0:
-            warnings.append("VAT อาจไม่ตรงกับ 7% ของยอดก่อนภาษี")
 
     return warnings

@@ -370,61 +370,7 @@ export function recomputeVisitLabel(id: string) {
   );
 }
 
-// ---------- Dashboard ----------
-
-export function getDashboardStats() {
-  return request<DashboardStats>("/dashboard/stats");
-}
-
-export function getDailySales(days = 30) {
-  return request<DailySales[]>(`/dashboard/daily-sales?days=${days}`);
-}
-
-export function getTopMerchants(limit = 10) {
-  return request<TopMerchant[]>(`/dashboard/top-merchants?limit=${limit}`);
-}
-
-export function getTopProducts(
-  limit = 10,
-  params?: { date_from?: string; date_to?: string; catalog_only?: boolean },
-) {
-  const qs: Record<string, string | number | undefined | null> = { limit };
-  if (params?.date_from) qs.date_from = params.date_from;
-  if (params?.date_to) qs.date_to = params.date_to;
-  if (params?.catalog_only) qs.catalog_only = "true";
-  return request<TopProduct[]>(`/dashboard/top-products${buildQs(qs)}`);
-}
-
-export function getCategoryBreakdown() {
-  return request<CategoryBreakdown[]>("/dashboard/category-breakdown");
-}
-
-export function getVatSummary(params?: {
-  date_from?: string;
-  date_to?: string;
-}) {
-  return request<VatSummaryResponse>(
-    `/dashboard/vat-summary${buildQs(params ?? {})}`,
-  );
-}
-
-export function getFraudSummary() {
-  return request<FraudSummary>("/dashboard/fraud-summary");
-}
-
-export function getSpendingHeatmap(days = 90) {
-  return request<HeatmapDay[]>(`/dashboard/spending-heatmap?days=${days}`);
-}
-
-export function getAiInsight() {
-  return request<AiInsightResponse>("/dashboard/ai-insight");
-}
-
-export function getPeriodComparison(period: "7d" | "30d" | "month" | "year" = "month") {
-  return request<PeriodComparison>(
-    `/dashboard/period-comparison?period=${period}`,
-  );
-}
+// ---------- AI Health ----------
 
 export interface CatalogGap {
   emitted_code: string;
@@ -440,7 +386,7 @@ export interface CatalogGapsResponse {
 
 export function getCatalogGaps(days = 30, limit = 50) {
   return request<CatalogGapsResponse>(
-    `/dashboard/catalog-gaps?days=${days}&limit=${limit}`,
+    `/ai-health/catalog-gaps?days=${days}&limit=${limit}`,
   );
 }
 
@@ -459,7 +405,7 @@ export interface TypoRecoveriesResponse {
 
 export function getTypoRecoveries(days = 30, limit = 50) {
   return request<TypoRecoveriesResponse>(
-    `/dashboard/typo-recoveries?days=${days}&limit=${limit}`,
+    `/ai-health/typo-recoveries?days=${days}&limit=${limit}`,
   );
 }
 
@@ -471,21 +417,6 @@ export function getDocumentHistory(id: string, limit = 200) {
   return request<DocumentEventItem[]>(
     `/documents/${id}/history?limit=${limit}`,
   );
-}
-
-export type ExportFormat =
-  | "line_items"
-  | "summary"
-  | "purchase_journal"
-  | "journal_entries";
-
-export function getExportUrl(params?: {
-  date_from?: string;
-  date_to?: string;
-  merchant?: string;
-  format?: ExportFormat;
-}) {
-  return `${API_BASE}/dashboard/export${buildQs(params ?? {})}`;
 }
 
 // ---------- Web Push ----------
@@ -571,8 +502,6 @@ export interface DocumentItemData {
   category: string | null;
   quantity: number | null;
   unit: string | null;
-  unit_price: number | null;
-  line_total: number | null;
   confidence: number | null;
   needs_review: boolean;
 }
@@ -592,13 +521,8 @@ export interface DocumentResponse {
   merchant_normalized: string | null;
   document_number: string | null;
   document_date: string | null;
-  subtotal: number | null;
-  discount: number | null;
-  vat: number | null;
-  grand_total: number | null;
   category: string | null;
   notes: string | null;
-  fraud_flags: string | null;
   items: DocumentItemData[];
 }
 
@@ -611,12 +535,10 @@ export interface DocumentListItem {
   merchant_name: string | null;
   merchant_normalized: string | null;
   document_date: string | null;
-  grand_total: number | null;
   category: string | null;
   confidence: number | null;
   needs_review: boolean;
   item_count: number;
-  fraud_flags: string | null;
   visit_id: string | null;
   period_mismatch: boolean;
 }
@@ -655,129 +577,3 @@ export interface AliasStats {
   products: AliasKindStats;
 }
 
-export interface DashboardStats {
-  total_documents: number;
-  pending_review: number;
-  reviewed: number;
-  total_sales: number;
-  avg_confidence: number;
-  documents_today: number;
-}
-
-export interface DailySales {
-  date: string;
-  total: number;
-  count: number;
-}
-
-export interface TopMerchant {
-  merchant: string;
-  total: number;
-  count: number;
-}
-
-export interface TopProduct {
-  product: string;
-  product_code: string | null;
-  manufacturer: string | null;
-  is_boonrawd: boolean;
-  in_catalog: boolean;
-  total: number;
-  quantity: number;
-  doc_count: number;
-}
-
-export interface CategoryBreakdown {
-  category: string;
-  total: number;
-  count: number;
-}
-
-export interface VatMonthly {
-  month: string;
-  subtotal: number;
-  vat: number;
-  grand_total: number;
-  count: number;
-}
-
-export interface VatSummaryResponse {
-  months: VatMonthly[];
-  totals: {
-    subtotal: number;
-    vat: number;
-    grand_total: number;
-    count: number;
-  };
-}
-
-export interface FraudFlag {
-  type: string;
-  label: string;
-  severity: "high" | "medium" | "low";
-  detail: string;
-}
-
-export interface AiAnalysis {
-  risk_score: number;
-  risk_level: "high" | "medium" | "low";
-  summary: string;
-}
-
-export interface FraudResult {
-  flags: FraudFlag[];
-  ai_analysis: AiAnalysis | null;
-}
-
-export interface FraudFlaggedDoc {
-  id: string;
-  filename: string;
-  merchant_name: string | null;
-  grand_total: number | null;
-  document_date: string | null;
-  severity: "high" | "medium" | "low";
-  flags: string[];
-  flag_count: number;
-}
-
-export interface FraudSummary {
-  total_flagged: number;
-  by_severity: { high: number; medium: number; low: number };
-  by_type: { type: string; count: number }[];
-  documents: FraudFlaggedDoc[];
-}
-
-export interface HeatmapDay {
-  date: string;
-  total: number;
-  count: number;
-}
-
-export interface AiInsightResponse {
-  headline: string;
-  insights: string[];
-  risks: string[];
-  opportunities: string[];
-  trends: string[];
-  doc_count: number;
-  generated_at: string;
-}
-
-export interface PeriodBucket {
-  start: string;
-  end: string;
-  total: number;
-  count: number;
-}
-
-export interface PeriodComparison {
-  period: "7d" | "30d" | "month" | "year";
-  current: PeriodBucket;
-  previous: PeriodBucket;
-  delta: {
-    total_abs: number;
-    total_pct: number | null;
-    count_abs: number;
-    count_pct: number | null;
-  };
-}

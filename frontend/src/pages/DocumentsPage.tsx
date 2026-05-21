@@ -42,7 +42,6 @@ import {
   useDocuments,
 } from "../api/queries";
 import { getDocumentImageUrl } from "../api/client";
-import { parseFraudFlags } from "@/lib/fraud";
 import { CATEGORY_FILTER_OPTIONS as CATEGORY_OPTIONS } from "@/lib/categories";
 import { useToast } from "@/components/Toast";
 
@@ -68,7 +67,6 @@ type SortKey =
   | "uploaded_at"
   | "document_date"
   | "merchant_name"
-  | "grand_total"
   | "confidence"
   | "status"
   | "category";
@@ -386,8 +384,6 @@ export default function DocumentsPage() {
                   <SortHeader label="ร้านค้า" column="merchant_name" sortBy={sortBy} sortDir={sortDir} onChange={handleSort} />
                   <SortHeader label="หมวดหมู่" column="category" sortBy={sortBy} sortDir={sortDir} onChange={handleSort} />
                   <SortHeader label="สถานะ" column="status" sortBy={sortBy} sortDir={sortDir} onChange={handleSort} />
-                  <Table.Th ta="center">Fraud</Table.Th>
-                  <SortHeader label="ยอดรวม" column="grand_total" sortBy={sortBy} sortDir={sortDir} onChange={handleSort} align="right" />
                   <SortHeader label="Confidence" column="confidence" sortBy={sortBy} sortDir={sortDir} onChange={handleSort} align="right" />
                   <Table.Th ta="right">รายการ</Table.Th>
                 </Table.Tr>
@@ -396,8 +392,6 @@ export default function DocumentsPage() {
                 {docs.map((doc) => {
                   const meta = STATUS_BADGE[doc.status] ?? STATUS_BADGE.pending;
                   const Icon = meta.icon;
-                  const flags = parseFraudFlags(doc.fraud_flags);
-                  const hasSevere = flags.some((f) => f.severity === "high");
                   const checked = selectedIds.has(doc.id);
 
                   return (
@@ -458,27 +452,6 @@ export default function DocumentsPage() {
                         >
                           {meta.label}
                         </Badge>
-                      </Table.Td>
-                      <Table.Td ta="center">
-                        {flags.length === 0 ? (
-                          <Text c="dimmed">-</Text>
-                        ) : (
-                          <Badge
-                            color={hasSevere ? "red" : "yellow"}
-                            variant="light"
-                            leftSection={<ShieldAlert size={12} />}
-                            title={flags.map((f) => f.label).join(", ")}
-                          >
-                            {flags.length}
-                          </Badge>
-                        )}
-                      </Table.Td>
-                      <Table.Td ta="right">
-                        <Text ff="monospace" size="sm">
-                          {doc.grand_total != null
-                            ? `฿${doc.grand_total.toLocaleString("th-TH", { minimumFractionDigits: 2 })}`
-                            : "-"}
-                        </Text>
                       </Table.Td>
                       <Table.Td ta="right">
                         {doc.confidence != null ? (

@@ -47,13 +47,8 @@ class Document(Base):
     merchant_normalized = Column(String, nullable=True, index=True)
     document_number = Column(String, nullable=True, index=True)
     document_date = Column(String, nullable=True)
-    subtotal = Column(Numeric(12, 2), nullable=True)
-    discount = Column(Numeric(12, 2), nullable=True)
-    vat = Column(Numeric(12, 2), nullable=True)
-    grand_total = Column(Numeric(12, 2), nullable=True)
     category = Column(String, nullable=True, index=True)
     notes = Column(Text, nullable=True)
-    fraud_flags = Column(Text, nullable=True)  # JSON array of fraud flags
 
     deleted_at = Column(DateTime, nullable=True, index=True)
 
@@ -86,8 +81,6 @@ class DocumentItem(Base):
     category = Column(String, nullable=True, index=True)
     quantity = Column(Float, nullable=True)
     unit = Column(String, nullable=True)
-    unit_price = Column(Numeric(12, 2), nullable=True)
-    line_total = Column(Numeric(12, 2), nullable=True)
     confidence = Column(Float, nullable=True)
     needs_review = Column(Boolean, default=False)
 
