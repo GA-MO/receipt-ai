@@ -19,11 +19,10 @@ import { useToast } from "@/components/Toast";
 import { LearnedAliasesBadge } from "@/components/LearnedAliasesPanel";
 
 const links = [
-  { to: "/visits", label: "การเยี่ยมร้าน", icon: Store },
-  { to: "/stores", label: "Store master", icon: Store },
-  { to: "/upload", label: "อัปโหลดเดี่ยว", icon: Upload },
-  { to: "/documents", label: "เอกสารทั้งหมด", icon: FileText },
+  { to: "/stores", label: "ร้านค้า", icon: Store },
   { to: "/dashboard", label: "Dashboard", icon: BarChart3 },
+  { to: "/documents", label: "เอกสารทั้งหมด", icon: FileText },
+  { to: "/upload", label: "อัปโหลดเดี่ยว", icon: Upload },
   { to: "/capture", label: "ถ่ายเอกสาร", icon: Camera },
   { to: "/ai-health", label: "AI Health", icon: Brain },
   { to: "/trash", label: "ถังขยะ", icon: Trash2 },
@@ -145,10 +144,8 @@ export default function Layout() {
         <AppShell.Section grow className={classes.navbarMain}>
           {links.map(({ to, label, icon: Icon }) => {
             const active =
-              to === "/visits"
-                ? location.pathname === "/" ||
-                  (location.pathname.startsWith("/visits") &&
-                    !location.pathname.startsWith("/stores"))
+              to === "/stores"
+                ? location.pathname === "/" || location.pathname.startsWith("/stores")
                 : location.pathname.startsWith(to);
             return (
               <RouterNavLink

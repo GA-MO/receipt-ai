@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   ActionIcon,
   Badge,
@@ -15,7 +16,7 @@ import {
   Textarea,
   Title,
 } from "@mantine/core";
-import { Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { ChevronRight, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import {
   useCreateStore,
   useDeleteStore,
@@ -26,6 +27,7 @@ import type { StoreListItem } from "../api/client";
 import { useToast } from "@/components/Toast";
 
 export default function StoresPage() {
+  const navigate = useNavigate();
   const [q, setQ] = useState("");
   const [includeInactive, setIncludeInactive] = useState(false);
   const { data: stores, isPending } = useStores({
@@ -91,9 +93,16 @@ export default function StoresPage() {
             </Table.Thead>
             <Table.Tbody>
               {stores.map((s) => (
-                <Table.Tr key={s.id}>
+                <Table.Tr
+                  key={s.id}
+                  style={{ cursor: "pointer" }}
+                  onClick={() => navigate(`/stores/${s.id}`)}
+                >
                   <Table.Td>
-                    <Text fw={500}>{s.name}</Text>
+                    <Group gap={6} wrap="nowrap">
+                      <Text fw={500}>{s.name}</Text>
+                      <ChevronRight size={14} className="text-gray-400" />
+                    </Group>
                     {s.address && (
                       <Text size="xs" c="dimmed">
                         {s.address}
@@ -116,7 +125,7 @@ export default function StoresPage() {
                       {s.active ? "active" : "inactive"}
                     </Badge>
                   </Table.Td>
-                  <Table.Td>
+                  <Table.Td onClick={(e) => e.stopPropagation()}>
                     <Group gap={4} wrap="nowrap">
                       <ActionIcon variant="subtle" onClick={() => setEditing(s)} aria-label="แก้ไข">
                         <Pencil size={14} />

@@ -489,7 +489,13 @@ export const visitsKey = {
     ["visits", id, params] as const,
 };
 
-export function useVisits(params?: { skip?: number; limit?: number; store_key?: string; rep_name?: string }) {
+export function useVisits(params?: {
+  skip?: number;
+  limit?: number;
+  store_id?: string;
+  store_key?: string;
+  rep_name?: string;
+}) {
   return useQuery({
     queryKey: visitsKey.list(params as Record<string, unknown>),
     queryFn: () => getVisits(params),

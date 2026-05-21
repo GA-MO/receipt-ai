@@ -388,6 +388,31 @@ class TestReportPeriod:
         assert warning is not None
         assert "นอกเดือน" in warning
 
+    def test_create_visit_is_idempotent_on_store_and_period(self, client):
+        s = client.post("/api/stores", json={"name": "ร้านลุง"}).json()
+        v1 = client.post(
+            "/api/visits",
+            json={"store_id": s["id"], "report_period": "2025-04"},
+        ).json()
+        v2 = client.post(
+            "/api/visits",
+            json={"store_id": s["id"], "report_period": "2025-04"},
+        ).json()
+        # Returns the same Visit id rather than creating a duplicate.
+        assert v1["id"] == v2["id"]
+
+    def test_create_visit_different_periods_are_separate(self, client):
+        s = client.post("/api/stores", json={"name": "ร้านลุง"}).json()
+        v1 = client.post(
+            "/api/visits",
+            json={"store_id": s["id"], "report_period": "2025-04"},
+        ).json()
+        v2 = client.post(
+            "/api/visits",
+            json={"store_id": s["id"], "report_period": "2025-05"},
+        ).json()
+        assert v1["id"] != v2["id"]
+
     def test_visit_detail_marks_doc_period_mismatch(self, client, db_session):
         v = client.post(
             "/api/visits", json={"store_label": "X", "report_period": "2025-04"}

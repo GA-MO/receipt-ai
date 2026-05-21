@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { useDropzone } from "react-dropzone";
 import { format } from "date-fns";
 import {
   ActionIcon,
@@ -8,6 +9,7 @@ import {
   Card,
   Group,
   Loader,
+  Modal,
   Paper,
   Stack,
   Table,
@@ -17,19 +19,25 @@ import {
 } from "@mantine/core";
 import {
   AlertTriangle,
+  ArrowLeft,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  FileImage,
   FileText,
   RefreshCw,
   Store,
+  Trash2,
+  Upload as UploadIcon,
   User,
 } from "lucide-react";
-import { getDocumentImageUrl } from "../api/client";
+import { getDocumentImageUrl, uploadDocumentsToVisit } from "../api/client";
 import {
+  useDeleteDocument,
   useRecomputeVisitLabel,
   useVisit,
 } from "../api/queries";
+import { useToast } from "@/components/Toast";
 
 const STATUS_LABEL: Record<string, { color: string; label: string }> = {
   pending: { color: "gray", label: "รอ" },
@@ -42,9 +50,23 @@ const STATUS_LABEL: Record<string, { color: string; label: string }> = {
 export default function VisitDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const { data: visit, isPending, isFetching, refetch } = useVisit(id);
   const recomputeMut = useRecomputeVisitLabel(id ?? "");
+  const deleteDocMut = useDeleteDocument();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [uploadOpen, setUploadOpen] = useState(false);
+
+  const handleDeleteDoc = async (docId: string, filename: string) => {
+    if (!confirm(`ลบใบเสร็จ "${filename}" ออกจากเดือนนี้?`)) return;
+    try {
+      await deleteDocMut.mutateAsync(docId);
+      toast("success", "ลบใบเสร็จแล้ว");
+      refetch();
+    } catch (err) {
+      toast("error", err instanceof Error ? err.message : "ลบไม่สำเร็จ");
+    }
+  };
 
   // Auto-poll while any doc is still processing — cheap, demo-friendly.
   const stillProcessing = useMemo(
@@ -83,6 +105,19 @@ export default function VisitDetailPage() {
     <div className="max-w-7xl mx-auto">
       <Group justify="space-between" align="flex-start" mb="md">
         <div>
+          {visit.store_id && (
+            <Button
+              variant="subtle"
+              size="xs"
+              component={Link}
+              to={`/stores/${visit.store_id}`}
+              leftSection={<ArrowLeft size={12} />}
+              px={4}
+              mb={2}
+            >
+              กลับไป {visit.store_label || "ร้าน"}
+            </Button>
+          )}
           <Group gap="sm">
             <Title order={2}>{visit.store_label || visit.store_key || "(ไม่ระบุร้าน)"}</Title>
             {visit.report_period && (
@@ -111,6 +146,12 @@ export default function VisitDetailPage() {
           </Group>
         </div>
         <Group>
+          <Button
+            leftSection={<UploadIcon size={14} />}
+            onClick={() => setUploadOpen(true)}
+          >
+            อัปโหลดใบเสร็จเพิ่ม
+          </Button>
           <Tooltip label="ดึงชื่อร้านจากใบเสร็จที่ extract แล้ว">
             <Button
               variant="default"
@@ -353,9 +394,23 @@ export default function VisitDetailPage() {
                       </Group>
                     </div>
                     <Stack gap={2} align="flex-end">
-                      <Badge size="sm" color={STATUS_LABEL[d.status]?.color || "gray"} variant="light">
-                        {STATUS_LABEL[d.status]?.label || d.status}
-                      </Badge>
+                      <Group gap={4} wrap="nowrap">
+                        <Badge size="sm" color={STATUS_LABEL[d.status]?.color || "gray"} variant="light">
+                          {STATUS_LABEL[d.status]?.label || d.status}
+                        </Badge>
+                        <ActionIcon
+                          size="sm"
+                          variant="subtle"
+                          color="red"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteDoc(d.id, d.filename);
+                          }}
+                          aria-label="ลบใบเสร็จ"
+                        >
+                          <Trash2 size={12} />
+                        </ActionIcon>
+                      </Group>
                       {d.period_mismatch && (
                         <Badge
                           size="xs"
@@ -375,6 +430,153 @@ export default function VisitDetailPage() {
         </div>
       </div>
 
+      <UploadMoreModal
+        opened={uploadOpen}
+        onClose={() => setUploadOpen(false)}
+        visitId={visit.id}
+        onUploaded={() => refetch()}
+      />
     </div>
+  );
+}
+
+const MAX_FILE_SIZE = 20 * 1024 * 1024;
+
+function UploadMoreModal({
+  opened,
+  onClose,
+  visitId,
+  onUploaded,
+}: {
+  opened: boolean;
+  onClose: () => void;
+  visitId: string;
+  onUploaded: () => void;
+}) {
+  const { toast } = useToast();
+  const [files, setFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+
+  const reset = () => setFiles([]);
+
+  const onDrop = useCallback(
+    (accepted: File[], rejected: readonly { file: File; errors: readonly { message: string }[] }[]) => {
+      for (const r of rejected) {
+        toast("error", `${r.file.name}: ${r.errors.map((e) => e.message).join(", ")}`);
+      }
+      const valid = accepted.filter((f) => {
+        if (f.size > MAX_FILE_SIZE) {
+          toast("error", `${f.name}: ไฟล์ใหญ่เกิน 20 MB`);
+          return false;
+        }
+        return true;
+      });
+      setFiles((prev) => [...prev, ...valid]);
+    },
+    [toast],
+  );
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      "image/jpeg": [".jpg", ".jpeg"],
+      "image/png": [".png"],
+      "image/webp": [".webp"],
+      "image/heic": [".heic"],
+      "image/heif": [".heif"],
+      "application/pdf": [".pdf"],
+    },
+    maxSize: MAX_FILE_SIZE,
+  });
+
+  const handleUpload = async () => {
+    if (files.length === 0) return;
+    setUploading(true);
+    try {
+      const res = await uploadDocumentsToVisit(visitId, files);
+      const summary = [
+        `อัปโหลด ${res.document_ids.length} ไฟล์`,
+        res.duplicates.length ? `ซ้ำ ${res.duplicates.length}` : null,
+        res.failures.length ? `พลาด ${res.failures.length}` : null,
+      ]
+        .filter(Boolean)
+        .join(", ");
+      toast("success", summary || "อัปโหลดสำเร็จ");
+      reset();
+      onUploaded();
+      onClose();
+    } catch (err) {
+      toast("error", err instanceof Error ? err.message : "อัปโหลดไม่สำเร็จ");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <Modal
+      opened={opened}
+      onClose={() => {
+        if (!uploading) {
+          reset();
+          onClose();
+        }
+      }}
+      title="อัปโหลดใบเสร็จเพิ่ม"
+      size="md"
+    >
+      <Stack>
+        <Paper
+          {...getRootProps()}
+          withBorder
+          p="md"
+          radius="md"
+          className="cursor-pointer text-center"
+          style={{
+            borderStyle: "dashed",
+            borderWidth: 2,
+            borderColor: isDragActive ? "var(--mantine-color-indigo-4)" : undefined,
+            backgroundColor: isDragActive ? "var(--mantine-color-indigo-0)" : undefined,
+          }}
+        >
+          <input {...getInputProps()} />
+          <Group justify="center" gap="sm">
+            <UploadIcon size={20} />
+            <Text size="sm">
+              {isDragActive
+                ? "วางไฟล์ที่นี่"
+                : "ลากใบเสร็จมาวางหรือคลิกเพื่อเลือก (เลือกหลายไฟล์ได้)"}
+            </Text>
+          </Group>
+        </Paper>
+        {files.length > 0 && (
+          <Stack gap={4}>
+            {files.map((f, idx) => (
+              <Group key={idx} gap="xs" wrap="nowrap">
+                <FileImage size={14} className="text-gray-500 shrink-0" />
+                <Text size="sm" className="flex-1 truncate">{f.name}</Text>
+                <Text size="xs" c="dimmed">{(f.size / 1024).toFixed(0)} KB</Text>
+              </Group>
+            ))}
+          </Stack>
+        )}
+        <Group justify="space-between">
+          <Text size="xs" c="dimmed">
+            {files.length} ไฟล์รออัปโหลด
+          </Text>
+          <Group>
+            <Button variant="default" onClick={onClose} disabled={uploading}>
+              ยกเลิก
+            </Button>
+            <Button
+              onClick={handleUpload}
+              loading={uploading}
+              disabled={files.length === 0}
+            >
+              อัปโหลด
+            </Button>
+          </Group>
+        </Group>
+      </Stack>
+    </Modal>
   );
 }

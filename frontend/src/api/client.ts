@@ -318,7 +318,13 @@ export function createVisit(body: {
   });
 }
 
-export function getVisits(params?: { skip?: number; limit?: number; store_key?: string; rep_name?: string }) {
+export function getVisits(params?: {
+  skip?: number;
+  limit?: number;
+  store_id?: string;
+  store_key?: string;
+  rep_name?: string;
+}) {
   return request<VisitListItem[]>(`/visits${buildQs(params ?? {})}`);
 }
 

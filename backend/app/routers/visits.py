@@ -152,18 +152,57 @@ def create_visit(body: VisitCreate, db: Session = Depends(get_db)):
     store_id = body.store_id
     store_label = body.store_label
     store_key = None
+    period = _validated_period(body.report_period)
     if store_id:
         store = db.query(Store).filter(Store.id == store_id).first()
         if not store:
             raise HTTPException(404, f"Store {store_id} not found")
         store_label = store_label or store.name
         store_key = store.normalized_name or store.name
+
+    # Idempotent create on (store_id, report_period): a store has at most one
+    # live Visit per reporting month. Returning the existing one avoids the
+    # "duplicate month for store" UX trap when a user navigates back to a
+    # month they already created.
+    if store_id and period:
+        existing = (
+            db.query(Visit)
+            .filter(
+                Visit.store_id == store_id,
+                Visit.report_period == period,
+                Visit.deleted_at.is_(None),
+            )
+            .first()
+        )
+        if existing:
+            doc_count = (
+                db.query(func.count(Document.id))
+                .filter(
+                    Document.visit_id == existing.id,
+                    Document.deleted_at.is_(None),
+                )
+                .scalar()
+                or 0
+            )
+            reviewed = (
+                db.query(func.count(Document.id))
+                .filter(
+                    Document.visit_id == existing.id,
+                    Document.deleted_at.is_(None),
+                    Document.status == "reviewed",
+                )
+                .scalar()
+                or 0
+            )
+            earliest, latest = visit_doc_date_range(db, existing.id)
+            return _to_list_item(existing, doc_count, earliest, latest, reviewed)
+
     visit = Visit(
         id=str(uuid.uuid4()),
         store_id=store_id,
         store_key=store_key,
         store_label=store_label,
-        report_period=_validated_period(body.report_period),
+        report_period=period,
         rep_name=body.rep_name,
         notes=body.notes,
     )
