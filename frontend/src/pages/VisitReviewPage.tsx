@@ -111,32 +111,31 @@ export default function VisitReviewPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-90px)]">
       {/* Top bar */}
-      <Group justify="space-between" mb="md" wrap="nowrap">
-        <Group gap="sm" wrap="nowrap" className="min-w-0">
+      <Group justify="space-between" mb="md" wrap="nowrap" align="flex-start">
+        <div className="min-w-0">
           <Button
             variant="default"
             size="xs"
             leftSection={<ArrowLeft size={14} />}
             onClick={goBack}
+            mb="xs"
           >
             กลับเดือน {visit.report_period ?? ""}
           </Button>
-          <div className="min-w-0">
-            <Group gap="xs" wrap="nowrap">
-              <Text fw={600} truncate>
-                {visit.store_label || visit.store_key || "(ไม่ระบุร้าน)"}
-              </Text>
-              {visit.report_period && (
-                <Badge variant="light" color="grape">
-                  {visit.report_period}
-                </Badge>
-              )}
-            </Group>
-            <Text size="xs" c="dimmed" truncate>
-              {doc.filename}
+          <Group gap="xs" wrap="nowrap">
+            <Text fw={600} truncate>
+              {visit.store_label || visit.store_key || "(ไม่ระบุร้าน)"}
             </Text>
-          </div>
-        </Group>
+            {visit.report_period && (
+              <Badge variant="light" color="grape">
+                {visit.report_period}
+              </Badge>
+            )}
+          </Group>
+          <Text size="xs" c="dimmed" truncate>
+            {doc.filename}
+          </Text>
+        </div>
         <Group gap="xs" wrap="nowrap">
           <Button
             variant="default"

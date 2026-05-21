@@ -76,32 +76,31 @@ export default function StoreDetailPage() {
   return (
     <div className="max-w-5xl mx-auto">
       <Group justify="space-between" mb="md" align="flex-start">
-        <Group gap="sm" wrap="nowrap">
+        <div>
           <Button
             variant="default"
             size="xs"
             component={Link}
             to="/stores"
             leftSection={<ArrowLeft size={14} />}
+            mb="xs"
           >
             กลับรายการร้าน
           </Button>
-          <div>
-            <Title order={2}>{store.name}</Title>
-            <Group gap="md" mt={4}>
-              {store.code && (
-                <Text size="sm" c="dimmed">
-                  Code <b>{store.code}</b>
-                </Text>
-              )}
-              {store.address && (
-                <Text size="sm" c="dimmed">
-                  {store.address}
-                </Text>
-              )}
-            </Group>
-          </div>
-        </Group>
+          <Title order={2}>{store.name}</Title>
+          <Group gap="md" mt={4}>
+            {store.code && (
+              <Text size="sm" c="dimmed">
+                Code <b>{store.code}</b>
+              </Text>
+            )}
+            {store.address && (
+              <Text size="sm" c="dimmed">
+                {store.address}
+              </Text>
+            )}
+          </Group>
+        </div>
         <Button leftSection={<Plus size={16} />} onClick={() => setAddOpen(true)}>
           เพิ่มเดือน
         </Button>
