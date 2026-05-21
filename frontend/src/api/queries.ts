@@ -518,6 +518,7 @@ export function useCreateVisit() {
     mutationFn: (body: {
       store_id?: string;
       store_label?: string;
+      report_period?: string;
       rep_name?: string;
       notes?: string;
     }) => createVisit(body),
@@ -532,6 +533,7 @@ export function useUpdateVisit(id: string) {
       store_id?: string;
       store_label?: string;
       store_key?: string;
+      report_period?: string;
       rep_name?: string;
       notes?: string;
     }) => updateVisit(id, body),

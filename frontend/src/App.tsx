@@ -8,6 +8,7 @@ import StoresPage from "./pages/StoresPage";
 import TrashPage from "./pages/TrashPage";
 import UploadPage from "./pages/UploadPage";
 import VisitDetailPage from "./pages/VisitDetailPage";
+import VisitNewPage from "./pages/VisitNewPage";
 import VisitReviewPage from "./pages/VisitReviewPage";
 import VisitsPage from "./pages/VisitsPage";
 
@@ -18,6 +19,7 @@ export default function App() {
         <Route element={<Layout />}>
           <Route path="/" element={<VisitsPage />} />
           <Route path="/visits" element={<VisitsPage />} />
+          <Route path="/visits/new" element={<VisitNewPage />} />
           <Route path="/visits/:id" element={<VisitDetailPage />} />
           <Route path="/visits/:visitId/review/:docId" element={<VisitReviewPage />} />
           <Route path="/stores" element={<StoresPage />} />

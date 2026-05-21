@@ -114,6 +114,7 @@ class DocumentListItem(BaseModel):
     uploaded_at: datetime
     merchant_name: str | None = None
     merchant_normalized: str | None = None
+    document_date: str | None = None
     grand_total: float | None = None
     category: str | None = None
     confidence: float | None = None
@@ -121,6 +122,7 @@ class DocumentListItem(BaseModel):
     item_count: int = 0
     fraud_flags: str | None = None
     visit_id: str | None = None
+    period_mismatch: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -168,6 +170,9 @@ class VisitCreate(BaseModel):
     # Free-text fallback when the user types a brand-new store name and the
     # frontend hasn't promoted it to a Store row yet.
     store_label: str | None = None
+    # Reporting month in ``YYYY-MM`` format. When set, receipts whose
+    # ``document_date`` falls outside this month are flagged after extraction.
+    report_period: str | None = None
     rep_name: str | None = None
     notes: str | None = None
 
@@ -176,6 +181,7 @@ class VisitUpdate(BaseModel):
     store_id: str | None = None
     store_label: str | None = None
     store_key: str | None = None
+    report_period: str | None = None
     rep_name: str | None = None
     notes: str | None = None
 

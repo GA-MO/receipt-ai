@@ -307,6 +307,7 @@ export interface VisitUploadResult {
 export function createVisit(body: {
   store_id?: string;
   store_label?: string;
+  report_period?: string;
   rep_name?: string;
   notes?: string;
 }) {
@@ -331,6 +332,7 @@ export function updateVisit(
     store_id?: string;
     store_label?: string;
     store_key?: string;
+    report_period?: string;
     rep_name?: string;
     notes?: string;
   },
@@ -602,6 +604,7 @@ export interface DocumentListItem {
   uploaded_at: string;
   merchant_name: string | null;
   merchant_normalized: string | null;
+  document_date: string | null;
   grand_total: number | null;
   category: string | null;
   confidence: number | null;
@@ -609,6 +612,7 @@ export interface DocumentListItem {
   item_count: number;
   fraud_flags: string | null;
   visit_id: string | null;
+  period_mismatch: boolean;
 }
 
 export interface BulkActionResult {

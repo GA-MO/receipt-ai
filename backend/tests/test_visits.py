@@ -7,7 +7,11 @@ from unittest.mock import patch
 
 from app.models import Document, DocumentItem, Product, Visit
 from app.services.visit_aggregate import aggregate_visit
-from app.services.visits import ensure_visit_for_doc, get_or_create_visit_for_merchant
+from app.services.visits import (
+    check_period_mismatch,
+    ensure_visit_for_doc,
+    get_or_create_visit_for_merchant,
+)
 
 
 def _make_tiny_png() -> bytes:
@@ -321,3 +325,88 @@ class TestAggregate:
             db_session, v.id, date_from="2025-04-01", date_to="2025-04-30"
         )
         assert rows[0].total_quantity == 7
+
+
+class TestReportPeriod:
+    def test_create_visit_accepts_period(self, client):
+        r = client.post(
+            "/api/visits",
+            json={"store_label": "X", "report_period": "2025-04"},
+        )
+        assert r.status_code == 200
+        assert r.json()["report_period"] == "2025-04"
+
+    def test_create_visit_rejects_invalid_period_silently(self, client):
+        r = client.post(
+            "/api/visits",
+            json={"store_label": "X", "report_period": "not-a-period"},
+        )
+        # Invalid period is treated as None (not a hard error) so the legacy
+        # /upload flow that doesn't supply one keeps working.
+        assert r.status_code == 200
+        assert r.json()["report_period"] is None
+
+    def test_patch_visit_updates_period(self, client):
+        v = client.post("/api/visits", json={"store_label": "X"}).json()
+        r = client.patch(f"/api/visits/{v['id']}", json={"report_period": "2025-12"})
+        assert r.status_code == 200
+        assert r.json()["report_period"] == "2025-12"
+
+    def test_check_period_mismatch_inside_period(self, db_session):
+        v = Visit(id="v1", store_label="X", report_period="2025-04")
+        db_session.add(v)
+        db_session.flush()
+        doc = Document(
+            id="d1",
+            filename="r.png",
+            file_path="/tmp/r.png",
+            file_type="image",
+            status="extracted",
+            document_date="2025-04-15",
+            visit_id=v.id,
+        )
+        db_session.add(doc)
+        db_session.flush()
+        assert check_period_mismatch(doc) is None
+
+    def test_check_period_mismatch_outside_period(self, db_session):
+        v = Visit(id="v1", store_label="X", report_period="2025-04")
+        db_session.add(v)
+        db_session.flush()
+        doc = Document(
+            id="d1",
+            filename="r.png",
+            file_path="/tmp/r.png",
+            file_type="image",
+            status="extracted",
+            document_date="2025-05-02",
+            visit_id=v.id,
+        )
+        db_session.add(doc)
+        db_session.flush()
+        warning = check_period_mismatch(doc)
+        assert warning is not None
+        assert "นอกเดือน" in warning
+
+    def test_visit_detail_marks_doc_period_mismatch(self, client, db_session):
+        v = client.post(
+            "/api/visits", json={"store_label": "X", "report_period": "2025-04"}
+        ).json()
+        # Seed one in-period doc and one out-of-period doc directly.
+        for did, date in (("d1", "2025-04-10"), ("d2", "2025-05-01")):
+            db_session.add(
+                Document(
+                    id=did,
+                    filename=f"{did}.png",
+                    file_path=f"/tmp/{did}.png",
+                    file_type="image",
+                    status="extracted",
+                    document_date=date,
+                    visit_id=v["id"],
+                )
+            )
+        db_session.commit()
+        detail = client.get(f"/api/visits/{v['id']}").json()
+        by_id = {d["id"]: d for d in detail["documents"]}
+        assert by_id["d1"]["period_mismatch"] is False
+        assert by_id["d2"]["period_mismatch"] is True

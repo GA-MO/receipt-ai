@@ -96,6 +96,26 @@ def recompute_store_label(db: Session, visit: Visit) -> None:
     visit.updated_at = datetime.now(UTC)
 
 
+def check_period_mismatch(doc: Document) -> str | None:
+    """If the doc's date falls outside its visit's ``report_period``, return a
+    Thai-language warning. Otherwise return None.
+
+    Tolerates missing data: if either side is unset, no warning.
+    """
+    visit = doc.visit
+    if visit is None or not visit.report_period or not doc.document_date:
+        return None
+    period = visit.report_period.strip()  # YYYY-MM
+    if len(period) != 7 or period[4] != "-":
+        return None
+    if not doc.document_date.startswith(period):
+        return (
+            f"⚠️ วันที่บนใบเสร็จ ({doc.document_date}) อยู่นอกเดือนรายงานของ visit "
+            f"({period}) — ตรวจสอบว่าใบนี้อยู่ใน visit ถูกหรือไม่"
+        )
+    return None
+
+
 def visit_doc_date_range(db: Session, visit_id: str) -> tuple[str | None, str | None]:
     """Return (earliest, latest) ``document_date`` for the visit's live docs."""
     row = (

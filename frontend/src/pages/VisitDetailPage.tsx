@@ -68,6 +68,7 @@ export default function VisitDetailPage() {
   const totalQty = visit.aggregate.reduce((sum, r) => sum + r.total_quantity, 0);
   const catalogCount = visit.aggregate.filter((r) => r.is_catalog_match).length;
   const unknownCount = visit.aggregate.length - catalogCount;
+  const periodMismatchCount = docs.filter((d) => d.period_mismatch).length;
 
   const toggleRow = (key: string) => {
     setExpanded((prev) => {
@@ -84,6 +85,11 @@ export default function VisitDetailPage() {
         <div>
           <Group gap="sm">
             <Title order={2}>{visit.store_label || visit.store_key || "(ไม่ระบุร้าน)"}</Title>
+            {visit.report_period && (
+              <Badge size="lg" variant="light" color="grape">
+                {visit.report_period}
+              </Badge>
+            )}
             {stillProcessing && <Badge color="blue">กำลังประมวลผล...</Badge>}
           </Group>
           <Group gap="lg" mt={4}>
@@ -151,6 +157,16 @@ export default function VisitDetailPage() {
         {unknownCount > 0 && (
           <Badge size="lg" variant="light" color="orange">
             ไม่อยู่ catalog: {unknownCount}
+          </Badge>
+        )}
+        {periodMismatchCount > 0 && (
+          <Badge
+            size="lg"
+            variant="light"
+            color="orange"
+            leftSection={<AlertTriangle size={12} />}
+          >
+            นอกเดือน: {periodMismatchCount}
           </Badge>
         )}
         {isFetching && <Loader size="xs" />}
@@ -336,9 +352,21 @@ export default function VisitDetailPage() {
                         </Text>
                       </Group>
                     </div>
-                    <Badge size="sm" color={STATUS_LABEL[d.status]?.color || "gray"} variant="light">
-                      {STATUS_LABEL[d.status]?.label || d.status}
-                    </Badge>
+                    <Stack gap={2} align="flex-end">
+                      <Badge size="sm" color={STATUS_LABEL[d.status]?.color || "gray"} variant="light">
+                        {STATUS_LABEL[d.status]?.label || d.status}
+                      </Badge>
+                      {d.period_mismatch && (
+                        <Badge
+                          size="xs"
+                          color="orange"
+                          variant="light"
+                          leftSection={<AlertTriangle size={10} />}
+                        >
+                          นอกเดือน
+                        </Badge>
+                      )}
+                    </Stack>
                   </Group>
                 </Paper>
               ))}

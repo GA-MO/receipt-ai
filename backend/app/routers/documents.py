@@ -50,7 +50,7 @@ from ..services.audit import record as record_event
 from ..models import CatalogGapEvent, Product, TypoRecoveryEvent
 from ..services.catalog import find_code_by_name, is_canonical_name
 from ..services.merchants import assign_normalized_merchant
-from ..services.visits import ensure_visit_for_doc
+from ..services.visits import check_period_mismatch, ensure_visit_for_doc
 
 
 def _resolve_product_code(
@@ -273,6 +273,13 @@ def _run_processing(doc_id: str, file_path: str) -> None:
             ensure_visit_for_doc(db, doc)
         except Exception as exc:  # noqa: BLE001
             logger.warning("Failed to auto-attach visit for %s: %s", doc_id, exc)
+
+        period_warning = check_period_mismatch(doc)
+        if period_warning:
+            existing = doc.notes or ""
+            sep = "\n" if existing else ""
+            doc.notes = existing + sep + period_warning
+            doc.needs_review = True
 
         db.commit()
         logger.info("Document %s processed successfully", doc_id)

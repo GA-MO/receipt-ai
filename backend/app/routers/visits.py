@@ -11,6 +11,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 import uuid
 from datetime import UTC, datetime
 
@@ -117,7 +118,15 @@ def _to_list_item(
     )
 
 
-def _doc_to_list_item(doc: Document, item_count: int) -> DocumentListItem:
+def _doc_to_list_item(
+    doc: Document,
+    item_count: int,
+    *,
+    report_period: str | None = None,
+) -> DocumentListItem:
+    mismatch = False
+    if report_period and doc.document_date:
+        mismatch = not doc.document_date.startswith(report_period)
     return DocumentListItem(
         id=doc.id,
         filename=doc.filename,
@@ -126,6 +135,7 @@ def _doc_to_list_item(doc: Document, item_count: int) -> DocumentListItem:
         uploaded_at=doc.uploaded_at,
         merchant_name=doc.merchant_name,
         merchant_normalized=doc.merchant_normalized,
+        document_date=doc.document_date,
         grand_total=float(doc.grand_total) if doc.grand_total is not None else None,
         category=doc.category,
         confidence=doc.confidence,
@@ -133,6 +143,7 @@ def _doc_to_list_item(doc: Document, item_count: int) -> DocumentListItem:
         item_count=item_count,
         fraud_flags=doc.fraud_flags,
         visit_id=doc.visit_id,
+        period_mismatch=mismatch,
     )
 
 
@@ -152,6 +163,7 @@ def create_visit(body: VisitCreate, db: Session = Depends(get_db)):
         store_id=store_id,
         store_key=store_key,
         store_label=store_label,
+        report_period=_validated_period(body.report_period),
         rep_name=body.rep_name,
         notes=body.notes,
     )
@@ -159,6 +171,16 @@ def create_visit(body: VisitCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(visit)
     return _to_list_item(visit, 0, None, None, 0)
+
+
+_PERIOD_RE = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")
+
+
+def _validated_period(raw: str | None) -> str | None:
+    """Accept only ``YYYY-MM`` strings; treat anything else as None."""
+    if not raw:
+        return None
+    return raw if _PERIOD_RE.match(raw.strip()) else None
 
 
 @router.get("", response_model=list[VisitListItem])
@@ -235,7 +257,10 @@ def get_visit(
         notes=visit.notes,
         created_at=visit.created_at,
         updated_at=visit.updated_at,
-        documents=[_doc_to_list_item(d, c or 0) for d, c in doc_rows],
+        documents=[
+            _doc_to_list_item(d, c or 0, report_period=visit.report_period)
+            for d, c in doc_rows
+        ],
         aggregate=aggregate_visit(db, visit_id, date_from=date_from, date_to=date_to),
         reviewed_count=reviewed_count,
     )
@@ -263,6 +288,8 @@ def update_visit(visit_id: str, body: VisitUpdate, db: Session = Depends(get_db)
         visit.store_label = body.store_label
     if body.store_key is not None:
         visit.store_key = body.store_key
+    if body.report_period is not None:
+        visit.report_period = _validated_period(body.report_period)
     if body.rep_name is not None:
         visit.rep_name = body.rep_name
     if body.notes is not None:
