@@ -92,7 +92,27 @@ export default function VisitReviewPage() {
     );
   }
 
+  const isProcessing = doc.status === "processing" || doc.status === "pending";
   const reviewed = doc.status === "reviewed";
+
+  if (isProcessing) {
+    return (
+      <div className="max-w-md mx-auto mt-12 text-center">
+        <Loader size="lg" className="mb-md" />
+        <Title order={4} mt="md">AI กำลังประมวลผลใบเสร็จนี้</Title>
+        <Text c="dimmed" mt="xs" mb="lg">
+          {doc.filename} — รอสักครู่แล้วเปิดใหม่ หรือกดกลับไปดูใบอื่นก่อน
+        </Text>
+        <Button
+          variant="default"
+          leftSection={<ArrowLeft size={14} />}
+          onClick={goBack}
+        >
+          กลับเดือน {visit.report_period ?? ""}
+        </Button>
+      </div>
+    );
+  }
 
   const handleApprove = async () => {
     try {

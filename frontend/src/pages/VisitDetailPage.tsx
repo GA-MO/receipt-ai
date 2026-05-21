@@ -266,17 +266,27 @@ export default function VisitDetailPage() {
                                   const d = docsById.get(did);
                                   if (!d) return null;
                                   const sLabel = STATUS_LABEL[d.status];
+                                  const isLoading =
+                                    d.status === "processing" || d.status === "pending";
                                   return (
                                     <Group key={did} gap="sm" wrap="nowrap">
                                       <FileText size={14} className="text-gray-500 shrink-0" />
                                       <Text
                                         size="sm"
-                                        className="flex-1 truncate cursor-pointer hover:underline"
-                                        onClick={() => openReview(did)}
+                                        className={
+                                          isLoading
+                                            ? "flex-1 truncate text-gray-400"
+                                            : "flex-1 truncate cursor-pointer hover:underline"
+                                        }
+                                        onClick={isLoading ? undefined : () => openReview(did)}
                                       >
                                         {d.filename}
                                       </Text>
-                                      {d.status === "reviewed" ? (
+                                      {isLoading ? (
+                                        <Tooltip label={sLabel?.label || "กำลังประมวลผล"}>
+                                          <Loader size={12} />
+                                        </Tooltip>
+                                      ) : d.status === "reviewed" ? (
                                         <Badge
                                           size="xs"
                                           color="green"
@@ -318,34 +328,49 @@ export default function VisitDetailPage() {
               <Title order={4}>ใบเสร็จในชุดนี้</Title>
               <Text size="xs" c="dimmed">{docs.length} ใบ</Text>
             </Group>
-            {docs.length > 0 && (
-              <Group p="md" pt={0}>
-                <Button
-                  fullWidth
-                  variant="filled"
-                  color="indigo"
-                  size="sm"
-                  onClick={() => openReview(docs[0].id)}
-                >
-                  เริ่มไล่ตรวจสอบ ({docs.length} ใบ)
-                </Button>
-              </Group>
-            )}
+            {docs.length > 0 && (() => {
+              const firstReady = docs.find(
+                (d) => d.status !== "processing" && d.status !== "pending",
+              );
+              return (
+                <Group p="md" pt={0}>
+                  <Button
+                    fullWidth
+                    variant="filled"
+                    color="indigo"
+                    size="sm"
+                    onClick={() => firstReady && openReview(firstReady.id)}
+                    disabled={!firstReady}
+                  >
+                    {firstReady
+                      ? `เริ่มไล่ตรวจสอบ (${docs.length} ใบ)`
+                      : "รอ AI ประมวลผล..."}
+                  </Button>
+                </Group>
+              );
+            })()}
             <Stack gap={0}>
               {docs.length === 0 && (
                 <Text c="dimmed" p="md" ta="center">ยังไม่มีใบเสร็จ</Text>
               )}
-              {docs.map((d) => (
+              {docs.map((d) => {
+                const isLoading = d.status === "processing" || d.status === "pending";
+                return (
                 <Paper
                   key={d.id}
                   p="sm"
-                  className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 border-t"
-                  onClick={() => openReview(d.id)}
+                  className={
+                    isLoading
+                      ? "border-t opacity-70"
+                      : "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 border-t"
+                  }
+                  onClick={isLoading ? undefined : () => openReview(d.id)}
                   style={{
                     borderRadius: 0,
                     borderLeft: d.period_mismatch
                       ? "4px solid var(--mantine-color-orange-5)"
                       : "4px solid transparent",
+                    cursor: isLoading ? "wait" : undefined,
                   }}
                 >
                   <Group gap="sm" wrap="nowrap" align="flex-start">
@@ -400,7 +425,11 @@ export default function VisitDetailPage() {
                       )}
                     </div>
                     <Group gap={6} wrap="nowrap">
-                      {d.status === "reviewed" ? (
+                      {isLoading ? (
+                        <Tooltip label={STATUS_LABEL[d.status]?.label || "กำลังประมวลผล"}>
+                          <Loader size={14} />
+                        </Tooltip>
+                      ) : d.status === "reviewed" ? (
                         <Badge
                           size="sm"
                           color="green"
@@ -434,7 +463,8 @@ export default function VisitDetailPage() {
                     </Group>
                   </Group>
                 </Paper>
-              ))}
+                );
+              })}
             </Stack>
           </Card>
         </div>
