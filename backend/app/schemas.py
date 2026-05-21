@@ -120,8 +120,64 @@ class DocumentListItem(BaseModel):
     needs_review: bool = True
     item_count: int = 0
     fraud_flags: str | None = None
+    visit_id: str | None = None
 
     model_config = {"from_attributes": True}
+
+
+# ---------- Visits ----------
+
+
+class VisitCreate(BaseModel):
+    store_label: str | None = None
+    rep_name: str | None = None
+    notes: str | None = None
+
+
+class VisitUpdate(BaseModel):
+    store_label: str | None = None
+    store_key: str | None = None
+    rep_name: str | None = None
+    notes: str | None = None
+
+
+class VisitListItem(BaseModel):
+    id: str
+    store_key: str | None = None
+    store_label: str | None = None
+    rep_name: str | None = None
+    notes: str | None = None
+    created_at: datetime
+    updated_at: datetime
+    document_count: int = 0
+    earliest_doc_date: str | None = None
+    latest_doc_date: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class VisitAggregateRow(BaseModel):
+    product_code: str | None = None
+    display_name: str
+    manufacturer: str | None = None
+    is_catalog_match: bool = False
+    total_quantity: float = 0.0
+    unit: str | None = None
+    source_doc_ids: list[str] = []
+    source_count: int = 0
+    units_seen: list[str] = []  # >1 entry means mixed-unit warning
+
+
+class VisitDetail(BaseModel):
+    id: str
+    store_key: str | None = None
+    store_label: str | None = None
+    rep_name: str | None = None
+    notes: str | None = None
+    created_at: datetime
+    updated_at: datetime
+    documents: list[DocumentListItem] = []
+    aggregate: list[VisitAggregateRow] = []
 
 
 # ---------- Dashboard ----------

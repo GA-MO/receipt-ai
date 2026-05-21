@@ -48,14 +48,9 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
 
     # Extraction pipeline selector:
-    #   "legacy"   — extract_receipt + run_fraud_detection (2 Gemini calls)
-    #   "combined" — single Gemini call with self-contained fraud + Python post-check
-    #                (DEFAULT: ~15% faster and ~23% cheaper than legacy with equivalent quality)
-    #   "agentic"  — multi-turn tool-calling loop (catalog lookup + merchant history)
-    extraction_mode: str = "combined"
-
-    # Deprecated shortcut for extraction_mode='combined' — kept for backward compat.
-    use_combined_extraction: bool = False
+    #   "default"  — single Gemini call (prompt + embedded catalog)
+    #   "agentic"  — multi-turn tool-calling loop (lookup_catalog tool)
+    extraction_mode: str = "default"
 
     # Web Push (VAPID)
     vapid_public_key: str = ""

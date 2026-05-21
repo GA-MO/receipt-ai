@@ -680,11 +680,8 @@ export default function DashboardPage() {
                 {fraudSummary.documents.slice(0, 5).map((d) => (
                   <Paper
                     key={d.id}
-                    component={Link}
-                    to={`/documents/${d.id}`}
                     withBorder
                     p="sm"
-                    className="hover:bg-[var(--mantine-color-default-hover)] transition-colors no-underline"
                   >
                     <Group justify="space-between" wrap="nowrap">
                       <div className="min-w-0 flex-1">
@@ -809,7 +806,7 @@ export default function DashboardPage() {
             {recent.map((doc) => (
               <Link
                 key={doc.id}
-                to={`/documents/${doc.id}`}
+                to={doc.visit_id ? `/visits/${doc.visit_id}` : "/documents"}
                 className="flex items-center justify-between p-4 hover:bg-[var(--mantine-color-default-hover)] transition-colors no-underline"
                 style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}
               >

@@ -184,9 +184,9 @@ export default function UploadPage() {
                         color="green"
                         size="sm"
                         leftSection={<CheckCircle2 size={16} />}
-                        onClick={() => navigate(`/documents/${entry.documentId}`)}
+                        onClick={() => navigate("/visits")}
                       >
-                        ดูผลลัพธ์
+                        ไปหน้า visits
                       </Button>
                     )}
                     {entry.status === "error" && (
@@ -200,7 +200,7 @@ export default function UploadPage() {
                             variant="subtle"
                             color="indigo"
                             size="xs"
-                            onClick={() => navigate(`/documents/${entry.existingDocumentId}`)}
+                            onClick={() => navigate(`/documents?search=${entry.existingDocumentId}`)}
                           >
                             ดูเอกสารเดิม
                           </Button>

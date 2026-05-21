@@ -4,18 +4,21 @@ import AIHealthPage from "./pages/AIHealthPage";
 import CapturePage from "./pages/CapturePage";
 import DashboardPage from "./pages/DashboardPage";
 import DocumentsPage from "./pages/DocumentsPage";
-import ReviewPage from "./pages/ReviewPage";
 import TrashPage from "./pages/TrashPage";
 import UploadPage from "./pages/UploadPage";
+import VisitDetailPage from "./pages/VisitDetailPage";
+import VisitsPage from "./pages/VisitsPage";
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route element={<Layout />}>
-          <Route path="/" element={<UploadPage />} />
+          <Route path="/" element={<VisitsPage />} />
+          <Route path="/visits" element={<VisitsPage />} />
+          <Route path="/visits/:id" element={<VisitDetailPage />} />
+          <Route path="/upload" element={<UploadPage />} />
           <Route path="/documents" element={<DocumentsPage />} />
-          <Route path="/documents/:id" element={<ReviewPage />} />
           <Route path="/trash" element={<TrashPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/ai-health" element={<AIHealthPage />} />

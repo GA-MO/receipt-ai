@@ -435,7 +435,9 @@ def _format_markdown(entries: list[dict[str, Any]]) -> str:
     item — see the schema rules in ``extraction._SYSTEM_INSTRUCTION_TAIL_TEMPLATE``.
     """
     lines = [
-        "## สินค้าเครือบุญรอด — ใช้ตารางนี้ map ชื่อย่อ/ลายมือ → ชื่อทางการ + product_code",
+        "## PRODUCT_CATALOG (เครือบุญรอด + คู่แข่งที่ระบบเรียนรู้ไว้)",
+        "ใช้ตารางนี้ map ชื่อย่อ/ลายมือ → ชื่อทางการ + product_code",
+        "สำหรับสินค้าคู่แข่งที่ไม่อยู่ในตารางนี้ ให้ใส่ raw เป็นชื่อสินค้าและ product_code = null",
         "",
         "| product_code | ชื่อทางการ (product_name_normalized) | คำย่อ / ชื่อเล่น / ลายมือที่พบบ่อย | หมวด |",
         "|--------------|--------------------------------------|--------------------------------------|------|",

@@ -413,7 +413,7 @@ export default function DocumentsPage() {
                         />
                       </Table.Td>
                       <Table.Td>
-                        <Link to={`/documents/${doc.id}`} className="block">
+                        <Link to={doc.visit_id ? `/visits/${doc.visit_id}` : "/documents"} className="block">
                           {doc.file_type === "pdf" ? (
                             <div className="w-14 h-14 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex items-center justify-center">
                               <FileText className="w-6 h-6 text-gray-400" />
@@ -434,7 +434,7 @@ export default function DocumentsPage() {
                       <Table.Td>
                         <Text
                           component={Link}
-                          to={`/documents/${doc.id}`}
+                          to={doc.visit_id ? `/visits/${doc.visit_id}` : "/documents"}
                           fw={500}
                           c="indigo"
                           className="hover:underline"

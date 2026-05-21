@@ -12,14 +12,15 @@ import {
   ThemeIcon,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { BarChart3, Bell, BellOff, Brain, Camera, FileText, Moon, Receipt, Sun, Trash2, Upload } from "lucide-react";
+import { BarChart3, Bell, BellOff, Brain, Camera, FileText, Moon, Receipt, Store, Sun, Trash2, Upload } from "lucide-react";
 import classes from "./Layout.module.css";
 import { useWebPush } from "@/hooks/useWebPush";
 import { useToast } from "@/components/Toast";
 import { LearnedAliasesBadge } from "@/components/LearnedAliasesPanel";
 
 const links = [
-  { to: "/", label: "อัปโหลด", icon: Upload },
+  { to: "/visits", label: "การเยี่ยมร้าน", icon: Store },
+  { to: "/upload", label: "อัปโหลดเดี่ยว", icon: Upload },
   { to: "/documents", label: "เอกสารทั้งหมด", icon: FileText },
   { to: "/dashboard", label: "Dashboard", icon: BarChart3 },
   { to: "/capture", label: "ถ่ายเอกสาร", icon: Camera },
@@ -142,14 +143,14 @@ export default function Layout() {
       <AppShell.Navbar className={classes.navbar} p="sm">
         <AppShell.Section grow className={classes.navbarMain}>
           {links.map(({ to, label, icon: Icon }) => {
-            const active = to === "/"
-              ? location.pathname === "/"
-              : location.pathname.startsWith(to);
+            const active =
+              to === "/visits"
+                ? location.pathname === "/" || location.pathname.startsWith("/visits")
+                : location.pathname.startsWith(to);
             return (
               <RouterNavLink
                 key={to}
                 to={to}
-                end={to === "/"}
                 className={classes.link}
                 data-active={active || undefined}
                 onClick={close}

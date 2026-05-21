@@ -56,6 +56,13 @@ import {
   updateDocument,
   updateItem,
   uploadDocument,
+  createVisit,
+  deleteVisit,
+  getVisit,
+  getVisits,
+  recomputeVisitLabel,
+  updateVisit,
+  uploadDocumentsToVisit,
   type DocumentResponse,
 } from "./client";
 
@@ -411,6 +418,83 @@ export function useDeleteProductAlias() {
   return useMutation({
     mutationFn: (id: string) => deleteProductAlias(id),
     onSuccess: () => invalidate(),
+  });
+}
+
+// ---------- Visits ----------
+
+export const visitsKey = {
+  list: (params?: Record<string, unknown>) => ["visits", params] as const,
+  detail: (id: string, params?: Record<string, unknown>) =>
+    ["visits", id, params] as const,
+};
+
+export function useVisits(params?: { skip?: number; limit?: number; store_key?: string; rep_name?: string }) {
+  return useQuery({
+    queryKey: visitsKey.list(params as Record<string, unknown>),
+    queryFn: () => getVisits(params),
+  });
+}
+
+export function useVisit(id: string | undefined, params?: { date_from?: string; date_to?: string }) {
+  return useQuery({
+    queryKey: visitsKey.detail(id ?? "", params as Record<string, unknown>),
+    queryFn: () => getVisit(id!, params),
+    enabled: !!id,
+  });
+}
+
+function useInvalidateVisits() {
+  const qc = useQueryClient();
+  return (visitId?: string) => {
+    qc.invalidateQueries({ queryKey: ["visits"] });
+    if (visitId) qc.invalidateQueries({ queryKey: ["visits", visitId] });
+  };
+}
+
+export function useCreateVisit() {
+  const invalidate = useInvalidateVisits();
+  return useMutation({
+    mutationFn: (body: { store_label?: string; rep_name?: string; notes?: string }) =>
+      createVisit(body),
+    onSuccess: () => invalidate(),
+  });
+}
+
+export function useUpdateVisit(id: string) {
+  const invalidate = useInvalidateVisits();
+  return useMutation({
+    mutationFn: (body: { store_label?: string; store_key?: string; rep_name?: string; notes?: string }) =>
+      updateVisit(id, body),
+    onSuccess: () => invalidate(id),
+  });
+}
+
+export function useDeleteVisit() {
+  const invalidate = useInvalidateVisits();
+  return useMutation({
+    mutationFn: (id: string) => deleteVisit(id),
+    onSuccess: () => invalidate(),
+  });
+}
+
+export function useUploadToVisit(visitId: string) {
+  const invalidate = useInvalidateVisits();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (files: File[]) => uploadDocumentsToVisit(visitId, files),
+    onSuccess: () => {
+      invalidate(visitId);
+      qc.invalidateQueries({ queryKey: ["documents"] });
+    },
+  });
+}
+
+export function useRecomputeVisitLabel(visitId: string) {
+  const invalidate = useInvalidateVisits();
+  return useMutation({
+    mutationFn: () => recomputeVisitLabel(visitId),
+    onSuccess: () => invalidate(visitId),
   });
 }
 

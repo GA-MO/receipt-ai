@@ -57,9 +57,12 @@ class Document(Base):
 
     deleted_at = Column(DateTime, nullable=True, index=True)
 
+    visit_id = Column(String, ForeignKey("visits.id"), nullable=True, index=True)
+
     items = relationship(
         "DocumentItem", back_populates="document", cascade="all, delete-orphan"
     )
+    visit = relationship("Visit", back_populates="documents")
 
 
 class DocumentItem(Base):
@@ -226,6 +229,29 @@ class TypoRecoveryEvent(Base):
     recovered_code = Column(String, nullable=False, index=True)
     product_name = Column(String, nullable=True)
     seen_at = Column(DateTime, default=_utcnow, index=True)
+
+
+class Visit(Base):
+    """Groups multiple receipt documents collected during one store visit.
+
+    A Visit's ``store_key`` mirrors ``Document.merchant_normalized`` so the
+    store identity is shared with existing dashboards. ``store_label`` is the
+    raw merchant text used for display. The Visit has no time scope — date
+    range filtering is done at query time against ``document_date``.
+    """
+
+    __tablename__ = "visits"
+
+    id = Column(String, primary_key=True, default=_gen_id)
+    store_key = Column(String, nullable=True, index=True)
+    store_label = Column(String, nullable=True)
+    rep_name = Column(String, nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, index=True)
+    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
+    deleted_at = Column(DateTime, nullable=True, index=True)
+
+    documents = relationship("Document", back_populates="visit")
 
 
 class PushSubscription(Base):

@@ -191,6 +191,99 @@ export function getTrashCount() {
   return request<{ count: number }>(`/documents/trash/count`);
 }
 
+// ---------- Visits ----------
+
+export interface VisitListItem {
+  id: string;
+  store_key: string | null;
+  store_label: string | null;
+  rep_name: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  document_count: number;
+  earliest_doc_date: string | null;
+  latest_doc_date: string | null;
+}
+
+export interface VisitAggregateRow {
+  product_code: string | null;
+  display_name: string;
+  manufacturer: string | null;
+  is_catalog_match: boolean;
+  total_quantity: number;
+  unit: string | null;
+  source_doc_ids: string[];
+  source_count: number;
+  units_seen: string[];
+}
+
+export interface VisitDetail {
+  id: string;
+  store_key: string | null;
+  store_label: string | null;
+  rep_name: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  documents: DocumentListItem[];
+  aggregate: VisitAggregateRow[];
+}
+
+export interface VisitUploadResult {
+  visit_id: string;
+  document_ids: string[];
+  duplicates: { filename: string; existing_document_id: string; existing_visit_id: string | null }[];
+  failures: { filename: string; detail: string }[];
+}
+
+export function createVisit(body: { store_label?: string; rep_name?: string; notes?: string }) {
+  return request<VisitListItem>("/visits", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export function getVisits(params?: { skip?: number; limit?: number; store_key?: string; rep_name?: string }) {
+  return request<VisitListItem[]>(`/visits${buildQs(params ?? {})}`);
+}
+
+export function getVisit(id: string, params?: { date_from?: string; date_to?: string }) {
+  return request<VisitDetail>(`/visits/${id}${buildQs(params ?? {})}`);
+}
+
+export function updateVisit(
+  id: string,
+  body: { store_label?: string; store_key?: string; rep_name?: string; notes?: string },
+) {
+  return request<VisitListItem>(`/visits/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export function deleteVisit(id: string) {
+  return request<{ id: string; deleted_at: string }>(`/visits/${id}`, { method: "DELETE" });
+}
+
+export function uploadDocumentsToVisit(visitId: string, files: File[]) {
+  const form = new FormData();
+  for (const f of files) form.append("files", f);
+  return request<VisitUploadResult>(`/visits/${visitId}/documents`, {
+    method: "POST",
+    body: form,
+  });
+}
+
+export function recomputeVisitLabel(id: string) {
+  return request<{ id: string; store_key: string | null; store_label: string | null }>(
+    `/visits/${id}/recompute-label`,
+    { method: "POST" },
+  );
+}
+
 // ---------- Dashboard ----------
 
 export function getDashboardStats() {
@@ -437,6 +530,7 @@ export interface DocumentListItem {
   needs_review: boolean;
   item_count: number;
   fraud_flags: string | null;
+  visit_id: string | null;
 }
 
 export interface BulkActionResult {

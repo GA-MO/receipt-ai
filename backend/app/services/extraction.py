@@ -44,6 +44,13 @@ _SYSTEM_INSTRUCTION_HEAD = """\
 คุณเป็น AI ผู้เชี่ยวชาญในการอ่านและวิเคราะห์เอกสารการขายภาษาไทย
 เช่น ใบเสร็จรับเงิน บิลเงินสด ใบกำกับภาษี และใบส่งของ
 รวมถึงเอกสารที่เขียนด้วยลายมือ
+
+**โจทย์หลัก**: ดึงรายการสินค้า (`items[]`) ให้ครบและถูกต้องที่สุด — ชื่อสินค้า, จำนวน, หน่วย, ราคา
+ทั้งสินค้าของเครือบุญรอด **และของคู่แข่ง** (ช้าง, ลีโอ-ของคู่แข่ง, ไฮเนเก้น, อาซาฮี, ซาน มิเกล, โค้ก, เป๊ปซี่ ฯลฯ)
+ถ้าเป็นสินค้าคู่แข่ง:
+- `product_name_raw` = ตามที่อ่านได้จากใบเสร็จ
+- `product_name_normalized` = เหมือน raw (ไม่ map เป็น SKU บุญรอด)
+- `product_code` = null (ห้าม map ผิด)
 """
 
 _SYSTEM_INSTRUCTION_TAIL_TEMPLATE = """
@@ -95,7 +102,7 @@ _SYSTEM_INSTRUCTION_TAIL_TEMPLATE = """
   - `product_code` = SKU code ของสินค้า (สำคัญ — ใช้เพื่อ resolve กลับ DB ตรงๆ ไม่ผ่าน fuzzy match)
     1. ถ้า normalized match แถวใดในตาราง PRODUCT_CATALOG → ใช้ค่าใน column `product_code` ของแถวนั้น **ตรงๆ ไม่ดัดแปลง**
     2. ถ้าตาราง PRODUCT_CATALOG ของแถวที่ match มี `product_code = "-"` → ใส่ null
-    3. ถ้าไม่ match catalog เลย (สินค้าจากร้านอื่นนอกเครือบุญรอด) → ใส่ null
+    3. ถ้าไม่ match catalog เลย (สินค้าคู่แข่งที่ยังไม่มีใน catalog) → ใส่ null
     4. **ห้ามแต่งรหัสขึ้นเอง** ถ้าไม่แน่ใจให้ null — ห้ามเดา
     5. ห้ามใช้ EAN/บาร์โค้ดที่ปรากฏบนใบเสร็จเป็น product_code — ใช้เฉพาะรหัสจาก catalog เท่านั้น
 - **Variant qualifier ที่เป็นส่วนของชื่อสินค้า** (สำคัญ): สี/รสชาติ/รุ่น ที่อยู่ในวงเล็บหรือหลังชื่อ
@@ -152,18 +159,10 @@ _SYSTEM_INSTRUCTION_TAIL_TEMPLATE = """
   - **Sanity check**: หลังแปลงแล้ว ถ้าปี ค.ศ. ที่ได้ห่างจากปีปัจจุบันเกิน 5 ปี (อนาคตหรืออดีต) ให้ทบทวนใหม่ — น่าจะลืมแปลง
 - ถ้าอ่านไม่ออกหรือไม่แน่ใจ ให้ใส่ null และเพิ่มชื่อ field ใน needs_review_fields
 - ตัวเลขเงินให้เป็นทศนิยม 2 ตำแหน่ง
-- **VAT semantics ที่ถูกต้อง** (สำคัญมาก — ผิดบ่อย):
-  - `subtotal` = **ยอดรวมก่อน VAT เสมอ** (pre-VAT amount)
-  - `vat` = ภาษีมูลค่าเพิ่ม (VAT amount)
-  - `grand_total` = ยอดสุทธิหลัง VAT (subtotal + vat - discount)
-  - **ถ้าเอกสารมี VAT > 0:** `subtotal` ห้ามเท่ากับ `grand_total` ต้องเป็น `grand_total - vat` (หรือ `grand_total / 1.07` ถ้า VAT 7%)
-  - **ถ้าเอกสารไม่มี VAT (vat = 0 หรือ null):** `subtotal` = `grand_total` ได้
-  - ตัวอย่าง: ใบเสร็จยอด ฿7,010 รวม VAT 7% แล้ว → subtotal=6551.40, vat=458.60, grand_total=7010.00
-  - **Sanity check**: ตรวจให้ `subtotal × 1.07 ≈ grand_total` (ผิดได้ <1%) ถ้าผิดเกิน ทบทวนใหม่
-- **ราคาสินค้าใน items** : โดยปกติ `unit_price` และ `line_total` บนใบเสร็จไทย **เป็นราคารวม VAT แล้ว** (VAT-inclusive)
-  - sum(items[].line_total) ปกติจะ ≈ `grand_total` (ไม่ใช่ subtotal)
-  - **ห้าม flag เป็น "ยอดรวมรายการไม่ตรงกับยอดรวม" ถ้า sum(line_total) ≈ grand_total** (ตรงกับ grand_total = ปกติ)
-  - flag เฉพาะเมื่อ sum(line_total) ≠ grand_total **และ** ≠ subtotal เกิน 1% เท่านั้น
+- **VAT**: `subtotal` = ก่อน VAT, `vat` = ภาษี, `grand_total` = สุทธิ
+  ถ้าเอกสารมี VAT > 0 → `subtotal = grand_total - vat` (≈ `grand_total / 1.07` สำหรับ VAT 7%)
+  ถ้าไม่มี VAT → `subtotal = grand_total` ได้
+  `line_total` ของรายการบนใบเสร็จไทยมักรวม VAT แล้ว (sum(line_total) ≈ grand_total)
 - confidence เป็นค่า 0.0 - 1.0 แสดงความมั่นใจโดยรวม
 - ถ้าเอกสารไม่ใช่ใบเสร็จ/บิลเงินสด/ใบกำกับภาษี/ใบส่งของ (เช่น เป็นรายงานสรุปยอด, สลิปโอนเงิน, เอกสารอื่น) ให้:
   * ยังคงพยายามดึงข้อมูลให้ได้มากที่สุด

@@ -36,11 +36,6 @@ from ..schemas import (
 )
 from ..services.extraction import extract_receipt
 from ..services.extraction_agentic import extract_agentic
-from ..services.extraction_combined import (
-    compute_history_fraud_checks,
-    extract_with_fraud,
-    merge_fraud_results,
-)
 from ..services.aliases import (
     apply_alias_to_extraction,
     normalize_key as alias_normalize_key,
@@ -54,9 +49,8 @@ from ..services.product_aliases import (
 from ..services.audit import record as record_event
 from ..models import CatalogGapEvent, Product, TypoRecoveryEvent
 from ..services.catalog import find_code_by_name, is_canonical_name
-from ..services.fraud import run_fraud_detection
 from ..services.merchants import assign_normalized_merchant
-from ..services.push import PushPayload, send_to_all as push_send_to_all
+from ..services.visits import ensure_visit_for_doc
 
 
 def _resolve_product_code(
@@ -136,14 +130,13 @@ def _resolve_product_code(
 
 
 def _resolve_extraction_mode() -> str:
-    """Resolve the active extraction mode, honouring the legacy boolean flag."""
-    mode = (settings.extraction_mode or "legacy").lower()
-    if mode not in {"legacy", "combined", "agentic"}:
-        logger.warning("Unknown extraction_mode %r — falling back to legacy", mode)
-        mode = "legacy"
-    if settings.use_combined_extraction and mode == "legacy":
-        mode = "combined"
+    mode = (settings.extraction_mode or "default").lower()
+    if mode not in {"default", "agentic"}:
+        logger.warning("Unknown extraction_mode %r — falling back to default", mode)
+        mode = "default"
     return mode
+
+
 from ..services.storage import save_bytes, validate_and_hash
 from ..services.validation import validate_extraction
 
@@ -171,46 +164,6 @@ def _process_document(doc_id: str, file_path: str) -> None:
         _processing_lock.release()
 
 
-def _maybe_send_fraud_push(doc: Document, db: Session) -> None:
-    """If the newly-processed doc has high/medium fraud flags, push notify."""
-    if not doc.fraud_flags:
-        return
-    try:
-        payload = json.loads(doc.fraud_flags)
-    except (ValueError, TypeError):
-        return
-    flags = payload if isinstance(payload, list) else payload.get("flags", [])
-    ai = payload.get("ai_analysis") if isinstance(payload, dict) else None
-
-    high_count = sum(1 for f in flags if (f.get("severity") or "").lower() == "high")
-    medium_count = sum(1 for f in flags if (f.get("severity") or "").lower() == "medium")
-    ai_score = (ai or {}).get("risk_score", 0) if ai else 0
-
-    if high_count == 0 and medium_count == 0 and ai_score < 0.5:
-        return
-
-    merchant = doc.merchant_name or doc.filename
-    total = f"฿{float(doc.grand_total):,.2f}" if doc.grand_total is not None else "-"
-    severity_label = "🚨 ความเสี่ยงสูง" if high_count or ai_score >= 0.7 else "⚠️ ต้องตรวจสอบ"
-    body_lines = [f"{merchant} · {total}"]
-    if flags:
-        top = flags[0].get("label") or flags[0].get("type")
-        if top:
-            body_lines.append(str(top))
-    try:
-        push_send_to_all(
-            db,
-            PushPayload(
-                title=f"{severity_label} — พบรายการต้องสงสัย",
-                body="\n".join(body_lines),
-                url=f"/documents/{doc.id}",
-                tag=f"fraud-{doc.id}",
-            ),
-        )
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("Failed to send fraud push for %s: %s", doc.id, exc)
-
-
 def _run_processing(doc_id: str, file_path: str) -> None:
     """Core processing logic, shared between BackgroundTasks and arq worker."""
     db = SessionLocal()
@@ -221,17 +174,9 @@ def _run_processing(doc_id: str, file_path: str) -> None:
             return
 
         mode = _resolve_extraction_mode()
-        gemini_fraud_block: dict | None = None
-        agentic_fraud_payload: dict | None = None
-
-        if mode == "combined":
-            combined = extract_with_fraud(file_path)
-            result = combined.extraction
-            gemini_fraud_block = combined.fraud_payload
-        elif mode == "agentic":
+        if mode == "agentic":
             agentic = extract_agentic(file_path, db)
             result = agentic.extraction
-            agentic_fraud_payload = agentic.fraud_payload
             logger.info(
                 "Agentic used %d iterations, tools=%s",
                 agentic.iterations,
@@ -323,23 +268,11 @@ def _run_processing(doc_id: str, file_path: str) -> None:
 
         db.flush()
         db.refresh(doc)
+
         try:
-            if mode == "combined":
-                # Gemini already did self-contained fraud; Python adds
-                # history-based flags (duplicate, unusual amount).
-                history_flags = compute_history_fraud_checks(doc, db)
-                doc.fraud_flags = merge_fraud_results(gemini_fraud_block, history_flags)
-            elif mode == "agentic":
-                # Gemini already consulted history inline via tool call, so its
-                # fraud_analysis output is final. Still merge with zero extra
-                # flags to get consistent serialization.
-                doc.fraud_flags = merge_fraud_results(agentic_fraud_payload, [])
-            else:
-                doc.fraud_flags = run_fraud_detection(doc, db)
-            if doc.fraud_flags:
-                logger.info("Document %s flagged for fraud: %s", doc_id, doc.fraud_flags[:200])
-        except Exception as fraud_exc:
-            logger.warning("Fraud detection failed for %s: %s", doc_id, fraud_exc)
+            ensure_visit_for_doc(db, doc)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Failed to auto-attach visit for %s: %s", doc_id, exc)
 
         db.commit()
         logger.info("Document %s processed successfully", doc_id)
@@ -356,15 +289,6 @@ def _run_processing(doc_id: str, file_path: str) -> None:
                 "items": len(doc.items or []),
             },
         )
-        if doc.fraud_flags:
-            record_event(
-                db,
-                doc_id,
-                "fraud_detected",
-                actor="system",
-                payload={"raw": doc.fraud_flags[:500]},
-            )
-        _maybe_send_fraud_push(doc, db)
     except Exception as exc:
         logger.error("Failed to process document %s: %s", doc_id, exc)
         db.rollback()
@@ -567,6 +491,7 @@ def list_documents(
             needs_review=d.needs_review,
             item_count=item_count,
             fraud_flags=d.fraud_flags,
+            visit_id=d.visit_id,
         )
         for d, item_count in rows
     ]
@@ -622,6 +547,7 @@ def list_trash(
             needs_review=d.needs_review,
             item_count=item_count,
             fraud_flags=d.fraud_flags,
+            visit_id=d.visit_id,
         )
         for d, item_count in rows
     ]

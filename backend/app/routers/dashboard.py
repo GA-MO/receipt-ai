@@ -414,87 +414,6 @@ def vat_summary(
     }
 
 
-@router.get("/fraud-summary")
-def fraud_summary(db: Session = Depends(get_db)):
-    """Summary of fraud-flagged documents."""
-    flagged_docs = (
-        db.query(Document)
-        .filter(
-            Document.fraud_flags.isnot(None),
-            Document.fraud_flags != "null",
-            Document.fraud_flags != "[]",
-        )
-        .all()
-    )
-
-    total_flagged = len(flagged_docs)
-    by_severity = {"high": 0, "medium": 0, "low": 0}
-    by_type: dict[str, int] = {}
-    flagged_items = []
-
-    for doc in flagged_docs:
-        try:
-            raw = json.loads(doc.fraud_flags)
-        except (json.JSONDecodeError, TypeError):
-            continue
-
-        # Support both old (list) and new ({flags, ai_analysis}) formats
-        if isinstance(raw, list):
-            flags = raw
-            ai_analysis = None
-        else:
-            flags = raw.get("flags", [])
-            ai_analysis = raw.get("ai_analysis")
-
-        if not flags and not ai_analysis:
-            continue
-
-        max_severity = "low"
-        flag_labels = []
-        for flag in flags:
-            sev = flag.get("severity", "low")
-            by_severity[sev] = by_severity.get(sev, 0) + 1
-            ftype = flag.get("type", "unknown")
-            by_type[ftype] = by_type.get(ftype, 0) + 1
-            flag_labels.append(flag.get("label", ftype))
-            if sev == "high":
-                max_severity = "high"
-            elif sev == "medium" and max_severity != "high":
-                max_severity = "medium"
-
-        if ai_analysis and ai_analysis.get("risk_level") == "high":
-            max_severity = "high"
-        elif ai_analysis and ai_analysis.get("risk_level") == "medium" and max_severity != "high":
-            max_severity = "medium"
-
-        flagged_items.append({
-            "id": doc.id,
-            "filename": doc.filename,
-            "merchant_name": doc.merchant_name,
-            "grand_total": float(doc.grand_total) if doc.grand_total else None,
-            "document_date": doc.document_date,
-            "severity": max_severity,
-            "flags": flag_labels,
-            "flag_count": len(flags),
-            "risk_score": ai_analysis.get("risk_score") if ai_analysis else None,
-            "ai_summary": ai_analysis.get("summary") if ai_analysis else None,
-        })
-
-    # Sort by severity (high first)
-    severity_order = {"high": 0, "medium": 1, "low": 2}
-    flagged_items.sort(key=lambda x: severity_order.get(x["severity"], 3))
-
-    return {
-        "total_flagged": total_flagged,
-        "by_severity": by_severity,
-        "by_type": [
-            {"type": k, "count": v}
-            for k, v in sorted(by_type.items(), key=lambda x: -x[1])
-        ],
-        "documents": flagged_items[:20],
-    }
-
-
 @router.get("/spending-heatmap")
 def spending_heatmap(
     days: int = Query(90, ge=30, le=365),
@@ -562,9 +481,6 @@ AI_INSIGHT_PROMPT = """\
 ## สัดส่วนหมวดสินค้า
 {categories}
 
-## Fraud Summary
-- เอกสารที่ถูก flag: {fraud_count} ฉบับ
-
 กรุณาตอบเป็น JSON:
 {{
   "headline": "สรุป 1 ประโยคสั้นๆ กระชับ ไม่เกิน 20 คำ",
@@ -628,12 +544,6 @@ def ai_insight(db: Session = Depends(get_db)):
     )
     cats_str = "\n".join(f"- {r.category}: ฿{float(r.total):,.2f} ({r.count} เอกสาร)" for r in cats) or "ไม่มีข้อมูล"
 
-    fraud_count = (
-        db.query(func.count(Document.id))
-        .filter(Document.fraud_flags.isnot(None), Document.fraud_flags != "null", Document.fraud_flags != "[]")
-        .scalar() or 0
-    )
-
     prompt = AI_INSIGHT_PROMPT.format(
         today=datetime.now(UTC).strftime("%Y-%m-%d"),
         total_docs=total,
@@ -642,7 +552,6 @@ def ai_insight(db: Session = Depends(get_db)):
         daily_sales=daily_str,
         top_merchants=merchants_str,
         categories=cats_str,
-        fraud_count=fraud_count,
     )
 
     try:
