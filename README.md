@@ -1,154 +1,149 @@
 # Thai Receipt Intelligence
 
-AI-powered Thai receipt and sales document extraction system. Upload Thai receipts, invoices, or sales documents and get structured sales data automatically.
+Visit-centric receipt processing for Boonrawd sales reps. Reps visit stores
+each month, photograph the month's sales receipts (own and competitor SKUs),
+and the system extracts **(product, quantity)** per receipt then rolls it up
+into a `(store, month)` summary that audit can sample-check against the
+original images.
 
-## Features
+## What it does
 
-- **Gemini Vision** — Multimodal extraction: Gemini 3 Flash reads receipt images/PDFs directly and returns structured data
-- **Thai-first design** — Handles Thai dates (พ.ศ.), Thai abbreviations, mixed Thai-English text
-- **Human-in-the-loop** — Confidence scoring, validation warnings, side-by-side review
-- **Dashboard** — Sales charts, top merchants, date range filtering, CSV export
-- **Duplicate detection** — SHA-256 file hashing prevents re-uploading the same document
-- **Background processing** — Upload returns immediately, AI processes in background with polling
+```text
+Upload receipts ─▶ Gemini Vision ─▶ Inbox triage ─▶ Visit detail ─▶ Review
+                                        │              │
+                                  Auto-route to     Aggregate
+                                  the right         (product × qty)
+                                  Store+Month
+```
 
-## Tech Stack
+- **Gemini Vision** extracts merchant, date, and line items (name + quantity,
+  unit) — no prices, no VAT, no fraud signals.
+- **Store master** is admin-managed; visits attach to a Store and a reporting
+  month (`YYYY-MM`).
+- **Inbox triage** routes uploads that the AI can't fully place: unknown
+  store → admin assigns; merchant unreadable → admin names it; not a
+  receipt → auto-purge after 7 days.
+- **Doc-by-doc review** uses a side-by-side image + items editor with
+  prev/next nav and a one-click "บันทึกว่าตรวจสอบแล้ว" approve.
+- **Aggregate view** per visit shows product × qty rolled up across all
+  receipts, with green ✓ / orange ? per row for catalog match.
 
-| Layer | Technology |
-|-------|-----------|
-| Backend | FastAPI + SQLAlchemy + Alembic + SQLite |
-| Frontend | React 19 + Vite 8 + Tailwind CSS 4 + TypeScript 6 |
-| AI | Google Gemini 3 Flash (via `google-genai` SDK) — Vision-Language Model |
-| Infrastructure | Docker Compose + GitHub Actions CI |
-
-## Prerequisites
-
-- Python 3.11+
-- Node.js 20+
-- Google Cloud credentials (service account key) or Gemini API key
-
-## Quick Start
+## Quick start
 
 ```bash
-# Install everything
-make install
-
-# Configure
+make install           # backend (uv) + frontend (bun)
 cp backend/.env.example backend/.env
 # Edit backend/.env — set GEMINI_API_KEY or GCP_CREDENTIALS_PATH
-
-# Run both servers
-make dev
+make db-upgrade        # apply alembic migrations
+make dev               # backend :8000 + frontend :5173
 ```
 
-Open http://localhost:5173
+Open <http://localhost:5173>.
 
-## Available Commands
+## Tech stack
 
-```
-make dev              # Run backend + frontend dev servers
-make test             # Run backend tests (33 tests)
-make build            # Build frontend for production
-make test-upload      # Upload test receipts from dataTest/
-make db-upgrade       # Apply Alembic migrations
-make docker-up        # Start with Docker Compose
-make help             # Show all commands
-```
+| Layer    | Tech                                                       |
+|----------|------------------------------------------------------------|
+| Backend  | FastAPI · SQLAlchemy · Alembic · SQLite                    |
+| Frontend | React 19 · Vite · Mantine v9 · Tailwind v4 · React Query   |
+| AI       | Gemini 3 Flash via `google-genai` (Vertex AI)              |
+| Worker   | arq + Redis (opt-in via `USE_ARQ=true`)                    |
 
-## Project Structure
+## Make targets
 
-```
-receipt-ai/
-├── backend/
-│   ├── app/
-│   │   ├── main.py              # FastAPI app + middleware
-│   │   ├── config.py            # Settings (env-based)
-│   │   ├── models.py            # SQLAlchemy models
-│   │   ├── schemas.py           # Pydantic schemas
-│   │   ├── database.py          # DB engine + session
-│   │   ├── routers/
-│   │   │   ├── documents.py     # Upload, CRUD, approve, re-extract
-│   │   │   └── dashboard.py     # Stats, charts, CSV export
-│   │   └── services/
-│   │       ├── extraction.py    # Gemini Vision extraction
-│   │       └── validation.py    # Business rule validation
-│   ├── alembic/                 # Database migrations
-│   ├── tests/                   # pytest (33 tests)
-│   └── Dockerfile
-├── frontend/
-│   ├── src/
-│   │   ├── api/client.ts        # API client + types
-│   │   ├── components/
-│   │   │   ├── Layout.tsx       # Sidebar layout
-│   │   │   └── Toast.tsx        # Toast notifications
-│   │   └── pages/
-│   │       ├── UploadPage.tsx   # Drag-drop upload
-│   │       ├── DocumentsPage.tsx # List + search + filter
-│   │       ├── ReviewPage.tsx   # Side-by-side review + edit
-│   │       └── DashboardPage.tsx # Charts + stats + export
-│   ├── Dockerfile
-│   └── nginx.conf
-├── docker-compose.yml
-├── Makefile
-└── scripts/test_upload.py       # Batch upload test script
+```text
+make dev              # backend + frontend concurrently
+make worker           # arq worker (requires Redis)
+make test             # pytest (113 tests)
+make typecheck        # frontend tsc --noEmit
+make build            # frontend production build
+make test-upload      # batch-upload dataTest/ images
+make db-upgrade       # apply alembic migrations
+make docker-up        # docker compose stack
+make help             # all targets
 ```
 
-## Processing Pipeline
+## Project layout
 
+```text
+backend/
+├── app/
+│   ├── main.py               # FastAPI app + router mounts
+│   ├── models.py             # Document, DocumentItem, Visit, Store,
+│   │                         # Product*, *Alias, *Event
+│   ├── schemas.py            # Pydantic request/response models
+│   ├── routers/
+│   │   ├── documents.py      # upload, CRUD, items, approve, reextract
+│   │   ├── visits.py         # visit CRUD + bulk upload + SSE stream
+│   │   ├── stores.py         # store master CRUD
+│   │   ├── inbox.py          # triage: dashboard, assign/create-store,
+│   │   │                     # name orphan, purge non-receipts
+│   │   ├── products.py       # catalog stats + lookup
+│   │   ├── aliases.py        # learned product aliases
+│   │   ├── autocomplete.py   # store + product autocomplete
+│   │   └── push.py           # web push subscriptions
+│   └── services/
+│       ├── extraction.py     # default Gemini call (prompt + catalog)
+│       ├── extraction_agentic.py  # tool-calling mode (opt-in)
+│       ├── visits.py         # ensure_visit_for_doc, period/store check
+│       ├── visit_aggregate.py  # (product × qty) rollup per visit
+│       ├── merchants.py      # rapidfuzz normalization
+│       ├── catalog.py        # DB-backed PRODUCT_CATALOG for the prompt
+│       └── validation.py     # post-extract Thai-language warnings
+├── alembic/versions/         # 24 migrations (head: 0024)
+└── tests/                    # pytest (113 tests)
+
+frontend/src/
+├── pages/
+│   ├── InboxPage.tsx         # /  and /inbox — landing page
+│   ├── StoresPage.tsx        # store master list
+│   ├── StoreDetailPage.tsx   # one store's monthly visits
+│   ├── VisitsPage.tsx        # all visits (admin view)
+│   ├── VisitDetailPage.tsx   # one visit: docs + aggregate
+│   ├── VisitReviewPage.tsx   # /visits/:vid/review/:docId — image+items
+│   ├── DocumentsPage.tsx     # all-docs admin list
+│   └── TrashPage.tsx         # soft-deleted docs
+├── api/{client,queries}.ts   # fetch wrappers + React Query hooks
+├── components/Layout.tsx     # Mantine AppShell + sidebar
+└── theme.ts                  # Mantine theme (indigo, IBM Plex Sans Thai)
 ```
-Upload → [Gemini Vision] → JSON
-              ↓
-   Validation → Store → Review → Approve → Export
-```
 
-## API Documentation
+## Key endpoints
 
-FastAPI auto-generated docs: http://localhost:8000/docs
+| Method | Path                                          | Notes                             |
+|--------|-----------------------------------------------|-----------------------------------|
+| POST   | `/api/inbox`                                  | Upload one or many receipts       |
+| GET    | `/api/inbox/dashboard`                        | Counts + items needing triage     |
+| POST   | `/api/inbox/documents/{id}/assign-store`      | Attach orphan to existing store   |
+| POST   | `/api/inbox/documents/{id}/create-store`      | Promote + attach to new store     |
+| POST   | `/api/inbox/documents/{id}/name`              | Name a merchant-less doc          |
+| GET    | `/api/stores`, `POST/PATCH/DELETE`            | Store master CRUD                 |
+| GET    | `/api/visits`, `POST/PATCH/DELETE`            | Visit CRUD (idempotent per month) |
+| POST   | `/api/visits/{id}/documents`                  | Bulk upload to a visit            |
+| GET    | `/api/visits/{id}/stream`                     | SSE per-doc status updates        |
+| GET    | `/api/documents/{id}/image`                   | Serve the original file           |
+| PUT    | `/api/documents/{id}/items/{item_id}`         | Edit a line item                  |
+| POST   | `/api/documents/{id}/approve`                 | Mark as reviewed                  |
 
-### Key Endpoints
+Auto-generated FastAPI docs: <http://localhost:8000/docs>.
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/documents/upload` | Upload receipt |
-| GET | `/api/documents` | List with search/filter/pagination |
-| GET | `/api/documents/{id}` | Get document details |
-| POST | `/api/documents/{id}/reextract` | Re-run AI extraction |
-| POST | `/api/documents/{id}/approve` | Approve document |
-| GET | `/api/dashboard/stats` | Summary statistics |
-| GET | `/api/dashboard/daily-sales` | Sales by date |
-| GET | `/api/dashboard/top-merchants` | Top merchants |
-| GET | `/api/dashboard/export` | CSV export (filterable) |
+## Configuration (`backend/.env`)
 
-## Configuration
-
-See `backend/.env.example` for all options:
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `GEMINI_API_KEY` | Gemini API key (option 1) | - |
-| `GCP_CREDENTIALS_PATH` | GCP service account JSON (option 2) | - |
-| `GEMINI_MODEL` | Gemini model | `gemini-3-flash-preview` |
-| `MAX_FILE_SIZE_MB` | Upload size limit | `20` |
-| `CORS_ORIGINS` | Allowed origins (comma-separated) | `http://localhost:5173` |
-
-## Docker
-
-```bash
-# Build and start
-docker compose up --build -d
-
-# View logs
-docker compose logs -f
-
-# Stop
-docker compose down
-```
+| Variable                  | Description                                  | Default                          |
+|---------------------------|----------------------------------------------|----------------------------------|
+| `GEMINI_API_KEY`          | API key (option 1)                           | —                                |
+| `GCP_CREDENTIALS_PATH`    | Service-account JSON (option 2)              | —                                |
+| `GEMINI_MODEL`            | Vertex model id                              | `gemini-3-flash-preview`         |
+| `EXTRACTION_MODE`         | `default` or `agentic`                       | `default`                        |
+| `USE_ARQ`                 | Send processing to arq worker                | `false`                          |
+| `REDIS_URL`               | Used when `USE_ARQ=true`                     | `redis://localhost:6379/0`       |
+| `MAX_FILE_SIZE_MB`        | Upload size limit                            | `20`                             |
+| `CORS_ORIGINS`            | Comma-separated origins                      | `http://localhost:5173`          |
 
 ## Testing
 
 ```bash
-# Unit + integration tests
-make test
-
-# Upload test receipts to running server
-make test-upload
+make test          # 113 pytest cases
+make typecheck     # tsc --noEmit on the frontend
+make test-upload   # end-to-end with sample receipts in dataTest/
 ```

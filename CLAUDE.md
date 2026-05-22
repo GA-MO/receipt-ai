@@ -1,93 +1,184 @@
 # CLAUDE.md
 
-## Project Overview
+## Project overview
 
-Thai Receipt Intelligence — AI-powered system that extracts structured data from Thai receipts, invoices, and sales documents. Built for SBP AI Hackathon 2026.
+Thai Receipt Intelligence — a visit-centric receipt-processing tool for
+Boonrawd sales reps. Reps visit retail stores each month, photograph the
+month's receipts (own + competitor SKUs), and the system extracts
+**(product, quantity)** per receipt then rolls it up into `(store, month) →
+[(product, qty)]`. Image files stay in storage as audit evidence.
+
+The pivot from a generic "rich receipt extraction" tool happened in May 2026
+(see `visit-pivot-plan.md`); price/VAT/fraud features were removed because
+they were not part of the real workflow.
 
 ## Architecture
 
-- **Backend:** FastAPI (Python 3.11+) at `backend/`
-- **Frontend:** React + Vite + Tailwind CSS 4 + Mantine v9 at `frontend/`
-- **AI Pipeline:** Google Gemini 3 Flash (via `google-genai` SDK) — vision-only extraction from images/PDFs
-- **Database:** SQLite via SQLAlchemy + Alembic migrations
-- **UI Theme:** Mantine theme in `src/theme.ts` (indigo primary, IBM Plex Sans Thai font, defaultRadius md) + dark mode via MantineProvider
+- **Backend** — FastAPI (Python 3.11+) at `backend/`
+- **Frontend** — React 19 + Vite + Mantine v9 + Tailwind v4 at `frontend/`
+- **AI** — Gemini 3 Flash via `google-genai` (Vertex AI), vision-only
+- **DB** — SQLite via SQLAlchemy + Alembic (head: `0024`)
+- **Worker** — arq + Redis, opt-in via `USE_ARQ=true`; default falls back
+  to FastAPI `BackgroundTasks` guarded by a `threading.Semaphore(1)`
 
-## Key Commands
+## User flow
+
+```text
+/inbox  (landing)
+  ├─ Upload N receipts in one go
+  ├─ AI extracts → docs land in one of:
+  │     • a Visit (store matched, period inferred)
+  │     • Unknown-store section (admin picks/creates store)
+  │     • Orphan section (merchant unreadable, admin names it)
+  │     • Non-receipts (auto-purge in 7 days)
+  └─ Visits-to-review section links into:
+
+/stores                  list of admin-managed stores
+  └─ /stores/:id         store detail: list of months (visits)
+       └─ /visits/:id    visit: aggregate (product × qty) + docs panel
+            └─ /visits/:vid/review/:docId
+                         per-doc review: ImageCanvas left, items right
+                         (autocomplete, ✓/? catalog match, approve, prev/next)
+```
+
+## Key commands
 
 ```bash
-make dev           # Run backend (:8000) + frontend (:5173) concurrently
-make test          # pytest (33 tests) — in backend/tests/
-make build         # Frontend production build
-make test-upload   # Upload dataTest/ receipts to running server
-make db-upgrade    # Apply Alembic migrations
-make docker-up     # Docker Compose
+make dev           # backend :8000 + frontend :5173
+make worker        # arq worker (requires Redis + USE_ARQ=true)
+make test          # pytest in backend/tests (113 tests)
+make typecheck     # tsc --noEmit on the frontend
+make build         # frontend production build
+make test-upload   # batch-upload dataTest/ to a running server
+make db-upgrade    # alembic upgrade head
+make docker-up     # docker compose
 ```
 
-## AI Pipeline — Gemini Vision
+## AI pipeline
 
-- Documents are sent to **Gemini 3 Flash** as image or PDF bytes; the model returns structured JSON (merchant, line items, totals, VAT, category)
-- **Extraction pipeline** is selectable via `EXTRACTION_MODE` (default `combined`):
-  - `combined` (default) — single Gemini call returning extraction + self-contained fraud analysis; history-based fraud checks (duplicate, unusual amount) run in Python/SQL afterwards. ~15% faster and ~23% cheaper than legacy.
-  - `legacy` — two serial Gemini calls (extract, then fraud). Original behaviour, kept as a safe fallback.
-  - `agentic` — multi-turn tool-calling loop (`lookup_catalog`, `check_merchant_history`, `emit_extraction`, `emit_fraud_analysis`). Useful when the catalog grows large but currently slower and more expensive per doc.
-- **Processing runs on an arq/Redis worker** (opt-in via `USE_ARQ=true`) or falls back to FastAPI `BackgroundTasks` with a `threading.Semaphore(1)` guard for local dev
-- The catalog and schema live in Gemini's `system_instruction` (in legacy/combined) or as tool responses (in agentic), keeping per-request prompts lean
+- `EXTRACTION_MODE=default` (recommended) — one Gemini Vision call. The
+  system instruction carries the live `PRODUCT_CATALOG` (built from active
+  `products` rows) plus the JSON schema; the user prompt is a short task
+  override.
+- `EXTRACTION_MODE=agentic` — multi-turn tool-calling loop with
+  `lookup_catalog`; slower, only useful if the catalog grows much larger.
+- Retry with exponential backoff (3 attempts) inside `llm_client`.
+- The pipeline extracts: `merchant_name/_normalized`, `document_number`,
+  `document_date` (ค.ศ.), `category`, `items[]` with
+  `product_name_raw/_normalized`, `product_code`, `quantity`, `unit`.
+  **Prices, VAT, discount, totals are not extracted** — they were removed
+  from the schema, the prompt, and the DB.
 
-## Gemini Extraction
+## Data model
 
-- System instruction carries the Boonrawd **PRODUCT_CATALOG** (alias → official name → category) and JSON schema; the user prompt only carries task-specific overrides
-- **Category auto-classification** (document-level + per item): `เบียร์, น้ำดื่ม, โซดาและน้ำอัดลม, น้ำแร่, สุรา, เครื่องดื่มอื่นๆ, อาหาร, อื่นๆ`
-  - `DocumentItem.category` mirrors the catalog category for each line-item (not just the document)
-- **Merchant normalization** — extraction returns both `merchant_name` (raw) and `merchant_normalized` (canonical); `services/merchants.normalize_merchant` uses `rapidfuzz` to cluster similar raw names into the same canonical merchant, used in dashboards and fraud history
-- **Non-receipt documents** (reports, slips): Gemini sets low confidence (0.3-0.6) and notes the document type
-- JSON response is validated — handles array-instead-of-object and nested lists from Gemini edge cases
-- Retry with exponential backoff (3 attempts)
+- `documents` — id, file path/hash, status, raw extraction JSON,
+  merchant_name/_normalized, document_number/_date, category, notes,
+  confidence, needs_review, visit_id FK
+- `document_items` — product_name_raw/_normalized, product_code, category,
+  quantity, unit
+- `visits` — store_id FK, store_key (normalized merchant), store_label,
+  report_period (`YYYY-MM`), rep_name, last_reviewed_at
+- `stores` — name, code (unique), normalized_name, address, active
+- `products` — Boonrawd catalog + admin-added competitor SKUs;
+  `manufacturer` distinguishes ours from competitor
+- `product_aliases` — learned alias mappings from user corrections
+  (merchant aliases exist but are no longer being learned — Store master
+  is the source of truth for merchants)
+- `catalog_gap_events`, `typo_recovery_events`, `document_events` — audit
+  trail surfaces
 
-## Development Notes
+## Extraction details
 
-- Backend venv is at `backend/.venv` — use `.venv/bin/python` or `.venv/bin/uvicorn`
-- Package management: `uv` for Python, `bun` for Node
-- Tests mock `_process_document` (not `extract_receipt`) because background tasks create their own DB session
-- Test DB uses in-memory SQLite with `StaticPool` (required for shared state across connections)
-- Config via `.env` file in `backend/` — see `.env.example`
-- GCP auth: service account key with `google.auth.default(scopes=["cloud-platform"])` + Vertex AI client
-- Frontend API base URL from `VITE_API_BASE` env var (defaults to `http://localhost:8000/api`)
-- DB schema changes: add migration under `backend/alembic/versions/` and run `make db-upgrade`
-- **Worker**: `make worker` runs `arq app.worker.WorkerSettings` against Redis for durable background processing
-- **React Query**: `frontend/src/api/queries.ts` defines query keys + hooks (`useDocument`, `useDocuments`, etc.); invalidate on mutation
-- **SSE**: `GET /api/documents/{id}/events` streams status updates; frontend uses `EventSource` via `useDocumentStream` hook to avoid polling
+- System instruction (`services/extraction.py`) carries the Boonrawd
+  PRODUCT_CATALOG markdown + the JSON schema. Top categories are 4:
+  `เครื่องดื่ม`, `อาหาร และของว่าง`, `สินค้าพรีเมียมสิงห์`, `สินค้าอื่นๆ`.
+  Legacy 8-category names are remapped on parse.
+- **Merchant normalization** — extraction returns both `merchant_name`
+  (raw) and `merchant_normalized` (canonical); `services/merchants` uses
+  rapidfuzz to cluster similar raw names; the visit-creation path links a
+  doc to an existing Store by `normalized_name`.
+- **Visit auto-attach** — after extraction, `ensure_visit_for_doc` finds
+  or creates a Visit for the doc's `(store_id, report_period)`. Mismatches
+  (e.g., date outside the visit's month) are flagged on the doc itself
+  via `check_period_mismatch` + `check_store_mismatch`.
+- JSON response is defensively parsed (handles array-instead-of-object,
+  nested item lists, invalid categories).
 
-## File Layout (important files)
+## Development notes
 
+- Backend venv at `backend/.venv` — invoke as `.venv/bin/python` or
+  `.venv/bin/uvicorn` / `.venv/bin/alembic`.
+- Package management: `uv` for Python, `bun` for Node.
+- Tests mock `_process_document` (not `extract_receipt`) because background
+  tasks open their own DB session.
+- Test DB uses in-memory SQLite with `StaticPool` for cross-connection
+  state sharing.
+- Config via `.env` in `backend/` — see `backend/.env.example`. GCP auth
+  uses `google.auth.default(scopes=["cloud-platform"])` + Vertex AI client.
+- Frontend API base URL from `VITE_API_BASE` env var (defaults to
+  `http://localhost:8000/api`).
+- DB schema changes: add a file under `backend/alembic/versions/` and run
+  `make db-upgrade`.
+- SSE: `GET /api/visits/{id}/stream` and `GET /api/documents/{id}/events`
+  publish per-doc status updates via the in-process `event_bus`.
+- React Query: `frontend/src/api/queries.ts` defines query keys + hooks
+  (`useVisit`, `useStores`, `useDocument`, …). Mutations invalidate
+  `["documents"]`, `["visits"]`, `["trash"]`.
+
+## File map (important)
+
+```text
+backend/app/services/extraction.py        # default Gemini call + prompt
+backend/app/services/extraction_agentic.py  # tool-calling mode
+backend/app/services/extraction_tools.py    # lookup_catalog declaration
+backend/app/services/visits.py              # ensure_visit_for_doc,
+                                            # check_period_mismatch,
+                                            # check_store_mismatch
+backend/app/services/visit_aggregate.py     # product×qty rollup per visit
+backend/app/services/merchants.py           # rapidfuzz normalization
+backend/app/services/catalog.py             # DB-backed PRODUCT_CATALOG
+backend/app/services/validation.py          # Thai post-extract warnings
+backend/app/routers/documents.py            # upload, CRUD, items, approve
+backend/app/routers/visits.py               # visit CRUD + bulk + stream
+backend/app/routers/stores.py               # store master CRUD
+backend/app/routers/inbox.py                # triage dashboard + actions
+backend/app/models.py                       # all SQLAlchemy models
+
+frontend/src/pages/InboxPage.tsx            # / and /inbox — landing
+frontend/src/pages/StoresPage.tsx           # store master list
+frontend/src/pages/StoreDetailPage.tsx      # one store, list of months
+frontend/src/pages/VisitDetailPage.tsx      # one visit: aggregate + docs
+frontend/src/pages/VisitReviewPage.tsx      # ImageCanvas + items editor
+frontend/src/api/{client,queries}.ts        # fetch + React Query
+frontend/src/components/Layout.tsx          # Mantine AppShell sidebar
+frontend/src/theme.ts                       # indigo, IBM Plex Sans Thai
 ```
-backend/app/services/extraction.py  — Legacy Gemini Vision extraction (system_instruction + catalog, retry)
-backend/app/services/extraction_combined.py — Default: 1-call extraction + fraud; Python post-check for history
-backend/app/services/extraction_agentic.py — Tool-calling (lookup_catalog, check_merchant_history) multi-turn loop
-backend/app/services/extraction_tools.py   — Tool implementations + Gemini FunctionDeclaration schemas
-backend/app/services/merchants.py   — Merchant name normalization (rapidfuzz clustering)
-backend/app/services/validation.py  — Business rule validation (totals, VAT, dates)
-backend/app/services/storage.py     — File upload / hash / magic-byte validation
-backend/app/worker.py               — arq worker: process_document task
-backend/app/events.py               — In-process pub/sub for SSE status events
-backend/app/routers/documents.py    — Upload, CRUD, re-extract, approve, search+filter, SSE stream
-backend/app/routers/dashboard.py    — Stats, daily-sales, top-merchants, category breakdown, VAT summary, CSV export
-backend/app/models.py               — Document (+ merchant_normalized, fraud_flags) + DocumentItem (+ category)
-frontend/src/theme.ts               — Mantine theme (indigo primary, IBM Plex Sans Thai, component defaults)
-frontend/src/index.css              — Tailwind v4 import + font config
-frontend/src/api/client.ts          — Raw fetch wrappers + TypeScript types
-frontend/src/api/queries.ts         — React Query hooks (useDocument, useDocuments, useDashboardStats, …)
-frontend/src/hooks/useDocumentStream.ts — SSE EventSource hook for live document status
-frontend/src/components/Layout.tsx   — Mantine AppShell (sidebar, dark mode toggle, mobile burger)
-frontend/src/components/Toast.tsx    — Thin wrapper around @mantine/notifications (useToast API)
-frontend/src/pages/ReviewPage.tsx   — Side-by-side review, category select, auto-calculate
-frontend/src/pages/DocumentsPage.tsx — Search, status+category filter, date range, pagination
-frontend/src/pages/DashboardPage.tsx — Stats, charts, category breakdown, VAT summary, fraud detection
-frontend/src/pages/CapturePage.tsx  — Mobile camera capture
-```
 
-## Style Conventions
+## Style conventions
 
-- Backend: Python, no docstrings except on complex functions, Thai error messages for user-facing errors, English for logs
-- Frontend: TypeScript strict, functional components, Mantine v9 components + Tailwind CSS 4 for layout utilities
-- Thai language used in UI labels, validation messages, and prompts
-- Commit messages in English
+- Backend: Python; no docstrings except on non-obvious functions; Thai
+  for user-facing error messages, English for log strings.
+- Frontend: TypeScript strict; functional components; Mantine v9 for
+  components; Tailwind v4 for layout utilities; Thai for UI labels.
+- Commit messages in English.
+- Use `var(--mantine-color-default-border)` (not Tailwind `border-t`) for
+  dividers so dark mode + theme tokens stay consistent.
+
+## Things that used to exist but are gone
+
+If a doc/comment references any of these, it's stale:
+
+- **Dashboard** (`/api/dashboard/*`, `DashboardPage.tsx`) — removed; this
+  pivot doesn't aggregate revenue.
+- **Fraud detection** (`services/fraud.py`, `extraction_combined.py`,
+  `fraud_flags` column) — removed.
+- **Price fields** (`subtotal`, `discount`, `vat`, `grand_total`,
+  `unit_price`, `line_total`) — dropped from DB, schema, and prompt.
+- **`extraction_combined`** mode and `use_combined_extraction` setting —
+  removed.
+- **8-category taxonomy** (เบียร์/น้ำดื่ม/โซดา/…) — replaced with 4
+  Singha-Online categories; legacy values auto-remap on parse.
+- **CSV export** (`/api/dashboard/export`) — removed.
+- **AI Health** (`/api/ai-health/*`, AIHealthPage) — removed.
+- **Stepper visit creation** (`/visits/new`, `VisitNewPage.tsx`) —
+  replaced by the Inbox + Store-detail "+ เพิ่มเดือน" flow.

@@ -1,5 +1,15 @@
 # Visit-Centric Pivot Plan
 
+> **Status: shipped.** This document captures the original pivot decision
+> from 2026-05-21 and is retained for historical context only. The
+> implementation has evolved beyond what's described here — Slice 1 was
+> completed and several follow-ups were added (Store master entity,
+> full-page review with ImageCanvas, Inbox triage, drop of price/fraud
+> from the DB, etc.). For the current architecture see [`CLAUDE.md`](CLAUDE.md)
+> and [`README.md`](README.md).
+>
+> Original framing below.
+>
 > Drafted 2026-05-21. Pivots the system from "rich single-receipt extraction" to
 > "monthly product-sales aggregation per store visit" after root-cause discovery
 > with real field users.
