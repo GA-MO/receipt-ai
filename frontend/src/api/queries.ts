@@ -50,6 +50,14 @@ import {
   recomputeVisitLabel,
   updateVisit,
   uploadDocumentsToVisit,
+  assignStoreToDoc,
+  createStoreFromDoc,
+  discardInboxDoc,
+  getDashboard,
+  markVisitReviewed,
+  nameOrphan,
+  purgeNonReceipts,
+  uploadInbox,
   createStore,
   deleteStore,
   getStore,
@@ -72,6 +80,7 @@ export const qk = {
     products: (limit: number) => ["aliases", "products", limit] as const,
     stats: ["aliases", "stats"] as const,
   },
+  dashboard: (month?: string | null) => ["dashboard", month ?? null] as const,
 };
 
 // ---------- Invalidation helper ----------
@@ -446,6 +455,99 @@ export function useRecomputeVisitLabel(visitId: string) {
   return useMutation({
     mutationFn: () => recomputeVisitLabel(visitId),
     onSuccess: () => invalidate(visitId),
+  });
+}
+
+// ---------- Inbox / Dashboard ----------
+
+function useInvalidateDashboard() {
+  const qc = useQueryClient();
+  return () => {
+    qc.invalidateQueries({ queryKey: ["dashboard"] });
+    qc.invalidateQueries({ queryKey: ["documents"] });
+    qc.invalidateQueries({ queryKey: ["visits"] });
+  };
+}
+
+export function useDashboard(month?: string | null) {
+  return useQuery({
+    queryKey: qk.dashboard(month ?? null),
+    queryFn: () => getDashboard(month ?? null),
+    // Polled while there are processing / pending docs — slow down once
+    // everything settles so the page isn't spinning when idle.
+    refetchInterval: (q) => {
+      const data = q.state.data;
+      if (!data) return 3_000;
+      return data.counts.processing > 0 ? 2_500 : 20_000;
+    },
+  });
+}
+
+export function useUploadInbox() {
+  const invalidate = useInvalidateDashboard();
+  return useMutation({
+    mutationFn: (files: File[]) => uploadInbox(files),
+    onSuccess: () => invalidate(),
+  });
+}
+
+export function useNameOrphan() {
+  const invalidate = useInvalidateDashboard();
+  return useMutation({
+    mutationFn: ({ docId, merchantName }: { docId: string; merchantName: string }) =>
+      nameOrphan(docId, merchantName),
+    onSuccess: () => invalidate(),
+  });
+}
+
+export function useDiscardInboxDoc() {
+  const invalidate = useInvalidateDashboard();
+  return useMutation({
+    mutationFn: (docId: string) => discardInboxDoc(docId),
+    onSuccess: () => invalidate(),
+  });
+}
+
+export function useAssignStoreToDoc() {
+  const invalidate = useInvalidateDashboard();
+  return useMutation({
+    mutationFn: ({ docId, storeId }: { docId: string; storeId: string }) =>
+      assignStoreToDoc(docId, storeId),
+    onSuccess: () => invalidate(),
+  });
+}
+
+export function useCreateStoreFromDoc() {
+  const invalidate = useInvalidateDashboard();
+  return useMutation({
+    mutationFn: ({
+      docId,
+      name,
+      code,
+      normalized_name,
+    }: {
+      docId: string;
+      name: string;
+      code?: string;
+      normalized_name?: string;
+    }) => createStoreFromDoc(docId, { name, code, normalized_name }),
+    onSuccess: () => invalidate(),
+  });
+}
+
+export function useMarkVisitReviewed() {
+  const invalidate = useInvalidateDashboard();
+  return useMutation({
+    mutationFn: (visitId: string) => markVisitReviewed(visitId),
+    onSuccess: () => invalidate(),
+  });
+}
+
+export function usePurgeNonReceipts() {
+  const invalidate = useInvalidateDashboard();
+  return useMutation({
+    mutationFn: (olderThanDays?: number) => purgeNonReceipts(olderThanDays),
+    onSuccess: () => invalidate(),
   });
 }
 

@@ -3,3 +3,8 @@
 @theme {
   --font-sans: "IBM Plex Sans Thai", system-ui, sans-serif;
 }
+
+/* Mantine controls light/dark via [data-mantine-color-scheme="dark"] on
+   <html>. Re-point Tailwind's `dark:` variant at that attribute so the two
+   stay in sync when the user toggles theme. */
+@custom-variant dark (&:where([data-mantine-color-scheme="dark"] *));

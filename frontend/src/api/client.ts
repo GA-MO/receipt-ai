@@ -361,6 +361,100 @@ export function recomputeVisitLabel(id: string) {
   );
 }
 
+// ---------- Inbox / Dashboard (Drop & Review) ----------
+
+export interface InboxUploadResult {
+  document_ids: string[];
+  duplicates: { filename: string; existing_document_id: string; existing_visit_id: string | null }[];
+  failures: { filename: string; detail: string }[];
+}
+
+export interface DashboardVisit extends VisitListItem {
+  new_doc_count: number;
+  last_reviewed_at: string | null;
+}
+
+export interface DashboardResponse {
+  month: string | null;
+  available_months: string[];
+  orphans: DocumentListItem[];
+  unknown_stores: DocumentListItem[];
+  non_receipts: DocumentListItem[];
+  errors: DocumentListItem[];
+  processing: DocumentListItem[];
+  visits: DashboardVisit[];
+  counts: {
+    orphans: number;
+    unknown_stores: number;
+    non_receipts: number;
+    errors: number;
+    processing: number;
+    visits: number;
+    attention: number;
+  };
+}
+
+export function uploadInbox(files: File[]) {
+  const form = new FormData();
+  for (const f of files) form.append("files", f);
+  return request<InboxUploadResult>(`/inbox`, {
+    method: "POST",
+    body: form,
+  });
+}
+
+export function getDashboard(month?: string | null) {
+  const qs = month ? `?month=${encodeURIComponent(month)}` : "";
+  return request<DashboardResponse>(`/inbox/dashboard${qs}`);
+}
+
+export function nameOrphan(docId: string, merchantName: string) {
+  return request<DocumentListItem>(`/inbox/documents/${docId}/name`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ merchant_name: merchantName }),
+  });
+}
+
+export function assignStoreToDoc(docId: string, storeId: string) {
+  return request<DocumentListItem>(`/inbox/documents/${docId}/assign-store`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ store_id: storeId }),
+  });
+}
+
+export function createStoreFromDoc(
+  docId: string,
+  payload: { name: string; code?: string; normalized_name?: string },
+) {
+  return request<DocumentListItem>(`/inbox/documents/${docId}/create-store`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function discardInboxDoc(docId: string) {
+  return request<{ id: string; deleted_at: string }>(`/inbox/documents/${docId}`, {
+    method: "DELETE",
+  });
+}
+
+export function markVisitReviewed(visitId: string) {
+  return request<{ id: string; last_reviewed_at: string }>(
+    `/inbox/visits/${visitId}/mark-reviewed`,
+    { method: "POST" },
+  );
+}
+
+export function purgeNonReceipts(olderThanDays = 7) {
+  return request<{ purged: number; cutoff: string }>(
+    `/inbox/non-receipts/purge?older_than_days=${olderThanDays}`,
+    { method: "POST" },
+  );
+}
+
 export function getDocumentImageUrl(id: string) {
   return `${API_BASE}/documents/${id}/image`;
 }
@@ -476,6 +570,7 @@ export interface DocumentResponse {
   category: string | null;
   notes: string | null;
   items: DocumentItemData[];
+  visit_id: string | null;
 }
 
 export interface DocumentListItem {
@@ -493,6 +588,7 @@ export interface DocumentListItem {
   item_count: number;
   visit_id: string | null;
   period_mismatch: boolean;
+  store_mismatch: boolean;
 }
 
 export interface BulkActionResult {

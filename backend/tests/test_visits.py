@@ -5,13 +5,37 @@ import struct
 import zlib
 from unittest.mock import patch
 
-from app.models import Document, DocumentItem, Product, Visit
+import pytest
+
+from app.models import Document, DocumentItem, Product, Store, Visit
 from app.services.visit_aggregate import aggregate_visit
 from app.services.visits import (
     check_period_mismatch,
+    check_store_mismatch,
     ensure_visit_for_doc,
     get_or_create_visit_for_merchant,
+    is_store_mismatch,
 )
+
+
+@pytest.fixture(autouse=True)
+def _seed_default_stores(db_session):
+    """Seed Store master rows for the merchant names used in these tests.
+
+    Visit attachment now requires a matching Store, so without this fixture
+    every legacy test that calls ``get_or_create_visit_for_merchant`` would
+    get ``None`` back.
+    """
+    for name in ("ร้านA", "ร้านB", "ร้านX", "ร้านY"):
+        db_session.add(
+            Store(
+                id=f"store-{name}",
+                name=name,
+                normalized_name=name,
+                active=True,
+            )
+        )
+    db_session.flush()
 
 
 def _make_tiny_png() -> bytes:
@@ -54,14 +78,14 @@ def _seed_doc(db, *, merchant_normalized="ร้านA", visit_id=None, items=N
 
 class TestVisitHelpers:
     def test_get_or_create_visit_creates_new(self, db_session):
-        v = get_or_create_visit_for_merchant(db_session, "ร้านA", store_label="ร้าน A")
+        v = get_or_create_visit_for_merchant(db_session, "ร้านA", report_period="2026-05", store_label="ร้าน A")
         assert v.id
         assert v.store_key == "ร้านA"
         assert v.store_label == "ร้าน A"
 
     def test_get_or_create_visit_reuses_existing(self, db_session):
-        v1 = get_or_create_visit_for_merchant(db_session, "ร้านA")
-        v2 = get_or_create_visit_for_merchant(db_session, "ร้านA")
+        v1 = get_or_create_visit_for_merchant(db_session, "ร้านA", report_period="2026-05")
+        v2 = get_or_create_visit_for_merchant(db_session, "ร้านA", report_period="2026-05")
         assert v1.id == v2.id
 
     def test_ensure_visit_for_doc_skips_when_no_merchant(self, db_session):
@@ -154,12 +178,12 @@ class TestVisitsRouter:
 
 class TestAggregate:
     def test_empty_visit_returns_empty(self, db_session):
-        v = get_or_create_visit_for_merchant(db_session, "ร้านA")
+        v = get_or_create_visit_for_merchant(db_session, "ร้านA", report_period="2026-05")
         assert aggregate_visit(db_session, v.id) == []
 
     def test_groups_by_sku_across_docs(self, db_session):
         # Two docs in the same visit, both selling the same SKU.
-        v = get_or_create_visit_for_merchant(db_session, "ร้านA")
+        v = get_or_create_visit_for_merchant(db_session, "ร้านA", report_period="2026-05")
         _seed_doc(
             db_session,
             merchant_normalized="ร้านA",
@@ -195,7 +219,7 @@ class TestAggregate:
         assert rows[0].units_seen == ["ขวด"]
 
     def test_unknown_items_fallback_by_name(self, db_session):
-        v = get_or_create_visit_for_merchant(db_session, "ร้านA")
+        v = get_or_create_visit_for_merchant(db_session, "ร้านA", report_period="2026-05")
         _seed_doc(
             db_session,
             merchant_normalized="ร้านA",
@@ -229,7 +253,7 @@ class TestAggregate:
         assert rows[0].total_quantity == 15
 
     def test_mixed_units_flagged(self, db_session):
-        v = get_or_create_visit_for_merchant(db_session, "ร้านA")
+        v = get_or_create_visit_for_merchant(db_session, "ร้านA", report_period="2026-05")
         _seed_doc(
             db_session,
             merchant_normalized="ร้านA",
@@ -261,7 +285,7 @@ class TestAggregate:
         assert sorted(rows[0].units_seen) == ["ขวด", "ลัง"]
 
     def test_manufacturer_propagated_from_product(self, db_session):
-        v = get_or_create_visit_for_merchant(db_session, "ร้านA")
+        v = get_or_create_visit_for_merchant(db_session, "ร้านA", report_period="2026-05")
         db_session.add(
             Product(
                 id="p1",
@@ -291,7 +315,7 @@ class TestAggregate:
         assert rows[0].display_name == "Brand X"
 
     def test_date_filter(self, db_session):
-        v = get_or_create_visit_for_merchant(db_session, "ร้านA")
+        v = get_or_create_visit_for_merchant(db_session, "ร้านA", report_period="2026-05")
         d1 = _seed_doc(
             db_session,
             merchant_normalized="ร้านA",
@@ -435,3 +459,53 @@ class TestReportPeriod:
         by_id = {d["id"]: d for d in detail["documents"]}
         assert by_id["d1"]["period_mismatch"] is False
         assert by_id["d2"]["period_mismatch"] is True
+
+    def test_is_store_mismatch_same_store(self, db_session):
+        v = Visit(id="v1", store_label="ร้านA", store_key="ร้านA")
+        db_session.add(v)
+        db_session.flush()
+        doc = _seed_doc(db_session, merchant_normalized="ร้านA", visit_id=v.id)
+        assert is_store_mismatch(doc) is False
+        assert check_store_mismatch(doc) is None
+
+    def test_is_store_mismatch_different_store(self, db_session):
+        v = Visit(id="v1", store_label="ร้านA", store_key="ร้านA")
+        db_session.add(v)
+        db_session.flush()
+        doc = _seed_doc(db_session, merchant_normalized="ร้านB", visit_id=v.id)
+        assert is_store_mismatch(doc) is True
+        warning = check_store_mismatch(doc)
+        assert warning is not None
+        assert "คนละ" in warning or "ร้าน" in warning
+
+    def test_is_store_mismatch_missing_data_is_false(self, db_session):
+        v = Visit(id="v1", store_label="ร้านA", store_key=None)
+        db_session.add(v)
+        db_session.flush()
+        doc = _seed_doc(db_session, merchant_normalized="ร้านA", visit_id=v.id)
+        assert is_store_mismatch(doc) is False
+
+    def test_visit_detail_marks_doc_store_mismatch(self, client, db_session):
+        s = client.post("/api/stores", json={"name": "ร้านA"}).json()
+        v = client.post(
+            "/api/visits", json={"store_id": s["id"]}
+        ).json()
+        # Seed one matching-store doc and one different-store doc.
+        for did, merchant in (("d1", "ร้านA"), ("d2", "ร้านB")):
+            db_session.add(
+                Document(
+                    id=did,
+                    filename=f"{did}.png",
+                    file_path=f"/tmp/{did}.png",
+                    file_type="image",
+                    status="extracted",
+                    merchant_name=merchant,
+                    merchant_normalized=merchant,
+                    visit_id=v["id"],
+                )
+            )
+        db_session.commit()
+        detail = client.get(f"/api/visits/{v['id']}").json()
+        by_id = {d["id"]: d for d in detail["documents"]}
+        assert by_id["d1"]["store_mismatch"] is False
+        assert by_id["d2"]["store_mismatch"] is True

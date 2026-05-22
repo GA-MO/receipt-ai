@@ -1,8 +1,7 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import {
   Badge,
-  Button,
   Group,
   Loader,
   Paper,
@@ -10,25 +9,20 @@ import {
   Text,
   Title,
 } from "@mantine/core";
-import { Plus } from "lucide-react";
 import { useVisits } from "../api/queries";
 
 export default function VisitsPage() {
-  const navigate = useNavigate();
   const { data: visits, isPending } = useVisits({ limit: 50 });
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div>
       <Group justify="space-between" mb="md">
         <div>
           <Title order={2}>การเยี่ยมร้าน (Visits)</Title>
           <Text c="dimmed" mt={4}>
-            แต่ละ visit = ใบเสร็จของร้านในเดือนรายงาน — เลือกร้าน, เดือน, อัปโหลด, ตรวจสอบ, ดูสรุปยอด
+            แต่ละ visit = ใบเสร็จของร้านในเดือนรายงาน — สร้างอัตโนมัติจากหน้าอัปโหลด & จัดกลุ่ม
           </Text>
         </div>
-        <Button leftSection={<Plus size={16} />} onClick={() => navigate("/visits/new")}>
-          เริ่ม visit ใหม่
-        </Button>
       </Group>
 
       {isPending ? (
@@ -37,9 +31,10 @@ export default function VisitsPage() {
         <Paper withBorder p="lg" radius="md">
           <Text c="dimmed" ta="center">
             ยังไม่มี visit —{" "}
-            <Link to="/visits/new" className="text-indigo-600 underline">
-              เริ่ม visit ใหม่
-            </Link>
+            <Link to="/inbox" className="text-indigo-600 underline">
+              โยนใบเสร็จที่หน้าอัปโหลด & จัดกลุ่ม
+            </Link>{" "}
+            แล้ว AI จะจัดร้านให้
           </Text>
         </Paper>
       ) : (

@@ -29,12 +29,15 @@ import {
   getAutocomplete,
   getDocumentImageUrl,
   type DocumentItemData,
+  type DocumentResponse,
 } from "../api/client";
 import {
   useApproveDocument,
   useCreateItem,
   useDeleteItem,
   useDocument,
+  useStores,
+  useUpdateDocument,
   useUpdateItem,
   useVisit,
 } from "../api/queries";
@@ -227,30 +230,33 @@ export default function VisitReviewPage() {
           className="overflow-hidden"
           style={{ display: "flex", flexDirection: "column" }}
         >
-          <Group
-            justify="space-between"
-            p="md"
+          <div
             style={{
               background: "var(--mantine-color-body)",
               borderBottom: "1px solid var(--mantine-color-default-border)",
             }}
           >
-            <Group gap="xs">
-              <Text fw={600}>รายการสินค้า ({doc.items.length})</Text>
-              {doc.confidence != null && (
-                <Text size="xs" c="dimmed">
-                  AI อ่าน {(doc.confidence * 100).toFixed(0)}%
-                </Text>
-              )}
-              <Badge size="sm" color={STATUS_LABEL[doc.status]?.color || "gray"} variant="light">
-                {STATUS_LABEL[doc.status]?.label || doc.status}
-              </Badge>
+            <Group justify="space-between" p="md" pb="xs">
+              <Group gap="xs">
+                <Text fw={600}>รายการสินค้า ({doc.items.length})</Text>
+                {doc.confidence != null && (
+                  <Text size="xs" c="dimmed">
+                    AI อ่าน {(doc.confidence * 100).toFixed(0)}%
+                  </Text>
+                )}
+                <Badge size="sm" color={STATUS_LABEL[doc.status]?.color || "gray"} variant="light">
+                  {STATUS_LABEL[doc.status]?.label || doc.status}
+                </Badge>
+              </Group>
             </Group>
-            <DocHeaderSummary
-              merchant={doc.merchant_name}
-              docDate={doc.document_date}
+            <DocHeaderEditor
+              doc={doc}
+              currentVisitId={visit.id}
+              onVisitChange={(newId) =>
+                navigate(`/visits/${newId}/review/${doc.id}`, { replace: true })
+              }
             />
-          </Group>
+          </div>
           <div className="flex-1 overflow-auto">
             <ItemsTable docId={doc.id} items={doc.items} />
           </div>
@@ -260,26 +266,89 @@ export default function VisitReviewPage() {
   );
 }
 
-function DocHeaderSummary({
-  merchant,
-  docDate,
+/**
+ * Editable header for the doc under review.
+ *
+ * The merchant + date are not just display — they decide which Visit this
+ * receipt belongs to. Saving either triggers the backend to reattach the doc
+ * to the correct ``(store × month)`` Visit; if the visit_id moves, the parent
+ * navigates to the new visit so subsequent navigation stays consistent.
+ */
+function DocHeaderEditor({
+  doc,
+  currentVisitId,
+  onVisitChange,
 }: {
-  merchant: string | null;
-  docDate: string | null;
+  doc: DocumentResponse;
+  currentVisitId: string;
+  onVisitChange: (newVisitId: string) => void;
 }) {
-  if (!merchant && !docDate) return null;
+  const { toast } = useToast();
+  const updateMut = useUpdateDocument(doc.id);
+  const stores = useStores();
+  const [merchant, setMerchant] = useState(doc.merchant_name ?? "");
+  const [date, setDate] = useState(doc.document_date ?? "");
+
+  useEffect(() => {
+    setMerchant(doc.merchant_name ?? "");
+    setDate(doc.document_date ?? "");
+  }, [doc.id, doc.merchant_name, doc.document_date]);
+
+  const save = async (data: Record<string, unknown>) => {
+    try {
+      const next = await updateMut.mutateAsync(data);
+      if (next.visit_id && next.visit_id !== currentVisitId) {
+        toast(
+          "success",
+          `ใบเสร็จนี้ถูกย้ายไป visit ใหม่แล้ว (ตามชื่อร้าน/วันที่ที่แก้)`,
+        );
+        onVisitChange(next.visit_id);
+      }
+    } catch (e: unknown) {
+      toast("error", e instanceof Error ? e.message : "บันทึกไม่สำเร็จ");
+    }
+  };
+
+  const merchantSuggestions = stores.data?.map((s) => s.name) ?? [];
+
   return (
-    <Group gap="md">
-      {merchant && (
-        <Text size="xs" c="dimmed">
-          ร้าน: <b>{merchant}</b>
+    <Group p="md" pt={0} gap="md" wrap="wrap" align="flex-end">
+      <div style={{ flex: 1, minWidth: 220 }}>
+        <Text size="xs" c="dimmed" mb={2}>
+          ร้านบนใบเสร็จ
         </Text>
-      )}
-      {docDate && (
-        <Text size="xs" c="dimmed">
-          วันที่: <b>{docDate}</b>
+        <Autocomplete
+          size="sm"
+          value={merchant}
+          onChange={setMerchant}
+          data={merchantSuggestions}
+          placeholder="ชื่อร้าน"
+          onBlur={() => {
+            if (merchant !== (doc.merchant_name ?? "")) {
+              save({ merchant_name: merchant });
+            }
+          }}
+          limit={10}
+        />
+      </div>
+      <div style={{ width: 160 }}>
+        <Text size="xs" c="dimmed" mb={2}>
+          วันที่บนใบเสร็จ
         </Text>
-      )}
+        <TextInput
+          size="sm"
+          value={date}
+          onChange={(e) => setDate(e.currentTarget.value)}
+          placeholder="YYYY-MM-DD"
+          onBlur={() => {
+            const next = date.trim() || null;
+            if (next !== (doc.document_date ?? null)) {
+              save({ document_date: next });
+            }
+          }}
+        />
+      </div>
+      {updateMut.isPending && <Loader size="xs" />}
     </Group>
   );
 }

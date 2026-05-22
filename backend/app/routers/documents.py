@@ -46,7 +46,12 @@ from ..services.audit import record as record_event
 from ..models import CatalogGapEvent, Product, TypoRecoveryEvent
 from ..services.catalog import find_code_by_name, is_canonical_name
 from ..services.merchants import assign_normalized_merchant
-from ..services.visits import check_period_mismatch, ensure_visit_for_doc
+from ..services.visits import (
+    check_period_mismatch,
+    check_store_mismatch,
+    ensure_visit_for_doc,
+    reattach_visit_for_doc,
+)
 
 
 def _resolve_product_code(
@@ -225,9 +230,15 @@ def _run_processing(doc_id: str, file_path: str) -> None:
             result.confidence < settings.review_confidence_threshold
             or len(result.needs_review_fields) > 0
         )
-        doc.status = "extracted"
+        # Gemini sometimes accepts a non-receipt (screenshot, document photo)
+        # — those return very low confidence with no items. Mark them so the
+        # dashboard surfaces them in a separate bucket and they're not
+        # attempted to attach to a Visit.
+        is_not_receipt = result.confidence < 0.3 and not result.items
+        doc.status = "not_receipt" if is_not_receipt else "extracted"
         doc.processed_at = datetime.now(UTC)
-        assign_normalized_merchant(doc, db)
+        if not is_not_receipt:
+            assign_normalized_merchant(doc, db)
 
         if warnings:
             existing = doc.notes or ""
@@ -259,16 +270,24 @@ def _run_processing(doc_id: str, file_path: str) -> None:
         db.flush()
         db.refresh(doc)
 
-        try:
-            ensure_visit_for_doc(db, doc)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("Failed to auto-attach visit for %s: %s", doc_id, exc)
+        if doc.auto_attach_visit and not is_not_receipt:
+            try:
+                ensure_visit_for_doc(db, doc)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Failed to auto-attach visit for %s: %s", doc_id, exc)
 
         period_warning = check_period_mismatch(doc)
         if period_warning:
             existing = doc.notes or ""
             sep = "\n" if existing else ""
             doc.notes = existing + sep + period_warning
+            doc.needs_review = True
+
+        store_warning = check_store_mismatch(doc)
+        if store_warning:
+            existing = doc.notes or ""
+            sep = "\n" if existing else ""
+            doc.notes = existing + sep + store_warning
             doc.needs_review = True
 
         db.commit()
@@ -592,6 +611,21 @@ def update_document(
 
     for field, value in incoming.items():
         setattr(doc, field, value)
+
+    # When the merchant or date changes, the doc may now belong to a different
+    # Visit (different store, different month). Re-normalize and reattach so
+    # the dashboard / monthly aggregate stay in sync.
+    needs_reattach = (
+        "merchant_name" in incoming
+        or "merchant_normalized" in incoming
+        or "document_date" in incoming
+    )
+    if needs_reattach:
+        if "merchant_name" in incoming and "merchant_normalized" not in incoming:
+            # User edited the printed name only — re-derive canonical form.
+            assign_normalized_merchant(doc, db)
+        reattach_visit_for_doc(db, doc)
+
     db.commit()
     db.refresh(doc)
     logger.info("Document %s updated", doc_id)

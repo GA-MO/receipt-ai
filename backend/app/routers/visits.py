@@ -42,7 +42,7 @@ from ..schemas import (
 from ..services.audit import record as record_event
 from ..services.storage import save_bytes, validate_and_hash
 from ..services.visit_aggregate import aggregate_visit
-from ..services.visits import recompute_store_label, visit_doc_date_range
+from ..services.visits import is_store_mismatch, recompute_store_label, visit_doc_date_range
 from .documents import _enqueue_processing
 
 logger = logging.getLogger(__name__)
@@ -142,6 +142,7 @@ def _doc_to_list_item(
         item_count=item_count,
         visit_id=doc.visit_id,
         period_mismatch=mismatch,
+        store_mismatch=is_store_mismatch(doc),
     )
 
 

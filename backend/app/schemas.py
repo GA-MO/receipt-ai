@@ -68,6 +68,7 @@ class DocumentResponse(BaseModel):
     category: str | None = None
     notes: str | None = None
     items: list[DocumentItemResponse] = []
+    visit_id: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -106,6 +107,7 @@ class DocumentListItem(BaseModel):
     item_count: int = 0
     visit_id: str | None = None
     period_mismatch: bool = False
+    store_mismatch: bool = False
 
     model_config = {"from_attributes": True}
 

@@ -38,7 +38,7 @@ export default function StoresPage() {
   const [creating, setCreating] = useState(false);
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div>
       <Group justify="space-between" mb="md">
         <div>
           <Title order={2}>Store master</Title>

@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { NavLink as RouterNavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   AppShell,
+  Badge,
   Burger,
   Group,
   Text,
@@ -12,14 +13,17 @@ import {
   ThemeIcon,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { Bell, BellOff, FileText, Moon, Receipt, Store, Sun, Trash2 } from "lucide-react";
+import { Bell, BellOff, Calendar, FileText, Inbox, Moon, Receipt, Store, Sun, Trash2 } from "lucide-react";
 import classes from "./Layout.module.css";
 import { useWebPush } from "@/hooks/useWebPush";
 import { useToast } from "@/components/Toast";
 import { LearnedAliasesBadge } from "@/components/LearnedAliasesPanel";
+import { useDashboard } from "@/api/queries";
 
 const links = [
+  { to: "/inbox", label: "อัปโหลด & จัดกลุ่ม", icon: Inbox, badgeKey: "inbox" as const },
   { to: "/stores", label: "ร้านค้า", icon: Store },
+  { to: "/visits", label: "การเยี่ยมร้าน", icon: Calendar },
   { to: "/documents", label: "เอกสารทั้งหมด", icon: FileText },
   { to: "/trash", label: "ถังขยะ", icon: Trash2 },
 ] as const;
@@ -32,6 +36,15 @@ export default function Layout() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const push = useWebPush();
+  const dashboard = useDashboard();
+  // Sidebar pill: things needing user attention today.
+  const inboxCount = dashboard.data
+    ? dashboard.data.counts.orphans +
+      dashboard.data.counts.unknown_stores +
+      dashboard.data.counts.non_receipts +
+      dashboard.data.counts.errors +
+      dashboard.data.counts.attention
+    : 0;
 
   const toggleColorScheme = () => {
     setColorScheme(colorScheme === "dark" ? "light" : "dark");
@@ -138,11 +151,14 @@ export default function Layout() {
 
       <AppShell.Navbar className={classes.navbar} p="sm">
         <AppShell.Section grow className={classes.navbarMain}>
-          {links.map(({ to, label, icon: Icon }) => {
+          {links.map((link) => {
+            const { to, label, icon: Icon } = link;
             const active =
-              to === "/stores"
-                ? location.pathname === "/" || location.pathname.startsWith("/stores")
+              to === "/inbox"
+                ? location.pathname === "/" || location.pathname.startsWith("/inbox")
                 : location.pathname.startsWith(to);
+            const showBadge =
+              "badgeKey" in link && link.badgeKey === "inbox" && inboxCount > 0;
             return (
               <RouterNavLink
                 key={to}
@@ -153,7 +169,12 @@ export default function Layout() {
                 style={{ marginBottom: 4 }}
               >
                 <Icon className={classes.linkIcon} />
-                <span>{label}</span>
+                <span style={{ flex: 1 }}>{label}</span>
+                {showBadge && (
+                  <Badge size="sm" variant="filled" color="indigo" radius="sm">
+                    {inboxCount}
+                  </Badge>
+                )}
               </RouterNavLink>
             );
           })}

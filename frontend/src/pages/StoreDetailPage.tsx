@@ -74,7 +74,7 @@ export default function StoreDetailPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div>
       <Group justify="space-between" mb="md" align="flex-start">
         <div>
           <Button

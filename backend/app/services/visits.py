@@ -11,26 +11,114 @@ from typing import Iterable
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from ..config import settings
 from ..models import Document, Store, Visit
+from .merchants import _rule_based_clean
 
 logger = logging.getLogger(__name__)
+
+
+def find_matching_store(
+    db: Session,
+    merchant_normalized: str | None,
+    *,
+    threshold: int | None = None,
+) -> Store | None:
+    """Match a doc's normalized merchant against an active ``Store`` row.
+
+    Exact match on cleaned ``normalized_name`` first; falls back to RapidFuzz
+    token-set similarity (default threshold = ``merchant_fuzzy_threshold``).
+    Returns ``None`` if nothing crosses the threshold — caller treats that as
+    "store not in system yet, hold for manual resolution".
+    """
+    if not merchant_normalized:
+        return None
+    candidate = _rule_based_clean(merchant_normalized)
+    if not candidate:
+        return None
+
+    active_stores = (
+        db.query(Store)
+        .filter(Store.active.is_(True))
+        .all()
+    )
+    if not active_stores:
+        return None
+
+    cleaned_map: dict[str, Store] = {}
+    for s in active_stores:
+        for raw in (s.normalized_name, s.name):
+            cleaned = _rule_based_clean(raw or "")
+            if cleaned and cleaned not in cleaned_map:
+                cleaned_map[cleaned] = s
+
+    if candidate in cleaned_map:
+        return cleaned_map[candidate]
+
+    try:
+        from rapidfuzz import fuzz, process
+    except ImportError:
+        return None
+
+    keys = list(cleaned_map.keys())
+    if not keys:
+        return None
+    match = process.extractOne(candidate, keys, scorer=fuzz.token_set_ratio)
+    cutoff = threshold if threshold is not None else settings.merchant_fuzzy_threshold
+    if match and match[1] >= cutoff:
+        return cleaned_map[match[0]]
+    return None
+
+
+def derive_doc_period(doc: Document) -> str:
+    """Decide which YYYY-MM Visit this doc should attach to.
+
+    Order:
+      1. The merchant's printed ``document_date`` — what the receipt actually
+         says, which is what users expect to drive the period.
+      2. The ``uploaded_at`` month as a last-resort fallback so a doc that
+         couldn't be dated still lands in *some* Visit.
+
+    This is the single source of truth for "which month does this receipt
+    belong to"; everything downstream (Visit reuse, monthly aggregation) keys
+    off this value.
+    """
+    raw = (doc.document_date or "").strip()
+    if len(raw) >= 7 and raw[4] == "-":
+        return raw[:7]
+    fallback = doc.uploaded_at or datetime.now(UTC)
+    return f"{fallback.year:04d}-{fallback.month:02d}"
 
 
 def get_or_create_visit_for_merchant(
     db: Session,
     store_key: str,
     *,
+    report_period: str,
     store_label: str | None = None,
-) -> Visit:
-    """Find an existing live Visit for ``store_key`` or create one.
+) -> Visit | None:
+    """Find or create a ``(store_key, report_period)`` Visit *only* when the
+    merchant matches an active Store master row.
 
-    Used by the legacy single-file ``POST /api/documents/upload`` flow to keep
-    the new Visit-centric UX working without forcing callers to know about
-    Visits up front.
+    Visits are gated to known Stores — receipts from unrecognised merchants are
+    held in the dashboard's "unknown stores" bucket until the user assigns or
+    creates a Store. Returns ``None`` when no Store matches.
     """
+    matching_store = find_matching_store(db, store_key)
+    if matching_store is None:
+        return None
+
+    # Re-key the visit to the Store's canonical normalized_name so all variants
+    # of "ก.เจริญ" end up under the same Visit row.
+    canonical_key = (matching_store.normalized_name or matching_store.name or store_key).strip()
+
     visit = (
         db.query(Visit)
-        .filter(Visit.store_key == store_key, Visit.deleted_at.is_(None))
+        .filter(
+            Visit.store_id == matching_store.id,
+            Visit.report_period == report_period,
+            Visit.deleted_at.is_(None),
+        )
         .order_by(Visit.created_at.desc())
         .first()
     )
@@ -39,18 +127,12 @@ def get_or_create_visit_for_merchant(
             visit.store_label = store_label
         return visit
 
-    # If a Store master row matches this normalized merchant, link the new
-    # Visit to it so the admin sees auto-discovered stores under their entry.
-    matching_store = (
-        db.query(Store)
-        .filter(Store.normalized_name == store_key, Store.active.is_(True))
-        .first()
-    )
     visit = Visit(
         id=str(uuid.uuid4()),
-        store_id=matching_store.id if matching_store else None,
-        store_key=store_key,
-        store_label=store_label or (matching_store.name if matching_store else store_key),
+        store_id=matching_store.id,
+        store_key=canonical_key,
+        store_label=store_label or matching_store.name,
+        report_period=report_period,
     )
     db.add(visit)
     db.flush()
@@ -58,21 +140,56 @@ def get_or_create_visit_for_merchant(
 
 
 def ensure_visit_for_doc(db: Session, doc: Document) -> Visit | None:
-    """Attach ``doc`` to a Visit after extraction, if not already attached.
+    """Attach ``doc`` to a Visit (``store × month``) after extraction.
 
-    Returns the Visit it was attached to (or already on). No-op if
-    ``merchant_normalized`` is missing — those docs stay orphan.
+    Returns ``None`` (and leaves ``doc.visit_id`` unset) when:
+      * ``merchant_normalized`` is missing — doc is an *orphan*, surfaces in
+        the dashboard's "AI อ่านชื่อร้านไม่ได้" section.
+      * The merchant doesn't match any active Store — doc is an *unknown
+        store*, surfaces in the dashboard's "ร้านยังไม่อยู่ในระบบ" section
+        for the user to assign or create a Store.
+
+    When the doc already has a visit, returns the existing visit unchanged.
     """
     if doc.visit_id is not None:
         return doc.visit
     if not doc.merchant_normalized:
         return None
+    period = derive_doc_period(doc)
     visit = get_or_create_visit_for_merchant(
         db,
         store_key=doc.merchant_normalized,
+        report_period=period,
         store_label=doc.merchant_name,
     )
+    if visit is None:
+        return None
     doc.visit_id = visit.id
+    return visit
+
+
+def reattach_visit_for_doc(db: Session, doc: Document) -> Visit | None:
+    """Re-run visit attachment after a user edits the doc's merchant or date.
+
+    Detaches from the current Visit when the new ``(store, period)`` doesn't
+    have a matching Store either — the doc drops back into the dashboard's
+    "unknown stores" bucket.
+    """
+    if not doc.merchant_normalized:
+        doc.visit_id = None
+        return None
+    period = derive_doc_period(doc)
+    visit = get_or_create_visit_for_merchant(
+        db,
+        store_key=doc.merchant_normalized,
+        report_period=period,
+        store_label=doc.merchant_name,
+    )
+    if visit is None:
+        doc.visit_id = None
+        return None
+    if doc.visit_id != visit.id:
+        doc.visit_id = visit.id
     return visit
 
 
@@ -114,6 +231,33 @@ def check_period_mismatch(doc: Document) -> str | None:
             f"({period}) — ตรวจสอบว่าใบนี้อยู่ใน visit ถูกหรือไม่"
         )
     return None
+
+
+def is_store_mismatch(doc: Document) -> bool:
+    """True when the doc's normalized merchant differs from its visit's
+    ``store_key`` — i.e. the receipt is from a different store than the
+    visit was created for. No-op when either side is unset.
+    """
+    visit = doc.visit
+    if visit is None or not visit.store_key or not doc.merchant_normalized:
+        return False
+    return doc.merchant_normalized != visit.store_key
+
+
+def check_store_mismatch(doc: Document) -> str | None:
+    """Thai-language warning when the receipt belongs to a different store
+    than the visit. Returns None when no visit is attached or merchant data
+    is missing on either side.
+    """
+    if not is_store_mismatch(doc):
+        return None
+    visit = doc.visit
+    visit_label = visit.store_label or visit.store_key
+    doc_label = doc.merchant_name or doc.merchant_normalized
+    return (
+        f"⚠️ ใบเสร็จนี้มาจากร้าน \"{doc_label}\" แต่ visit ตั้งเป็นร้าน "
+        f"\"{visit_label}\" — ตรวจสอบว่าอยู่ใน visit ถูกหรือไม่"
+    )
 
 
 def visit_doc_date_range(db: Session, visit_id: str) -> tuple[str | None, str | None]:

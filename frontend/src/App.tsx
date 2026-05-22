@@ -1,6 +1,7 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
 import DocumentsPage from "./pages/DocumentsPage";
+import InboxPage from "./pages/InboxPage";
 import StoreDetailPage from "./pages/StoreDetailPage";
 import StoresPage from "./pages/StoresPage";
 import TrashPage from "./pages/TrashPage";
@@ -13,7 +14,8 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route element={<Layout />}>
-          <Route path="/" element={<StoresPage />} />
+          <Route path="/" element={<InboxPage />} />
+          <Route path="/inbox" element={<InboxPage />} />
           <Route path="/stores" element={<StoresPage />} />
           <Route path="/stores/:id" element={<StoreDetailPage />} />
           <Route path="/visits" element={<VisitsPage />} />

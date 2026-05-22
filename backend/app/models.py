@@ -53,6 +53,10 @@ class Document(Base):
     deleted_at = Column(DateTime, nullable=True, index=True)
 
     visit_id = Column(String, ForeignKey("visits.id"), nullable=True, index=True)
+    # When False the worker skips ``ensure_visit_for_doc`` so the doc stays in
+    # the bulk inbox until the user confirms a grouping. Set False by the inbox
+    # upload endpoint; the confirm step attaches a Visit and flips it back True.
+    auto_attach_visit = Column(Boolean, default=True, nullable=False, server_default="1")
 
     items = relationship(
         "DocumentItem", back_populates="document", cascade="all, delete-orphan"
@@ -250,6 +254,10 @@ class Visit(Base):
     created_at = Column(DateTime, default=_utcnow, index=True)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
     deleted_at = Column(DateTime, nullable=True, index=True)
+    # Stamped when the user marks "review complete" on this visit. When a new
+    # doc later attaches with ``uploaded_at > last_reviewed_at`` the dashboard
+    # flips the visit into a "needs attention" state until the user confirms.
+    last_reviewed_at = Column(DateTime, nullable=True)
 
     documents = relationship("Document", back_populates="visit")
     store = relationship("Store", back_populates="visits")
