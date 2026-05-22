@@ -373,12 +373,13 @@ export default function VisitDetailPage() {
                   p="sm"
                   className={
                     isLoading
-                      ? "border-t opacity-70"
-                      : "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 border-t"
+                      ? "opacity-70"
+                      : "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
                   }
                   onClick={isLoading ? undefined : () => openReview(d.id)}
                   style={{
                     borderRadius: 0,
+                    borderTop: "1px solid var(--mantine-color-default-border)",
                     borderLeft: d.store_mismatch
                       ? "4px solid var(--mantine-color-red-5)"
                       : d.period_mismatch
