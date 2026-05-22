@@ -477,18 +477,18 @@ export default function VisitDetailPage() {
                           />
                         </Tooltip>
                       )}
-                      <Button
-                        size="xs"
-                        variant="light"
+                      <ActionIcon
+                        size="sm"
+                        variant="subtle"
                         color="red"
-                        leftSection={<Trash2 size={12} />}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleDeleteDoc(d.id, d.filename);
                         }}
+                        aria-label="ลบใบเสร็จ"
                       >
-                        ลบ
-                      </Button>
+                        <Trash2 size={12} />
+                      </ActionIcon>
                     </Group>
                   </Group>
                 </Paper>
