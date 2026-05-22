@@ -33,6 +33,7 @@ import {
 import { getDocumentImageUrl, uploadDocumentsToVisit } from "../api/client";
 import {
   useDeleteDocument,
+  useMarkVisitReviewed,
   useVisit,
 } from "../api/queries";
 import { useToast } from "@/components/Toast";
@@ -88,6 +89,7 @@ export default function VisitDetailPage() {
   const catalogCount = visit.aggregate.filter((r) => r.is_catalog_match).length;
   const unknownCount = visit.aggregate.length - catalogCount;
   const periodMismatchCount = docs.filter((d) => d.period_mismatch).length;
+  const storeMismatchCount = docs.filter((d) => d.store_mismatch).length;
 
   const toggleRow = (key: string) => {
     setExpanded((prev) => {
@@ -99,7 +101,7 @@ export default function VisitDetailPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div>
       <Group justify="space-between" align="flex-start" mb="md">
         <div>
           {visit.store_id && (
@@ -139,12 +141,19 @@ export default function VisitDetailPage() {
             </Text>
           </Group>
         </div>
-        <Button
-          leftSection={<UploadIcon size={14} />}
-          onClick={() => setUploadOpen(true)}
-        >
-          อัปโหลดใบเสร็จเพิ่ม
-        </Button>
+        <Group gap="xs">
+          <MarkReviewedButton
+            visitId={visit.id}
+            docCount={docs.length}
+            reviewedCount={visit.reviewed_count}
+          />
+          <Button
+            leftSection={<UploadIcon size={14} />}
+            onClick={() => setUploadOpen(true)}
+          >
+            อัปโหลดใบเสร็จเพิ่ม
+          </Button>
+        </Group>
       </Group>
 
       {/* Summary — calm stat blocks, no chips */}
@@ -167,6 +176,9 @@ export default function VisitDetailPage() {
           )}
           {periodMismatchCount > 0 && (
             <Stat value={periodMismatchCount} label="นอกเดือน" color="orange.7" />
+          )}
+          {storeMismatchCount > 0 && (
+            <Stat value={storeMismatchCount} label="คนละร้าน" color="red.7" />
           )}
           {isFetching && (
             <div className="self-center">
@@ -367,9 +379,11 @@ export default function VisitDetailPage() {
                   onClick={isLoading ? undefined : () => openReview(d.id)}
                   style={{
                     borderRadius: 0,
-                    borderLeft: d.period_mismatch
-                      ? "4px solid var(--mantine-color-orange-5)"
-                      : "4px solid transparent",
+                    borderLeft: d.store_mismatch
+                      ? "4px solid var(--mantine-color-red-5)"
+                      : d.period_mismatch
+                        ? "4px solid var(--mantine-color-orange-5)"
+                        : "4px solid transparent",
                     cursor: isLoading ? "wait" : undefined,
                   }}
                 >
@@ -394,9 +408,24 @@ export default function VisitDetailPage() {
                         {d.filename}
                       </Text>
                       <Group gap="sm" mt={2} wrap="nowrap">
-                        <Text size="xs" c="dimmed" truncate>
+                        <Text
+                          size="xs"
+                          fw={d.store_mismatch ? 700 : 400}
+                          c={d.store_mismatch ? "red.7" : "dimmed"}
+                          truncate
+                        >
                           {d.merchant_name || "—"}
                         </Text>
+                        {d.store_mismatch && (
+                          <Tooltip
+                            label={`คนละร้านกับ visit (${visit.store_label ?? visit.store_key ?? "—"})`}
+                          >
+                            <AlertTriangle
+                              size={12}
+                              className="text-red-500 shrink-0"
+                            />
+                          </Tooltip>
+                        )}
                         <Text size="xs" c="dimmed">
                           {d.item_count} รายการ
                         </Text>
@@ -448,18 +477,18 @@ export default function VisitDetailPage() {
                           />
                         </Tooltip>
                       )}
-                      <ActionIcon
-                        size="sm"
-                        variant="subtle"
+                      <Button
+                        size="xs"
+                        variant="light"
                         color="red"
+                        leftSection={<Trash2 size={12} />}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleDeleteDoc(d.id, d.filename);
                         }}
-                        aria-label="ลบใบเสร็จ"
                       >
-                        <Trash2 size={12} />
-                      </ActionIcon>
+                        ลบ
+                      </Button>
                     </Group>
                   </Group>
                 </Paper>
@@ -498,6 +527,39 @@ function Stat({
         {label}
       </Text>
     </div>
+  );
+}
+
+function MarkReviewedButton({
+  visitId,
+  docCount,
+  reviewedCount,
+}: {
+  visitId: string;
+  docCount: number;
+  reviewedCount: number;
+}) {
+  const mut = useMarkVisitReviewed();
+  const { toast } = useToast();
+  const ready = docCount > 0 && reviewedCount === docCount;
+  if (!ready) return null;
+  return (
+    <Button
+      color="green"
+      variant="light"
+      leftSection={<CheckCircle2 size={14} />}
+      onClick={async () => {
+        try {
+          await mut.mutateAsync(visitId);
+          toast("success", "ปิด visit เรียบร้อย");
+        } catch (e: unknown) {
+          toast("error", e instanceof Error ? e.message : "บันทึกไม่สำเร็จ");
+        }
+      }}
+      loading={mut.isPending}
+    >
+      เสร็จสิ้น Visit นี้
+    </Button>
   );
 }
 
