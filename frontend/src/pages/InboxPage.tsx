@@ -804,59 +804,40 @@ function UnknownStoreThumb({
 }) {
   const label = doc.merchant_name || doc.merchant_normalized || "(ไม่ระบุ)";
   return (
-    <div className="relative w-28 h-28 rounded-md overflow-hidden border-2 border-yellow-400 bg-gray-50 dark:bg-gray-800 group">
-      {doc.file_type === "image" ? (
-        <img
-          src={getDocumentImageUrl(doc.id)}
-          alt={doc.filename}
-          loading="lazy"
-          className="w-full h-full object-cover cursor-pointer"
-          onClick={onResolve}
-          onError={(e) => {
-            e.currentTarget.style.visibility = "hidden";
-          }}
-        />
-      ) : (
-        <div
-          className="w-full h-full flex items-center justify-center text-gray-400 text-xs font-medium cursor-pointer"
-          onClick={onResolve}
-        >
-          PDF
+    <div className="flex flex-col gap-1 w-28">
+      <div className="relative w-28 h-28 rounded-md overflow-hidden border-2 border-yellow-400 bg-gray-50 dark:bg-gray-800">
+        {doc.file_type === "image" ? (
+          <img
+            src={getDocumentImageUrl(doc.id)}
+            alt={doc.filename}
+            loading="lazy"
+            className="w-full h-full object-cover cursor-pointer"
+            onClick={onResolve}
+            onError={(e) => {
+              e.currentTarget.style.visibility = "hidden";
+            }}
+          />
+        ) : (
+          <div
+            className="w-full h-full flex items-center justify-center text-gray-400 text-xs font-medium cursor-pointer"
+            onClick={onResolve}
+          >
+            PDF
+          </div>
+        )}
+        <div className="absolute inset-x-0 bottom-0 bg-black/70 text-white text-[10px] px-1 py-0.5 truncate">
+          {label}
         </div>
-      )}
-      <div className="absolute inset-x-0 bottom-0 bg-black/70 text-white text-[10px] px-1 py-0.5 truncate">
-        {label}
       </div>
-      <div className="absolute top-1 right-1">
-        <Menu position="bottom-end" withinPortal shadow="md">
-          <Menu.Target>
-            <ActionIcon
-              size="sm"
-              variant="white"
-              radius="xl"
-              style={{
-                boxShadow: "0 1px 4px rgba(0,0,0,0.25)",
-                background: "white",
-              }}
-              aria-label="ตัวเลือก"
-            >
-              <MoreVertical size={14} className="text-gray-700" />
-            </ActionIcon>
-          </Menu.Target>
-          <Menu.Dropdown>
-            <Menu.Item leftSection={<StoreIcon size={14} />} onClick={onResolve}>
-              จัดร้าน
-            </Menu.Item>
-            <Menu.Item
-              leftSection={<X size={14} />}
-              color="red"
-              onClick={onDiscard}
-            >
-              ลบออกจากกล่อง
-            </Menu.Item>
-          </Menu.Dropdown>
-        </Menu>
-      </div>
+      <Button
+        size="xs"
+        variant="light"
+        color="red"
+        leftSection={<Trash2 size={12} />}
+        onClick={onDiscard}
+      >
+        ลบ
+      </Button>
     </div>
   );
 }
