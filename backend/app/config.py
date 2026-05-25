@@ -2,17 +2,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    # AI provider selector: "gemini" (default, google-genai SDK) or "openrouter"
-    llm_provider: str = "gemini"
-
-    # Gemini (used when llm_provider == "gemini")
-    gemini_api_key: str = ""
-    gcp_credentials_path: str = ""
-    gcp_project_id: str = ""
-    gcp_location: str = "asia-southeast1"
-    gemini_model: str = "gemini-3-flash-preview"
-
-    # OpenRouter (used when llm_provider == "openrouter")
+    # OpenRouter (OpenAI-compatible) — single LLM gateway
     openrouter_api_key: str = ""
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     openrouter_model: str = "google/gemini-3-flash-preview"
@@ -32,10 +22,14 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = "INFO"
 
-    # Retry (shared across providers; kept under gemini_* names for backward compat)
-    gemini_max_retries: int = 3
-    gemini_retry_delay: float = 1.0
-    gemini_request_timeout: float = 60.0
+    # LLM retry
+    llm_max_retries: int = 3
+    llm_retry_delay: float = 1.0
+    llm_request_timeout: float = 60.0
+
+    # Concurrent in-process extractions (FastAPI BackgroundTasks fallback).
+    # arq mode uses ``WorkerSettings.max_jobs`` instead.
+    extraction_concurrency: int = 4
 
     # Review thresholds
     review_confidence_threshold: float = 0.9
@@ -47,17 +41,14 @@ class Settings(BaseSettings):
     use_arq: bool = False
     redis_url: str = "redis://localhost:6379/0"
 
-    # Extraction pipeline selector:
-    #   "default"  — single Gemini call (prompt + embedded catalog)
-    #   "agentic"  — multi-turn tool-calling loop (lookup_catalog tool)
-    extraction_mode: str = "default"
-
     # Web Push (VAPID)
     vapid_public_key: str = ""
     vapid_private_key: str = ""
     vapid_subject: str = "mailto:admin@example.com"
 
-    model_config = {"env_file": ".env"}
+    # ``extra=ignore`` so a stale .env carrying retired keys (LLM_PROVIDER,
+    # GEMINI_*, GCP_*, EXTRACTION_MODE) doesn't crash boot.
+    model_config = {"env_file": ".env", "extra": "ignore"}
 
     @property
     def max_file_size_bytes(self) -> int:

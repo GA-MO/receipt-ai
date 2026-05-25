@@ -56,9 +56,19 @@ export default function VisitDetailPage() {
   const [uploadOpen, setUploadOpen] = useState(false);
 
   const handleDeleteDoc = async (docId: string, filename: string) => {
-    if (!confirm(`ลบใบเสร็จ "${filename}" ออกจากเดือนนี้?`)) return;
+    const isLast = visit?.documents.length === 1;
+    const message = isLast
+      ? `ลบใบเสร็จ "${filename}" — เป็นใบสุดท้ายของเดือนนี้ การลบจะปิดเดือนทั้งหมด ดำเนินการต่อ?`
+      : `ลบใบเสร็จ "${filename}" ออกจากเดือนนี้?`;
+    if (!confirm(message)) return;
     try {
       await deleteDocMut.mutateAsync(docId);
+      if (isLast) {
+        // Backend cascades the now-empty visit; sticking around would 404.
+        toast("success", "ลบเรียบร้อย — เดือนนี้ถูกปิดแล้ว");
+        navigate("/inbox");
+        return;
+      }
       toast("success", "ลบใบเสร็จแล้ว");
       refetch();
     } catch (err) {

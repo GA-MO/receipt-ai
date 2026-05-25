@@ -36,6 +36,10 @@ async def lifespan(_app: FastAPI):
         logger.warning("Product auto-seed failed: %s", exc)
     logger.info("Application started — upload_dir=%s", settings.upload_dir)
     yield
+    # Drain in-flight extractions so we don't drop work on reload/SIGTERM.
+    from .routers.documents import shutdown_extraction_pool
+
+    shutdown_extraction_pool()
     logger.info("Application shutdown")
 
 

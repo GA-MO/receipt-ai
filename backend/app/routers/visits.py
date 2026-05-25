@@ -42,7 +42,12 @@ from ..schemas import (
 from ..services.audit import record as record_event
 from ..services.storage import save_bytes, validate_and_hash
 from ..services.visit_aggregate import aggregate_visit
-from ..services.visits import is_store_mismatch, recompute_store_label, visit_doc_date_range
+from ..services.visits import (
+    is_store_mismatch,
+    recompute_store_label,
+    sweep_empty_visits,
+    visit_doc_date_range,
+)
 from .documents import _enqueue_processing
 
 logger = logging.getLogger(__name__)
@@ -352,6 +357,20 @@ def update_visit(visit_id: str, body: VisitUpdate, db: Session = Depends(get_db)
     )
     earliest, latest = visit_doc_date_range(db, visit_id)
     return _to_list_item(visit, doc_count, earliest, latest, reviewed)
+
+
+@router.post("/cleanup-empty")
+def cleanup_empty_visits_endpoint(db: Session = Depends(get_db)):
+    """Soft-delete every alive Visit that has zero alive documents.
+
+    Safety-net for orphan Visits — the per-doc cascade now keeps Visits in
+    sync going forward, but this endpoint catches legacy stragglers and any
+    edge cases that slipped through.
+    """
+    closed = sweep_empty_visits(db)
+    db.commit()
+    logger.info("Sweep: closed %d empty visits", closed)
+    return {"closed": closed}
 
 
 @router.delete("/{visit_id}")

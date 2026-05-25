@@ -2,7 +2,7 @@ import asyncio
 import json
 import logging
 import os
-import threading
+import concurrent.futures
 import uuid
 from datetime import UTC, datetime
 
@@ -35,7 +35,6 @@ from ..schemas import (
     DocumentUpdate,
 )
 from ..services.extraction import extract_receipt
-from ..services.extraction_agentic import extract_agentic
 from ..services.aliases import apply_alias_to_extraction
 from ..services.product_aliases import (
     apply_aliases_to_items as apply_product_aliases,
@@ -49,6 +48,7 @@ from ..services.merchants import assign_normalized_merchant
 from ..services.visits import (
     check_period_mismatch,
     check_store_mismatch,
+    cleanup_empty_visits,
     ensure_visit_for_doc,
     reattach_visit_for_doc,
 )
@@ -130,14 +130,6 @@ def _resolve_product_code(
     return find_code_by_name(db, name)
 
 
-def _resolve_extraction_mode() -> str:
-    mode = (settings.extraction_mode or "default").lower()
-    if mode not in {"default", "agentic"}:
-        logger.warning("Unknown extraction_mode %r — falling back to default", mode)
-        mode = "default"
-    return mode
-
-
 from ..services.storage import save_bytes, validate_and_hash
 from ..services.validation import validate_extraction
 
@@ -145,24 +137,34 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# Limit concurrent OCR+extraction to 1 to prevent memory exhaustion when using
-# FastAPI BackgroundTasks. The arq worker (see worker.py) handles its own
-# concurrency via the queue.
-_processing_lock = threading.Semaphore(1)
+# Dedicated thread pool for in-process extraction. Sized by
+# ``EXTRACTION_CONCURRENCY`` so a single bulk-upload request (which arrives as
+# one POST + N files) still runs N extractions concurrently — FastAPI's built-in
+# BackgroundTasks runs scheduled callbacks serially in one thread, which would
+# otherwise serialize the whole batch. arq mode (see worker.py) bypasses this
+# pool and uses its own queue.
+#
+# Lazy-init so the pool survives multiple FastAPI lifespans in the same process
+# (e.g. TestClient creating/disposing the app once per test).
+_extraction_pool: concurrent.futures.ThreadPoolExecutor | None = None
 
 
-def _process_document(doc_id: str, file_path: str) -> None:
-    """Background task: extract receipt data with Gemini Vision → update the document.
+def _get_extraction_pool() -> concurrent.futures.ThreadPoolExecutor:
+    global _extraction_pool
+    if _extraction_pool is None or _extraction_pool._shutdown:
+        _extraction_pool = concurrent.futures.ThreadPoolExecutor(
+            max_workers=settings.extraction_concurrency,
+            thread_name_prefix="extract",
+        )
+    return _extraction_pool
 
-    Used as the in-process fallback when ``USE_ARQ`` is disabled. The arq worker
-    calls :func:`process_document_sync` directly (same body), sharing logic via
-    ``_run_processing``.
-    """
-    _processing_lock.acquire()
-    try:
-        _run_processing(doc_id, file_path)
-    finally:
-        _processing_lock.release()
+
+def shutdown_extraction_pool() -> None:
+    """Drain in-flight extractions on app shutdown. Re-created on next submit."""
+    global _extraction_pool
+    if _extraction_pool is not None:
+        _extraction_pool.shutdown(wait=True, cancel_futures=False)
+        _extraction_pool = None
 
 
 def _run_processing(doc_id: str, file_path: str) -> None:
@@ -174,17 +176,7 @@ def _run_processing(doc_id: str, file_path: str) -> None:
             logger.error("Document %s not found for processing", doc_id)
             return
 
-        mode = _resolve_extraction_mode()
-        if mode == "agentic":
-            agentic = extract_agentic(file_path, db)
-            result = agentic.extraction
-            logger.info(
-                "Agentic used %d iterations, tools=%s",
-                agentic.iterations,
-                agentic.tool_calls,
-            )
-        else:
-            result = extract_receipt(file_path)
+        result = extract_receipt(file_path)
 
         warnings = validate_extraction(result)
 
@@ -329,7 +321,13 @@ def _enqueue_processing(
     file_path: str,
     background_tasks: BackgroundTasks,
 ) -> None:
-    """Enqueue processing to arq if configured, otherwise schedule as BackgroundTask."""
+    """Enqueue processing to arq if configured, otherwise to the local thread pool.
+
+    ``background_tasks`` is kept in the signature for symmetry with FastAPI's
+    DI but is unused in the local-pool path — submitting to a pool gives true
+    concurrency across files in a single bulk-upload POST, which FastAPI's
+    BackgroundTasks (serial, single-thread) does not.
+    """
     if settings.use_arq:
         from ..worker import enqueue_process_document
 
@@ -338,10 +336,9 @@ def _enqueue_processing(
             return
         except Exception as exc:
             logger.warning(
-                "Failed to enqueue arq job, falling back to BackgroundTasks: %s",
-                exc,
+                "Failed to enqueue arq job, falling back to local pool: %s", exc
             )
-    background_tasks.add_task(_process_document, doc_id, file_path)
+    _get_extraction_pool().submit(_run_processing, doc_id, file_path)
 
 
 @router.post("/upload", response_model=DocumentResponse)
@@ -621,10 +618,14 @@ def update_document(
         or "document_date" in incoming
     )
     if needs_reattach:
+        old_visit_id = doc.visit_id
         if "merchant_name" in incoming and "merchant_normalized" not in incoming:
             # User edited the printed name only — re-derive canonical form.
             assign_normalized_merchant(doc, db)
         reattach_visit_for_doc(db, doc)
+        if old_visit_id and old_visit_id != doc.visit_id:
+            db.flush()
+            cleanup_empty_visits(db, [old_visit_id])
 
     db.commit()
     db.refresh(doc)
@@ -903,11 +904,17 @@ def bulk_delete(payload: BulkIds, db: Session = Depends(get_db)):
         .all()
     )
     now = datetime.now(UTC)
+    touched_visits = {d.visit_id for d in docs}
     for doc in docs:
         doc.deleted_at = now
+    db.flush()
+    closed = cleanup_empty_visits(db, touched_visits)
     db.commit()
     failed_ids = [i for i in payload.ids if i not in {d.id for d in docs}]
-    logger.info("Bulk soft-deleted %d documents (%d missing)", len(docs), len(failed_ids))
+    logger.info(
+        "Bulk soft-deleted %d documents (%d missing, %d empty visits closed)",
+        len(docs), len(failed_ids), closed,
+    )
     return BulkActionResult(succeeded=len(docs), failed=len(failed_ids), failed_ids=failed_ids)
 
 
@@ -934,6 +941,7 @@ def bulk_purge(payload: BulkIds, db: Session = Depends(get_db)):
         .filter(Document.id.in_(payload.ids), Document.deleted_at.isnot(None))
         .all()
     )
+    touched_visits = {d.visit_id for d in docs}
     for doc in docs:
         try:
             if doc.file_path and os.path.exists(doc.file_path):
@@ -941,9 +949,13 @@ def bulk_purge(payload: BulkIds, db: Session = Depends(get_db)):
         except OSError as exc:
             logger.warning("Failed to remove file for %s: %s", doc.id, exc)
         db.delete(doc)
+    db.flush()
+    closed = cleanup_empty_visits(db, touched_visits)
     db.commit()
     failed_ids = [i for i in payload.ids if i not in {d.id for d in docs}]
-    logger.info("Bulk purged %d documents", len(docs))
+    logger.info(
+        "Bulk purged %d documents (%d empty visits closed)", len(docs), closed
+    )
     return BulkActionResult(succeeded=len(docs), failed=len(failed_ids), failed_ids=failed_ids)
 
 
@@ -972,6 +984,7 @@ def delete_document(doc_id: str, db: Session = Depends(get_db)):
     doc = db.query(Document).filter(Document.id == doc_id).first()
     if not doc:
         raise HTTPException(404, "ไม่พบเอกสาร")
+    old_visit_id = doc.visit_id
     if doc.deleted_at is not None:
         # Second delete on an already-trashed doc = purge (convenience for UIs
         # that don't distinguish).
@@ -981,10 +994,14 @@ def delete_document(doc_id: str, db: Session = Depends(get_db)):
         except OSError as exc:
             logger.warning("Failed to remove file for %s: %s", doc_id, exc)
         db.delete(doc)
+        db.flush()
+        cleanup_empty_visits(db, [old_visit_id])
         db.commit()
         logger.info("Document %s permanently deleted", doc_id)
         return {"message": "ลบเอกสารถาวรเรียบร้อย"}
     doc.deleted_at = datetime.now(UTC)
+    db.flush()
+    cleanup_empty_visits(db, [old_visit_id])
     db.commit()
     logger.info("Document %s moved to trash", doc_id)
     record_event(db, doc_id, "trashed", actor="user")
@@ -1014,12 +1031,15 @@ def purge_document(doc_id: str, db: Session = Depends(get_db)):
         raise HTTPException(404, "ไม่พบเอกสาร")
     if doc.deleted_at is None:
         raise HTTPException(400, "ต้องย้ายไปถังขยะก่อน")
+    old_visit_id = doc.visit_id
     try:
         if doc.file_path and os.path.exists(doc.file_path):
             os.remove(doc.file_path)
     except OSError as exc:
         logger.warning("Failed to remove file for %s: %s", doc_id, exc)
     db.delete(doc)
+    db.flush()
+    cleanup_empty_visits(db, [old_visit_id])
     db.commit()
     logger.info("Document %s purged", doc_id)
     return {"message": "ลบเอกสารถาวรเรียบร้อย"}

@@ -9,8 +9,8 @@ from . import catalog, llm_client
 logger = logging.getLogger(__name__)
 
 # Top-level product categories, aligned with singhaonline.com (2026-04).
-# Keep this list tight — subcategories are represented through
-# ``product_name_normalized`` plus PRODUCT_CATALOG entries, not category.
+# Keep this list tight — subcategories are represented through PRODUCT_CATALOG
+# entries (resolved via product_code), not category.
 PRODUCT_CATEGORIES = [
     "เครื่องดื่ม",
     "อาหาร และของว่าง",
@@ -49,7 +49,6 @@ _SYSTEM_INSTRUCTION_HEAD = """\
 ทั้งสินค้าของเครือบุญรอด **และของคู่แข่ง** (ช้าง, ลีโอ-ของคู่แข่ง, ไฮเนเก้น, อาซาฮี, ซาน มิเกล, โค้ก, เป๊ปซี่ ฯลฯ)
 ถ้าเป็นสินค้าคู่แข่ง:
 - `product_name_raw` = ตามที่อ่านได้จากใบเสร็จ
-- `product_name_normalized` = เหมือน raw (ไม่ map เป็น SKU บุญรอด)
 - `product_code` = null (ห้าม map ผิด)
 """
 
@@ -64,7 +63,6 @@ _SYSTEM_INSTRUCTION_TAIL_TEMPLATE = """
   "items": [
     {
       "product_name_raw": "ชื่อสินค้าที่อ่านได้จากเอกสาร **ตรงตามลายมือ/ตัวอักษรจริง** (ยังไม่ผ่าน catalog normalization, ไม่ทำ typo fix — แต่อาจตัด unit เช่น 'ลัง'/'ขวด' ออก)",
-      "product_name_normalized": "ชื่อสินค้าที่แสดงในระบบ — ถ้า match กับตาราง PRODUCT_CATALOG ให้ใช้ 'ชื่อทางการ' จากตาราง; ถ้าไม่ match ให้ใช้ค่าเดียวกับ product_name_raw",
       "product_code": "SKU code ของสินค้า (string | null) — ดูจากคอลัมน์ product_code ของตาราง PRODUCT_CATALOG; ใส่เฉพาะเมื่อมั่นใจว่า match จริง ไม่ใช่ทุกบรรทัดต้องมี",
       "category": "หมวดหมู่ของรายการนี้ (string จาก allowed categories)",
       "quantity": 0,
@@ -87,36 +85,34 @@ _SYSTEM_INSTRUCTION_TAIL_TEMPLATE = """
   - แต่ "คำอธิบาย" ต้องเขียนเป็นไทยเสมอ เช่น ถ้ายอดรวมลายมือไม่ตรงกับการคำนวณ ต้องเขียนแบบ
     "ยอดรวมที่เขียนด้วยลายมือ (16,905) ไม่ตรงกับยอดคำนวณ (16,105) ใช้ยอดคำนวณแทน"
     ห้ามเขียนเป็น "The handwritten grand total is inconsistent..."
-- **สามฟิลด์ของแต่ละ item**:
+- **สองฟิลด์หลักของแต่ละ item**:
   - `product_name_raw` = ข้อความต้นฉบับจากเอกสาร ตรงตามตัวอักษร/ลายมือที่อ่านได้
     - **ห้าม** ทำ catalog lookup, ห้ามแก้ typo, ห้าม normalize
     - ทำได้แค่: ตัด **unit** เช่น "ลัง"/"ขวด"/"แพ็ค" และ **return marker** เช่น "เปลี่ยน/ถาด" ออก
     - ตัวอย่าง: receipt = "SODAPP โซดาเปลี่ยน/ถาด ×12"  →  raw = "SODAPP โซดา"
     - ตัวอย่าง: receipt = "สิงเลม่อน"  →  raw = "สิงเลม่อน" (ไม่แก้เป็น "สิงห์เลมอนโซดา")
-  - `product_name_normalized` = ชื่อที่จะแสดง
-    1. ถ้า raw match กับ PRODUCT_CATALOG (อ้อม typo/alias ก็นับ) → ใช้ **ชื่อทางการ** จากตาราง
-    2. ถ้าไม่ match → ใช้ **ค่าเดียวกับ raw**
-    3. ห้ามทั้งคู่เป็น null ตราบใดที่อ่านเอกสารออก — ถ้าอ่านไม่ออกจริง ๆ ให้ใส่ "?" และเพิ่มใน `needs_review_fields`
-  - `product_code` = SKU code ของสินค้า (สำคัญ — ใช้เพื่อ resolve กลับ DB ตรงๆ ไม่ผ่าน fuzzy match)
-    1. ถ้า normalized match แถวใดในตาราง PRODUCT_CATALOG → ใช้ค่าใน column `product_code` ของแถวนั้น **ตรงๆ ไม่ดัดแปลง**
+    - ถ้าอ่านไม่ออกจริง ๆ ให้ใส่ "?" และเพิ่ม "product_name_raw" ใน `needs_review_fields`
+  - `product_code` = SKU code ของสินค้า (ตัวระบุหลัก — ระบบจะ resolve ชื่อทางการสำหรับแสดงผลจาก code นี้)
+    1. หา raw ในตาราง PRODUCT_CATALOG (รวมถึงคอลัมน์ "คำย่อ / ชื่อเล่น / ลายมือที่พบบ่อย") — ถ้า match → ใช้ค่าใน column `product_code` ของแถวนั้น **ตรงๆ ไม่ดัดแปลง**
     2. ถ้าตาราง PRODUCT_CATALOG ของแถวที่ match มี `product_code = "-"` → ใส่ null
     3. ถ้าไม่ match catalog เลย (สินค้าคู่แข่งที่ยังไม่มีใน catalog) → ใส่ null
     4. **ห้ามแต่งรหัสขึ้นเอง** ถ้าไม่แน่ใจให้ null — ห้ามเดา
     5. ห้ามใช้ EAN/บาร์โค้ดที่ปรากฏบนใบเสร็จเป็น product_code — ใช้เฉพาะรหัสจาก catalog เท่านั้น
+    6. **สำคัญ**: code กับ raw ต้องชี้สินค้าเดียวกัน — ห้าม pick code ของ "เบียร์สิงห์" สำหรับ raw "น้ำสิงห์"
 - **Variant qualifier ที่เป็นส่วนของชื่อสินค้า** (สำคัญ): สี/รสชาติ/รุ่น ที่อยู่ในวงเล็บหรือหลังชื่อ
-  ต้อง **เก็บรักษาไว้** ใน product_name_raw และเข้าตามใน product_name_normalized
-  - ตัวอย่าง: "เลมอนโซดา (เรด)" → raw = "เลมอนโซดา (เรด)", normalized = "สิงห์เลมอนโซดา เรด" (ห้ามตัด "(เรด)" ทิ้ง)
+  ต้อง **เก็บรักษาไว้** ใน product_name_raw และต้องเลือก code ของ variant ที่ตรงกัน
+  - ตัวอย่าง: "เลมอนโซดา (เรด)" → raw = "เลมอนโซดา (เรด)", code = code ของ "สิงห์เลมอนโซดา เรด" (ห้ามตัด "(เรด)" ทิ้ง)
   - ตัวอย่าง: "เลมอนโซดา (แดง)" → raw = "เลมอนโซดา (แดง)" — ตีความ "แดง" = "เรด"
-  - ตัวอย่าง: "เลมอนโซดา (พิงก์)" → normalized = "สิงห์เลมอนโซดา พิงก์"
+  - ตัวอย่าง: "เลมอนโซดา (พิงก์)" → code = code ของ "สิงห์เลมอนโซดา พิงก์"
   - ตัวอย่าง: "เลมอนโซดา (ครีม)" / "เลมอนโซดา (แตงโม)" / "เลมอนโซดา (บ๊วย)" — variant ทั้งหมด
   - ถ้าใบเสร็จมี 2 บรรทัดเขียน "เลมอนโซดา" + "เลมอนโซดา (เรด)" ห้าม merge เป็นรายการเดียว
     และห้าม emit ทั้งสองด้วย raw เดียวกัน — บรรทัดที่ไม่มี (...) raw = "เลมอนโซดา",
     บรรทัดที่มี raw = "เลมอนโซดา (เรด)" — เพื่อให้ alias system แยก SKU ได้
 - **คำต่อท้ายสินค้าที่ไม่ใช่ส่วนของชื่อ** : คำเหล่านี้อธิบาย **รูปแบบการขาย/การบรรจุ** ไม่ใช่ชื่อสินค้า
-  ให้ละทิ้งคำเหล่านี้เวลา map ไป product_name_normalized และเวลาจัด category
+  ให้ละทิ้งคำเหล่านี้เวลา match กับ PRODUCT_CATALOG และเวลาจัด category
   - "เปลี่ยน" / "เปล่า" / "ถาด" / "เปลี่ยน/ถาด" / "เปล่า/ถาด" → หมายถึงขายแบบเปลี่ยนลัง/คืนลังเปล่า (returnable crate)
   - "ลัง" / "กระป๋อง" / "ขวด" / "แพ็ค" → เป็น **unit** ให้ใส่ใน field `unit` ไม่ใช่ชื่อสินค้า
-  - ตัวอย่าง: "SODAPP โซดาเปลี่ยน/ถาด" = โซดาสิงห์ (ขายแบบเปลี่ยนถาด) → category "เครื่องดื่ม", normalized = "โซดาสิงห์"
+  - ตัวอย่าง: "SODAPP โซดาเปลี่ยน/ถาด" = โซดาสิงห์ (ขายแบบเปลี่ยนถาด) → category "เครื่องดื่ม", code = code ของ "โซดาสิงห์"
   - ตัวอย่าง: "เบียร์สิงห์เปลี่ยนขวด" = เบียร์สิงห์ (คืนขวดเปล่า) → category "เครื่องดื่ม"
 - **Typo ที่พบบ่อย** (OCR/ลายมืออ่านผิด) — ให้ตีความเป็นคำที่ถูกต้อง:
   - "โซคา" → "โซดา"
@@ -177,7 +173,6 @@ _SYSTEM_INSTRUCTION_TAIL_TEMPLATE = """
   "items": [
     {
       "product_name_raw": "สห์ใหญ่",
-      "product_name_normalized": "เบียร์สิงห์ขวดใหญ่",
       "product_code": "INT-BEER-SINGHA-L",
       "category": "เครื่องดื่ม",
       "quantity": 12,
@@ -185,7 +180,6 @@ _SYSTEM_INSTRUCTION_TAIL_TEMPLATE = """
     },
     {
       "product_name_raw": "น้ำคริสตัล แพ็ค",
-      "product_name_normalized": "น้ำคริสตัล แพ็ค",
       "product_code": null,
       "category": "เครื่องดื่ม",
       "quantity": 1,
@@ -196,7 +190,7 @@ _SYSTEM_INSTRUCTION_TAIL_TEMPLATE = """
   "notes": "เอกสารชัดเจน อ่านง่าย",
   "needs_review_fields": []
 }
-สังเกต: (1) แปลง 2568 → 2025, (2) สห์ใหญ่ → ชื่อทางการ + product_code จาก catalog, (3) น้ำคริสตัลไม่อยู่ใน catalog → product_code = null, normalized = raw, (4) merchant_normalized ตัด "บริษัท/จำกัด/(สำนักงานใหญ่)" ออก, (5) ไม่มีฟิลด์ราคา — ระบบไม่ใช้
+สังเกต: (1) แปลง 2568 → 2025, (2) สห์ใหญ่ match catalog → product_code = INT-BEER-SINGHA-L (ระบบจะ resolve ชื่อทางการ "เบียร์สิงห์ขวดใหญ่" จาก code เอง), (3) น้ำคริสตัลไม่อยู่ใน catalog → product_code = null (ระบบจะใช้ raw เป็นชื่อแสดงผล), (4) merchant_normalized ตัด "บริษัท/จำกัด/(สำนักงานใหญ่)" ออก, (5) ไม่มีฟิลด์ราคา — ระบบไม่ใช้
 """
 
 
@@ -230,13 +224,8 @@ _MIME_MAP = {
 }
 
 
-# Backward-compat shim: agentic extraction still imports ``_get_client``.
-# Forward to the shared client cache in ``llm_client``.
-_get_client = llm_client.get_gemini_client
-
-
 def _coerce_extracted_payload(data: object) -> dict:
-    """Normalize Gemini responses that sometimes come back as arrays or nested lists."""
+    """Normalize LLM responses that sometimes come back as arrays or nested lists."""
     if isinstance(data, list):
         logger.warning("Gemini returned array instead of object, using first element")
         data = data[0] if data and isinstance(data[0], dict) else {}
@@ -275,11 +264,6 @@ def _parse_items(raw_items: object, default_category: str | None) -> list[Docume
             continue
         cat = _coerce_category(it.get("category"), default_category)
         raw_name = it.get("product_name_raw")
-        normalized = it.get("product_name_normalized") or raw_name
-        # If raw missing but normalized present, we can't recover raw — fall
-        # back to normalized so alias source is non-null downstream.
-        if raw_name is None:
-            raw_name = normalized
         product_code = it.get("product_code")
         if isinstance(product_code, str):
             product_code = product_code.strip() or None
@@ -288,6 +272,16 @@ def _parse_items(raw_items: object, default_category: str | None) -> list[Docume
                 product_code = None
         else:
             product_code = None
+        # Resolve display name server-side. The LLM emits only raw + code;
+        # the canonical display name is derived deterministically here so a
+        # (code, name) mismatch from the model is structurally impossible.
+        # Legacy: still accept product_name_normalized in the payload as a
+        # fallback for backward compat with old tests/fixtures.
+        catalog_name = catalog.name_by_code(product_code)
+        legacy_normalized = it.get("product_name_normalized")
+        normalized = catalog_name or legacy_normalized or raw_name
+        if raw_name is None:
+            raw_name = normalized
         items.append(
             DocumentItemBase(
                 product_name_raw=raw_name,

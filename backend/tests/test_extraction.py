@@ -127,3 +127,69 @@ class TestParseExtractionPayload:
         assert result.merchant_name is None
         assert result.items == []
         assert result.confidence == 0.0
+
+    def test_name_derived_from_code_when_only_raw_and_code_present(self, monkeypatch):
+        """The new prompt asks Gemini to emit only product_name_raw + product_code;
+        the parser must derive product_name_normalized from the catalog.
+        """
+        from app.services import catalog
+
+        monkeypatch.setattr(
+            catalog,
+            "name_by_code",
+            lambda code: "เบียร์สิงห์ขวดใหญ่" if code == "INT-BEER-SINGHA-L" else None,
+        )
+        payload = {
+            "items": [
+                {
+                    "product_name_raw": "สห์ใหญ่",
+                    "product_code": "INT-BEER-SINGHA-L",
+                    "category": "เครื่องดื่ม",
+                    "quantity": 12,
+                    "unit": "ขวด",
+                },
+                {
+                    # Competitor: no code → display falls back to raw
+                    "product_name_raw": "น้ำคริสตัล แพ็ค",
+                    "product_code": None,
+                    "category": "เครื่องดื่ม",
+                    "quantity": 1,
+                    "unit": "แพ็ค",
+                },
+            ],
+        }
+        items = parse_extraction_payload(payload).items
+        assert items[0].product_name_raw == "สห์ใหญ่"
+        assert items[0].product_name_normalized == "เบียร์สิงห์ขวดใหญ่"
+        assert items[0].product_code == "INT-BEER-SINGHA-L"
+        assert items[1].product_name_raw == "น้ำคริสตัล แพ็ค"
+        assert items[1].product_name_normalized == "น้ำคริสตัล แพ็ค"
+        assert items[1].product_code is None
+
+    def test_product_code_overrides_inconsistent_normalized_name(self, monkeypatch):
+        """When the LLM emits a (code, name) pair that disagree, the SKU code
+        wins and product_name_normalized is rewritten from the catalog. Guards
+        against the failure mode where raw 'สิงห์' got code INT-BEER-SINGHA-L
+        but normalized 'น้ำสิงห์เพ็ท 600ml'."""
+        from app.services import catalog
+
+        monkeypatch.setattr(
+            catalog,
+            "name_by_code",
+            lambda code: "เบียร์สิงห์ขวดใหญ่" if code == "INT-BEER-SINGHA-L" else None,
+        )
+        payload = {
+            "items": [
+                {
+                    "product_name_raw": "สิงห์",
+                    "product_name_normalized": "น้ำสิงห์เพ็ท 600ml",
+                    "product_code": "INT-BEER-SINGHA-L",
+                    "category": "เครื่องดื่ม",
+                    "quantity": 1,
+                },
+            ],
+        }
+        item = parse_extraction_payload(payload).items[0]
+        assert item.product_code == "INT-BEER-SINGHA-L"
+        assert item.product_name_normalized == "เบียร์สิงห์ขวดใหญ่"
+        assert item.product_name_raw == "สิงห์"

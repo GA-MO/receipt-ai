@@ -12,9 +12,11 @@ from app.services.visit_aggregate import aggregate_visit
 from app.services.visits import (
     check_period_mismatch,
     check_store_mismatch,
+    cleanup_empty_visits,
     ensure_visit_for_doc,
     get_or_create_visit_for_merchant,
     is_store_mismatch,
+    sweep_empty_visits,
 )
 
 
@@ -102,6 +104,98 @@ class TestVisitHelpers:
         assert doc.visit_id == visit.id
 
 
+class TestEmptyVisitCleanup:
+    def test_cleanup_closes_visit_with_no_alive_docs(self, db_session):
+        v = get_or_create_visit_for_merchant(db_session, "ร้านA", report_period="2026-05")
+        doc = _seed_doc(db_session, merchant_normalized="ร้านA", visit_id=v.id)
+        from datetime import UTC, datetime
+        doc.deleted_at = datetime.now(UTC)
+        db_session.flush()
+
+        closed = cleanup_empty_visits(db_session, [v.id])
+        assert closed == 1
+        db_session.expire_all()
+        assert db_session.query(Visit).get(v.id).deleted_at is not None
+
+    def test_cleanup_skips_visit_still_referenced(self, db_session):
+        v = get_or_create_visit_for_merchant(db_session, "ร้านA", report_period="2026-05")
+        _seed_doc(db_session, merchant_normalized="ร้านA", visit_id=v.id)
+        # Add a second doc, trash only the first
+        from datetime import UTC, datetime
+        keep = _seed_doc(db_session, merchant_normalized="ร้านA", visit_id=v.id, items=[{"product_name_raw": "x", "quantity": 1}])
+        _ = keep  # noqa: F841
+
+        closed = cleanup_empty_visits(db_session, [v.id])
+        assert closed == 0
+        assert db_session.query(Visit).get(v.id).deleted_at is None
+
+    def test_cleanup_ignores_none_and_unknown_ids(self, db_session):
+        # Should not raise, should return 0
+        assert cleanup_empty_visits(db_session, [None, "does-not-exist"]) == 0
+
+    def test_sweep_closes_all_empty_visits(self, db_session):
+        # Three visits: A has alive doc, B has only trashed doc, C has no docs at all.
+        va = get_or_create_visit_for_merchant(db_session, "ร้านA", report_period="2026-05")
+        vb = get_or_create_visit_for_merchant(db_session, "ร้านB", report_period="2026-05")
+        vc = get_or_create_visit_for_merchant(db_session, "ร้านX", report_period="2026-05")
+        _seed_doc(db_session, merchant_normalized="ร้านA", visit_id=va.id)
+        from datetime import UTC, datetime
+        trashed = _seed_doc(db_session, merchant_normalized="ร้านB", visit_id=vb.id, items=[{"product_name_raw": "y", "quantity": 1}])
+        trashed.deleted_at = datetime.now(UTC)
+        db_session.flush()
+
+        closed = sweep_empty_visits(db_session)
+        assert closed == 2  # B and C
+        db_session.expire_all()
+        assert db_session.query(Visit).get(va.id).deleted_at is None
+        assert db_session.query(Visit).get(vb.id).deleted_at is not None
+        assert db_session.query(Visit).get(vc.id).deleted_at is not None
+
+
+class TestCascadeOnDocMutation:
+    def _seed_visit_with_doc(self, client, db_session):
+        """Helper: create one visit + one extracted doc attached to it."""
+        v = client.post("/api/visits", json={"store_label": "ร้านA"}).json()
+        png = _make_tiny_png()
+        with patch("app.routers.documents._enqueue_processing"):
+            resp = client.post(
+                f"/api/visits/{v['id']}/documents",
+                files=[("files", ("r.png", io.BytesIO(png), "image/png"))],
+            )
+        doc_id = resp.json()["document_ids"][0]
+        return v["id"], doc_id
+
+    def test_trashing_last_doc_closes_visit(self, client, db_session):
+        visit_id, doc_id = self._seed_visit_with_doc(client, db_session)
+        client.delete(f"/api/documents/{doc_id}")
+        db_session.expire_all()
+        assert db_session.query(Visit).get(visit_id).deleted_at is not None
+
+    def test_purging_last_doc_closes_visit(self, client, db_session):
+        visit_id, doc_id = self._seed_visit_with_doc(client, db_session)
+        client.delete(f"/api/documents/{doc_id}")  # trash
+        client.post(f"/api/documents/{doc_id}/purge")  # hard delete
+        db_session.expire_all()
+        assert db_session.query(Visit).get(visit_id).deleted_at is not None
+
+    def test_bulk_delete_closes_visit(self, client, db_session):
+        visit_id, doc_id = self._seed_visit_with_doc(client, db_session)
+        client.post("/api/documents/bulk/delete", json={"ids": [doc_id]})
+        db_session.expire_all()
+        assert db_session.query(Visit).get(visit_id).deleted_at is not None
+
+    def test_cleanup_endpoint_sweeps_orphans(self, client, db_session):
+        # Two visits with no docs at all
+        v1 = client.post("/api/visits", json={"store_label": "ร้านA"}).json()
+        v2 = client.post("/api/visits", json={"store_label": "ร้านB"}).json()
+        resp = client.post("/api/visits/cleanup-empty")
+        assert resp.status_code == 200
+        assert resp.json()["closed"] == 2
+        db_session.expire_all()
+        assert db_session.query(Visit).get(v1["id"]).deleted_at is not None
+        assert db_session.query(Visit).get(v2["id"]).deleted_at is not None
+
+
 # ---------------------------------------------------------------------------
 # Visit CRUD endpoints
 # ---------------------------------------------------------------------------
@@ -140,7 +234,7 @@ class TestVisitsRouter:
     def test_bulk_upload_creates_documents(self, client, db_session):
         v = client.post("/api/visits", json={"store_label": "X"}).json()
         png = _make_tiny_png()
-        with patch("app.routers.documents._process_document"):
+        with patch("app.routers.documents._enqueue_processing"):
             resp = client.post(
                 f"/api/visits/{v['id']}/documents",
                 files=[
@@ -157,7 +251,7 @@ class TestVisitsRouter:
     def test_bulk_upload_dedupes_existing_hashes(self, client):
         v = client.post("/api/visits", json={"store_label": "X"}).json()
         png = _make_tiny_png()
-        with patch("app.routers.documents._process_document"):
+        with patch("app.routers.documents._enqueue_processing"):
             client.post(
                 f"/api/visits/{v['id']}/documents",
                 files=[("files", ("a.png", io.BytesIO(png), "image/png"))],

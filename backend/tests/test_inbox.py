@@ -224,6 +224,90 @@ class TestOrphanNaming:
         assert resp.status_code == 400
 
 
+class TestStoreReassignment:
+    """When AI misreads a merchant and the user picks the right store, the
+    document's display name + canonical key MUST adopt the store's name, and
+    the wrong-side Visit MUST clean itself up if it becomes empty."""
+
+    def test_assign_store_overwrites_wrong_merchant_name(self, client, db_session):
+        db_session.add(
+            Store(
+                id="store-acme",
+                name="ACME Café จำกัด",
+                normalized_name="ACME Café",
+                active=True,
+            )
+        )
+        # AI read it as something close-but-wrong; this lands the doc in the
+        # unknown-stores bucket because no Store has that normalized name.
+        v_wrong = Visit(
+            id="v-wrong", store_label="acme คาเฟ่", store_key="acme คาเฟ่",
+            report_period="2026-05",
+        )
+        db_session.add(v_wrong)
+        _seed_doc(
+            db_session,
+            doc_id="d1",
+            merchant="acme คาเฟ่",
+            document_date="2026-05-10",
+            visit_id="v-wrong",
+        )
+        db_session.commit()
+
+        resp = client.post(
+            "/api/inbox/documents/d1/assign-store",
+            json={"store_id": "store-acme"},
+        )
+        assert resp.status_code == 200
+        db_session.expire_all()
+
+        doc = db_session.query(Document).filter(Document.id == "d1").first()
+        # Display + canonical both adopt the Store master.
+        assert doc.merchant_name == "ACME Café จำกัด"
+        assert doc.merchant_normalized == "ACME Café"
+        # Doc moved to a new visit.
+        assert doc.visit_id != "v-wrong"
+        new_visit = db_session.query(Visit).filter(Visit.id == doc.visit_id).first()
+        assert new_visit is not None
+        assert new_visit.store_label == "ACME Café จำกัด"
+        # Old visit got cleaned up.
+        old_visit = db_session.query(Visit).filter(Visit.id == "v-wrong").first()
+        assert old_visit.deleted_at is not None
+
+    def test_create_store_from_doc_overwrites_wrong_merchant(self, client, db_session):
+        # AI read "ร้านABc" (wrong); user clicks "สร้างร้าน" with the official
+        # name "ร้าน ABC จำกัด".
+        v_wrong = Visit(
+            id="v-wrong", store_label="ร้านABc", store_key="ร้านABc",
+            report_period="2026-05",
+        )
+        db_session.add(v_wrong)
+        _seed_doc(
+            db_session,
+            doc_id="d1",
+            merchant="ร้านABc",
+            document_date="2026-05-10",
+            visit_id="v-wrong",
+        )
+        db_session.commit()
+
+        resp = client.post(
+            "/api/inbox/documents/d1/create-store",
+            json={"name": "ร้าน ABC จำกัด", "normalized_name": "ร้าน ABC"},
+        )
+        assert resp.status_code == 200
+        db_session.expire_all()
+
+        doc = db_session.query(Document).filter(Document.id == "d1").first()
+        assert doc.merchant_name == "ร้าน ABC จำกัด"
+        assert doc.merchant_normalized == "ร้าน ABC"
+        assert doc.visit_id != "v-wrong"
+        new_visit = db_session.query(Visit).filter(Visit.id == doc.visit_id).first()
+        assert new_visit.store_label == "ร้าน ABC จำกัด"
+        # Old, now-empty visit closed.
+        assert db_session.query(Visit).filter(Visit.id == "v-wrong").first().deleted_at is not None
+
+
 class TestMarkReviewed:
     def test_stamps_last_reviewed_at(self, client, db_session):
         v = Visit(id="v1", store_label="X", report_period="2026-05")

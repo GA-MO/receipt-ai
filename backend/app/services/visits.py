@@ -260,6 +260,53 @@ def check_store_mismatch(doc: Document) -> str | None:
     )
 
 
+def cleanup_empty_visits(db: Session, visit_ids: Iterable[str | None]) -> int:
+    """Soft-delete any visit in ``visit_ids`` that no longer has alive docs.
+
+    Cascade hook called from doc-mutation paths (delete / purge / PATCH-reattach)
+    so a visit's lifecycle tracks its last alive document. Idempotent: visits
+    already trashed are skipped, visits still referenced by ≥1 alive doc are
+    left alone. Returns the number of visits newly closed.
+    """
+    candidates = {v for v in visit_ids if v}
+    if not candidates:
+        return 0
+    still_referenced = {
+        vid
+        for (vid,) in db.query(Document.visit_id)
+        .filter(
+            Document.visit_id.in_(candidates),
+            Document.deleted_at.is_(None),
+        )
+        .distinct()
+    }
+    to_close = candidates - still_referenced
+    if not to_close:
+        return 0
+    return (
+        db.query(Visit)
+        .filter(Visit.id.in_(to_close), Visit.deleted_at.is_(None))
+        .update({Visit.deleted_at: datetime.now(UTC)}, synchronize_session="fetch")
+    )
+
+
+def sweep_empty_visits(db: Session) -> int:
+    """Soft-delete every alive visit that has zero alive documents.
+
+    Safety-net for visits that escaped the cascade (legacy data, edge cases).
+    Idempotent. Returns the number of visits closed.
+    """
+    referenced = db.query(Document.visit_id).filter(
+        Document.deleted_at.is_(None),
+        Document.visit_id.isnot(None),
+    )
+    return (
+        db.query(Visit)
+        .filter(Visit.deleted_at.is_(None), Visit.id.notin_(referenced))
+        .update({Visit.deleted_at: datetime.now(UTC)}, synchronize_session="fetch")
+    )
+
+
 def visit_doc_date_range(db: Session, visit_id: str) -> tuple[str | None, str | None]:
     """Return (earliest, latest) ``document_date`` for the visit's live docs."""
     row = (

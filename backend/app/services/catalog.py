@@ -149,6 +149,7 @@ def build_display_names(items: list[tuple[str, str]]) -> dict[str, str]:
 _canonical_cache: frozenset[str] | None = None
 _prompt_entries_cache: list[dict[str, Any]] | None = None
 _prompt_markdown_cache: str | None = None
+_name_by_code_cache: dict[str, str] | None = None
 
 
 def _norm(text: str | None) -> str:
@@ -165,10 +166,11 @@ def invalidate_cache() -> None:
     The gap-resolve sweep is best-effort — failures are logged, not raised,
     so cache invalidation always succeeds.
     """
-    global _canonical_cache, _prompt_entries_cache, _prompt_markdown_cache
+    global _canonical_cache, _prompt_entries_cache, _prompt_markdown_cache, _name_by_code_cache
     _canonical_cache = None
     _prompt_entries_cache = None
     _prompt_markdown_cache = None
+    _name_by_code_cache = None
 
     try:
         from ..database import SessionLocal
@@ -428,6 +430,27 @@ def prompt_catalog_entries() -> list[dict[str, Any]]:
     return _prompt_entries_cache
 
 
+def name_by_code(code: str | None) -> str | None:
+    """Look up the canonical display name for a SKU code.
+
+    Backed by the same cache as :func:`prompt_catalog_entries`, so it stays in
+    sync with what the prompt advertises to Gemini. Used by the extraction
+    parser to derive ``product_name_normalized`` from ``product_code``: the LLM
+    emits only raw + code, the canonical display name is resolved here so
+    (code, name) can never desync.
+    """
+    if not code:
+        return None
+    global _name_by_code_cache
+    if _name_by_code_cache is None:
+        _name_by_code_cache = {
+            e["code"]: e["name"]
+            for e in prompt_catalog_entries()
+            if e.get("code") and e.get("name")
+        }
+    return _name_by_code_cache.get(code)
+
+
 def _format_markdown(entries: list[dict[str, Any]]) -> str:
     """Render entries as the markdown table embedded in SYSTEM_INSTRUCTION.
 
@@ -436,11 +459,11 @@ def _format_markdown(entries: list[dict[str, Any]]) -> str:
     """
     lines = [
         "## PRODUCT_CATALOG (เครือบุญรอด + คู่แข่งที่ระบบเรียนรู้ไว้)",
-        "ใช้ตารางนี้ map ชื่อย่อ/ลายมือ → ชื่อทางการ + product_code",
+        "ใช้ตารางนี้ map ชื่อย่อ/ลายมือ → product_code (ระบบจะ resolve ชื่อทางการจาก code เอง)",
         "สำหรับสินค้าคู่แข่งที่ไม่อยู่ในตารางนี้ ให้ใส่ raw เป็นชื่อสินค้าและ product_code = null",
         "",
-        "| product_code | ชื่อทางการ (product_name_normalized) | คำย่อ / ชื่อเล่น / ลายมือที่พบบ่อย | หมวด |",
-        "|--------------|--------------------------------------|--------------------------------------|------|",
+        "| product_code | ชื่อทางการ | คำย่อ / ชื่อเล่น / ลายมือที่พบบ่อย | หมวด |",
+        "|--------------|-----------|--------------------------------------|------|",
     ]
     for e in entries:
         aliases = ", ".join(e["aliases"]) if e["aliases"] else "-"

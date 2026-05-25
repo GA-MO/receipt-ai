@@ -290,8 +290,13 @@ def apply_alias_to_item(db: Session, item: DocumentItemBase) -> ProductAlias | N
          rows created before migration 0011).
 
     Unit, quantity, and price are never touched — those are per-receipt facts.
+    Skipped entirely when the item already has a ``product_code`` — code is the
+    unambiguous DB pointer, so a fuzzy alias match on raw (which can return a
+    different SKU) must not be allowed to desync name from code.
     Increments ``hit_count`` on the matched alias.
     """
+    if getattr(item, "product_code", None):
+        return None
     raw = getattr(item, "product_name_raw", None)
     lookup_text = raw or item.product_name_normalized or ""
     alias = lookup_alias(db, lookup_text)

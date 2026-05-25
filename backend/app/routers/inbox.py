@@ -43,8 +43,11 @@ from ..services.audit import record as record_event
 from ..services.merchants import assign_normalized_merchant
 from ..services.storage import save_bytes, validate_and_hash
 from ..services.visits import (
+    cleanup_empty_visits,
     ensure_visit_for_doc,
     is_store_mismatch,
+    reattach_visit_for_doc,
+    recompute_store_label,
     visit_doc_date_range,
 )
 from .documents import _enqueue_processing
@@ -446,13 +449,15 @@ def assign_store_to_doc(
     if not store:
         raise HTTPException(404, "ไม่พบร้านในระบบ")
 
-    # Re-key the doc's canonical to the Store's canonical so future matching
-    # is deterministic and the orphan/unknown-store classification stays
-    # consistent across re-extractions.
+    # User has explicitly told us this doc belongs to ``store`` — overwrite the
+    # AI's (possibly wrong) reading with the Store master's canonical name on
+    # both fields so display + matching agree. Future re-extractions will keep
+    # this corrected identity because product_aliases pin merchant_normalized.
+    old_visit_id = doc.visit_id
+    old_merchant = doc.merchant_name
+    doc.merchant_name = store.name
     doc.merchant_normalized = (store.normalized_name or store.name).strip()
-    if not doc.merchant_name:
-        doc.merchant_name = store.name
-    ensure_visit_for_doc(db, doc)
+    new_visit = reattach_visit_for_doc(db, doc)
     record_event(
         db,
         doc_id,
@@ -461,9 +466,18 @@ def assign_store_to_doc(
         payload={
             "store_id": store.id,
             "store_name": store.name,
+            "old_merchant": old_merchant,
+            "old_visit_id": old_visit_id,
             "visit_id": doc.visit_id,
         },
     )
+    # Sync the new visit's display label to the chosen store, and close the
+    # old visit if this was its last alive doc.
+    if new_visit is not None:
+        recompute_store_label(db, new_visit)
+    if old_visit_id and old_visit_id != doc.visit_id:
+        db.flush()
+        cleanup_empty_visits(db, [old_visit_id])
     db.commit()
     db.refresh(doc)
     item_count = (
@@ -510,10 +524,14 @@ def create_store_from_doc(
     db.add(store)
     db.flush()
 
+    # User just defined this Store from scratch — adopt its name as the doc's
+    # canonical identity, replacing whatever the AI read (which was wrong
+    # enough to land in the unknown-stores bucket).
+    old_visit_id = doc.visit_id
+    old_merchant = doc.merchant_name
+    doc.merchant_name = name
     doc.merchant_normalized = normalized_name
-    if not doc.merchant_name:
-        doc.merchant_name = name
-    ensure_visit_for_doc(db, doc)
+    new_visit = reattach_visit_for_doc(db, doc)
     record_event(
         db,
         doc_id,
@@ -522,9 +540,16 @@ def create_store_from_doc(
         payload={
             "store_id": store.id,
             "store_name": store.name,
+            "old_merchant": old_merchant,
+            "old_visit_id": old_visit_id,
             "visit_id": doc.visit_id,
         },
     )
+    if new_visit is not None:
+        recompute_store_label(db, new_visit)
+    if old_visit_id and old_visit_id != doc.visit_id:
+        db.flush()
+        cleanup_empty_visits(db, [old_visit_id])
     db.commit()
     db.refresh(doc)
     item_count = (

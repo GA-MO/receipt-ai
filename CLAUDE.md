@@ -16,7 +16,8 @@ they were not part of the real workflow.
 
 - **Backend** — FastAPI (Python 3.11+) at `backend/`
 - **Frontend** — React 19 + Vite + Mantine v9 + Tailwind v4 at `frontend/`
-- **AI** — Gemini 3 Flash via `google-genai` (Vertex AI), vision-only
+- **AI** — Gemini 3 Flash (default) via OpenRouter using the OpenAI SDK,
+  vision-only. Swap model via `OPENROUTER_MODEL`.
 - **DB** — SQLite via SQLAlchemy + Alembic (head: `0024`)
 - **Worker** — arq + Redis, opt-in via `USE_ARQ=true`; default falls back
   to FastAPI `BackgroundTasks` guarded by a `threading.Semaphore(1)`
@@ -56,16 +57,17 @@ make docker-up     # docker compose
 
 ## AI pipeline
 
-- `EXTRACTION_MODE=default` (recommended) — one Gemini Vision call. The
-  system instruction carries the live `PRODUCT_CATALOG` (built from active
-  `products` rows) plus the JSON schema; the user prompt is a short task
-  override.
-- `EXTRACTION_MODE=agentic` — multi-turn tool-calling loop with
-  `lookup_catalog`; slower, only useful if the catalog grows much larger.
+- Single OpenRouter vision call. The system instruction carries the live
+  `PRODUCT_CATALOG` (built from active `products` rows) plus the JSON
+  schema; the user prompt is a short task override.
 - Retry with exponential backoff (3 attempts) inside `llm_client`.
+- LLM emits only `product_name_raw` + `product_code`. The display name
+  `product_name_normalized` is derived server-side from the code via
+  `catalog.name_by_code`, falling back to raw when no code matches — so
+  (code, name) can never desync.
 - The pipeline extracts: `merchant_name/_normalized`, `document_number`,
   `document_date` (ค.ศ.), `category`, `items[]` with
-  `product_name_raw/_normalized`, `product_code`, `quantity`, `unit`.
+  `product_name_raw`, `product_code`, `quantity`, `unit`.
   **Prices, VAT, discount, totals are not extracted** — they were removed
   from the schema, the prompt, and the DB.
 
@@ -113,8 +115,8 @@ make docker-up     # docker compose
   tasks open their own DB session.
 - Test DB uses in-memory SQLite with `StaticPool` for cross-connection
   state sharing.
-- Config via `.env` in `backend/` — see `backend/.env.example`. GCP auth
-  uses `google.auth.default(scopes=["cloud-platform"])` + Vertex AI client.
+- Config via `.env` in `backend/` — see `backend/.env.example`. Requires
+  `OPENROUTER_API_KEY` (get one at <https://openrouter.ai/keys>).
 - Frontend API base URL from `VITE_API_BASE` env var (defaults to
   `http://localhost:8000/api`).
 - DB schema changes: add a file under `backend/alembic/versions/` and run
@@ -128,9 +130,8 @@ make docker-up     # docker compose
 ## File map (important)
 
 ```text
-backend/app/services/extraction.py        # default Gemini call + prompt
-backend/app/services/extraction_agentic.py  # tool-calling mode
-backend/app/services/extraction_tools.py    # lookup_catalog declaration
+backend/app/services/extraction.py        # OpenRouter vision call + prompt
+backend/app/services/llm_client.py        # OpenRouter (OpenAI SDK) wrapper
 backend/app/services/visits.py              # ensure_visit_for_doc,
                                             # check_period_mismatch,
                                             # check_store_mismatch
@@ -182,3 +183,12 @@ If a doc/comment references any of these, it's stale:
 - **AI Health** (`/api/ai-health/*`, AIHealthPage) — removed.
 - **Stepper visit creation** (`/visits/new`, `VisitNewPage.tsx`) —
   replaced by the Inbox + Store-detail "+ เพิ่มเดือน" flow.
+- **Vertex AI / google-genai** (`get_gemini_client`, `_create_vertex_client`,
+  `GCP_*` / `GEMINI_*` env vars, `LLM_PROVIDER`) — removed; all LLM calls
+  now go through OpenRouter via the OpenAI SDK.
+- **Agentic extraction** (`extraction_agentic.py`, `extraction_tools.py`,
+  `EXTRACTION_MODE=agentic`, `lookup_catalog` tool) — removed; the default
+  one-shot call is the only path.
+- **`product_name_normalized` from LLM** — model now emits only
+  `product_name_raw + product_code`; display name is derived server-side
+  from `catalog.name_by_code(code)`.

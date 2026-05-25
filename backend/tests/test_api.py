@@ -27,9 +27,9 @@ def _upload_document(client, png_bytes: bytes | None = None, filename: str = "re
     """Helper to upload a document. Mocks background processing."""
     if png_bytes is None:
         png_bytes = _make_tiny_png()
-    # Mock _process_document so background task is a no-op
+    # Mock _enqueue_processing so background task is a no-op
     # (it creates its own DB session which won't share the test's in-memory DB)
-    with patch("app.routers.documents._process_document"):
+    with patch("app.routers.documents._enqueue_processing"):
         return client.post(
             "/api/documents/upload",
             files={"file": (filename, io.BytesIO(png_bytes), "image/png")},
@@ -51,7 +51,7 @@ class TestUploadDocument:
         assert "id" in data
 
     def test_upload_rejects_unsupported_extension(self, client):
-        with patch("app.routers.documents._process_document"):
+        with patch("app.routers.documents._enqueue_processing"):
             resp = client.post(
                 "/api/documents/upload",
                 files={"file": ("file.txt", io.BytesIO(b"hello"), "text/plain")},
