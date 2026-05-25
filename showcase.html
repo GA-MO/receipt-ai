@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Thai Receipt Intelligence — Visit-centric receipt platform for Boonrawd</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['IBM Plex Sans Thai', 'system-ui', 'sans-serif'],
+          mono: ['JetBrains Mono', 'monospace'],
+        },
+        colors: {
+          ink: {
+            900: '#0a0b14',
+            800: '#0f1020',
+            700: '#1a1c2e',
+            600: '#252842',
+          },
+          accent: {
+            400: '#818cf8',
+            500: '#6366f1',
+            600: '#4f46e5',
+            700: '#4338ca',
+          },
+        },
+        animation: {
+          'fade-up': 'fadeUp 0.8s ease-out forwards',
+          'pulse-soft': 'pulseSoft 3s ease-in-out infinite',
+          'float': 'float 6s ease-in-out infinite',
+          'shimmer': 'shimmer 3s linear infinite',
+        },
+      },
+    },
+  }
+</script>
+<style>
+  html { scroll-behavior: smooth; }
+  body { font-family: 'IBM Plex Sans Thai', sans-serif; background: #0a0b14; color: #e5e7eb; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes pulseSoft {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-12px); }
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.8s ease-out, transform 0.8s ease-out; }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  .gradient-text {
+    background: linear-gradient(135deg, #818cf8 0%, #c4b5fd 50%, #818cf8 100%);
+    background-size: 200% 200%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: shimmer 4s ease-in-out infinite;
+  }
+
+  .glow {
+    box-shadow: 0 0 80px -20px rgba(129, 140, 248, 0.4);
+  }
+
+  .grid-bg {
+    background-image:
+      linear-gradient(rgba(99, 102, 241, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(99, 102, 241, 0.05) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
+  }
+
+  .card {
+    background: linear-gradient(180deg, rgba(37, 40, 66, 0.6) 0%, rgba(26, 28, 46, 0.6) 100%);
+    border: 1px solid rgba(129, 140, 248, 0.15);
+    backdrop-filter: blur(12px);
+  }
+  .card:hover {
+    border-color: rgba(129, 140, 248, 0.4);
+  }
+
+  .receipt-paper {
+    background: #fefce8;
+    color: #1f2937;
+    font-family: 'JetBrains Mono', monospace;
+    transform: rotate(-2deg);
+    box-shadow: 0 20px 60px -20px rgba(0,0,0,0.5);
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+    background: rgba(99, 102, 241, 0.15);
+    border: 1px solid rgba(129, 140, 248, 0.3);
+    color: #c4b5fd;
+  }
+
+  .arrow-flow::after {
+    content: '→';
+    position: absolute;
+    right: -20px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #818cf8;
+    font-size: 24px;
+  }
+
+  .num-counter { font-variant-numeric: tabular-nums; }
+
+  .stage-card {
+    transition: all 0.3s ease;
+  }
+  .stage-card:hover {
+    transform: translateY(-4px);
+  }
+
+  /* Nav backdrop */
+  .nav-blur {
+    backdrop-filter: blur(20px) saturate(180%);
+    background: rgba(10, 11, 20, 0.7);
+    border-bottom: 1px solid rgba(129, 140, 248, 0.1);
+  }
+</style>
+</head>
+<body class="antialiased">
+
+<!-- NAV -->
+<nav class="fixed top-0 inset-x-0 z-50 nav-blur">
+  <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-400 to-accent-600 flex items-center justify-center font-bold">฿</div>
+      <span class="font-semibold text-white">Receipt Intelligence</span>
+      <span class="chip ml-2">Boonrawd Visit Edition</span>
+    </div>
+    <div class="hidden md:flex items-center gap-6 text-sm text-gray-400">
+      <a href="#chapter-1" class="hover:text-white">AI</a>
+      <a href="#chapter-2" class="hover:text-white">Triage</a>
+      <a href="#chapter-3" class="hover:text-white">Rollup</a>
+      <a href="#stack" class="hover:text-white">Stack</a>
+      <a href="http://localhost:5173" class="px-4 py-1.5 rounded-lg bg-accent-500 hover:bg-accent-600 text-white font-medium">เปิดแอป</a>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
+  <div class="absolute inset-0 grid-bg"></div>
+  <div class="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-accent-600/20 rounded-full blur-[120px]"></div>
+
+  <div class="relative max-w-6xl mx-auto px-6 text-center py-20">
+    <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent-500/10 border border-accent-500/30 mb-8 animate-fade-up">
+      <span class="w-2 h-2 rounded-full bg-accent-400 animate-pulse-soft"></span>
+      <span class="text-sm text-accent-400">SBP AI Hackathon 2026 · Visit-centric pivot</span>
+    </div>
+
+    <h1 class="text-5xl md:text-7xl font-bold leading-tight tracking-tight mb-6 animate-fade-up" style="animation-delay: 0.1s">
+      เปลี่ยน <span class="gradient-text">ใบเสร็จกองโต</span><br />
+      ให้เป็น <span class="gradient-text">ยอดขายรายเดือน</span>
+    </h1>
+
+    <p class="text-xl md:text-2xl text-gray-400 max-w-3xl mx-auto mb-12 leading-relaxed animate-fade-up" style="animation-delay: 0.2s">
+      เซลส์ Boonrawd ถ่ายใบเสร็จเดือนละหลายสิบใบต่อร้าน<br />
+      ระบบจัดร้าน อ่านสินค้า สรุปยอดให้ <span class="text-white font-semibold">โดยไม่ต้องเปิด Excel</span>
+    </p>
+
+    <div class="flex flex-wrap items-center justify-center gap-3 mb-20 animate-fade-up" style="animation-delay: 0.3s">
+      <span class="chip">📸 Bulk upload</span>
+      <span class="chip">🤖 Gemini 3 Vision</span>
+      <span class="chip">🗂️ Auto-attach Visit</span>
+      <span class="chip">📊 Product × Qty rollup</span>
+      <span class="chip">🇹🇭 Thai handwriting</span>
+    </div>
+
+    <!-- Flow animation -->
+    <div class="relative max-w-5xl mx-auto animate-fade-up" style="animation-delay: 0.5s">
+      <div class="grid grid-cols-3 gap-4 md:gap-8 items-center">
+        <div class="card rounded-2xl p-6 stage-card">
+          <div class="text-4xl mb-3">📥</div>
+          <div class="text-sm text-accent-400 font-semibold mb-1">STEP 1</div>
+          <div class="font-medium text-white">โยนรูปเข้า Inbox</div>
+          <div class="text-xs text-gray-500 mt-2">20+ ใบ หลายร้าน หลายเดือน</div>
+        </div>
+        <div class="card rounded-2xl p-6 stage-card glow">
+          <div class="text-4xl mb-3">⚡</div>
+          <div class="text-sm text-accent-400 font-semibold mb-1">STEP 2</div>
+          <div class="font-medium text-white">AI สกัด + จัดร้าน</div>
+          <div class="text-xs text-gray-500 mt-2">อ่านสินค้า · match catalog · attach visit</div>
+        </div>
+        <div class="card rounded-2xl p-6 stage-card">
+          <div class="text-4xl mb-3">📈</div>
+          <div class="text-sm text-accent-400 font-semibold mb-1">STEP 3</div>
+          <div class="font-medium text-white">ดูยอดเดือนทันที</div>
+          <div class="text-xs text-gray-500 mt-2">Product × qty ต่อ visit</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-16 text-sm text-gray-500 animate-fade-up" style="animation-delay: 0.7s">
+      ↓ เรื่องราว 3 บท
+    </div>
+  </div>
+</section>
+
+<!-- PROBLEM SETUP -->
+<section class="py-32 px-6 relative">
+  <div class="max-w-5xl mx-auto">
+    <div class="reveal text-center mb-16">
+      <div class="chip mb-4">ปัญหาที่เกิดขึ้นจริง</div>
+      <h2 class="text-4xl md:text-5xl font-bold mb-6">เซลส์ใช้เวลาเป็นวันต่อรอบ<br /><span class="text-gray-500">เพื่อทำสิ่งที่ Excel ไม่ควรต้องทำ</span></h2>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-8 items-center">
+      <!-- Before -->
+      <div class="reveal card rounded-3xl p-8 relative">
+        <div class="absolute -top-3 left-6 px-3 py-1 rounded-full bg-red-500/20 border border-red-500/40 text-xs text-red-300 font-semibold">เดิม</div>
+        <div class="text-2xl font-bold mb-6 text-white">นั่งพิมพ์ Excel</div>
+        <ul class="space-y-3 text-gray-400">
+          <li class="flex gap-3"><span class="text-red-400">✗</span><span>เปิดทีละใบ พิมพ์ทีละบรรทัด</span></li>
+          <li class="flex gap-3"><span class="text-red-400">✗</span><span>ใบลายมือ ต้องเดาสินค้า</span></li>
+          <li class="flex gap-3"><span class="text-red-400">✗</span><span>คัดแยกร้านเอง</span></li>
+          <li class="flex gap-3"><span class="text-red-400">✗</span><span>ตรวจซ้ำกับเดือนก่อนเอง</span></li>
+          <li class="flex gap-3"><span class="text-red-400">✗</span><span>สรุปยอดสุดท้ายในไฟล์แยก</span></li>
+        </ul>
+        <div class="mt-6 pt-6 border-t border-white/5 text-3xl font-bold text-red-300 num-counter">~2 ชั่วโมง / รอบ</div>
+      </div>
+
+      <!-- After -->
+      <div class="reveal card rounded-3xl p-8 relative glow" style="transition-delay: 0.1s">
+        <div class="absolute -top-3 left-6 px-3 py-1 rounded-full bg-accent-500/20 border border-accent-500/40 text-xs text-accent-300 font-semibold">ระบบใหม่</div>
+        <div class="text-2xl font-bold mb-6 text-white">โยน · รอ · ตรวจ · เสร็จ</div>
+        <ul class="space-y-3 text-gray-300">
+          <li class="flex gap-3"><span class="text-accent-400">✓</span><span>Bulk upload หลายไฟล์ทีเดียว</span></li>
+          <li class="flex gap-3"><span class="text-accent-400">✓</span><span>Gemini อ่านลายมือไทย</span></li>
+          <li class="flex gap-3"><span class="text-accent-400">✓</span><span>จัด Visit ตามร้าน-เดือนอัตโนมัติ</span></li>
+          <li class="flex gap-3"><span class="text-accent-400">✓</span><span>File hash กันใบซ้ำให้</span></li>
+          <li class="flex gap-3"><span class="text-accent-400">✓</span><span>เห็น product × qty ทันทีหน้า Visit</span></li>
+        </ul>
+        <div class="mt-6 pt-6 border-t border-white/5 text-3xl font-bold text-accent-300 num-counter">~10 นาที / รอบ</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CHAPTER 1: AI -->
+<section id="chapter-1" class="py-32 px-6 relative overflow-hidden">
+  <div class="absolute top-1/2 -left-40 w-[500px] h-[500px] bg-accent-600/10 rounded-full blur-[120px]"></div>
+
+  <div class="relative max-w-7xl mx-auto">
+    <div class="reveal text-center mb-20">
+      <div class="text-6xl font-bold text-accent-400/20 mb-2">01</div>
+      <div class="chip mb-4">บทที่ 1 · The Eye</div>
+      <h2 class="text-4xl md:text-5xl font-bold mb-6">AI อ่านลายมือไทย<br /><span class="gradient-text">แล้วจับคู่ catalog ให้</span></h2>
+      <p class="text-lg text-gray-400 max-w-2xl mx-auto">
+        ไม่ใช่แค่ OCR ที่อ่านตัวอักษร — โมเดลรู้จัก catalog สินค้า Boonrawd และส่งกลับเป็น product code ที่ตรงกับฐานข้อมูล
+      </p>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-12 items-center">
+      <!-- Receipt mockup -->
+      <div class="reveal">
+        <div class="receipt-paper rounded-lg p-8 max-w-sm mx-auto">
+          <div class="text-center border-b-2 border-dashed border-gray-400 pb-3 mb-3">
+            <div class="font-bold">ร้านป้าน้อย</div>
+            <div class="text-xs">ตลาดเช้า เชียงใหม่</div>
+            <div class="text-xs">25/05/2569</div>
+          </div>
+          <div class="space-y-1 text-sm">
+            <div class="flex justify-between"><span>สิงห์ ขวด 320</span><span>12</span></div>
+            <div class="flex justify-between"><span>ลีโอ กระป๋อง</span><span>24</span></div>
+            <div class="flex justify-between"><span>โซดา 325</span><span>6</span></div>
+            <div class="flex justify-between"><span>น้ำเปล่า 600ml</span><span>48</span></div>
+            <div class="flex justify-between"><span>ช้าง คลาสสิค</span><span>10</span></div>
+          </div>
+          <div class="border-t-2 border-dashed border-gray-400 mt-3 pt-3 text-xs text-center text-gray-600">
+            ลายมือ · กระดาษย่น · มุมพับ
+          </div>
+        </div>
+        <div class="text-center mt-6">
+          <div class="inline-flex items-center gap-2 text-gray-500 text-sm">
+            <span class="animate-pulse-soft">⚡</span>
+            <span>Gemini 3 Flash Vision via OpenRouter</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Extracted JSON -->
+      <div class="reveal" style="transition-delay: 0.15s">
+        <div class="card rounded-2xl p-6 font-mono text-xs leading-relaxed overflow-x-auto">
+          <div class="flex items-center gap-2 mb-4 text-gray-500">
+            <span class="w-2 h-2 rounded-full bg-red-400"></span>
+            <span class="w-2 h-2 rounded-full bg-yellow-400"></span>
+            <span class="w-2 h-2 rounded-full bg-green-400"></span>
+            <span class="ml-2">extracted.json</span>
+          </div>
+<pre class="text-gray-300"><span class="text-gray-500">{</span>
+  <span class="text-accent-400">"merchant_name"</span>: <span class="text-green-300">"ร้านป้าน้อย"</span>,
+  <span class="text-accent-400">"merchant_normalized"</span>: <span class="text-green-300">"ร้านป้าน้อย ตลาดเช้า"</span>,
+  <span class="text-accent-400">"document_date"</span>: <span class="text-green-300">"2026-05-25"</span>,
+  <span class="text-accent-400">"category"</span>: <span class="text-green-300">"เครื่องดื่ม"</span>,
+  <span class="text-accent-400">"items"</span>: [
+    {
+      <span class="text-accent-400">"product_name_raw"</span>: <span class="text-green-300">"สิงห์ ขวด 320"</span>,
+      <span class="text-accent-400">"product_code"</span>: <span class="text-yellow-300">"SNG-320-BTL"</span> <span class="text-gray-500">✓</span>,
+      <span class="text-accent-400">"quantity"</span>: <span class="text-orange-300">12</span>
+    },
+    {
+      <span class="text-accent-400">"product_name_raw"</span>: <span class="text-green-300">"ลีโอ กระป๋อง"</span>,
+      <span class="text-accent-400">"product_code"</span>: <span class="text-yellow-300">"LEO-330-CAN"</span> <span class="text-gray-500">✓</span>,
+      <span class="text-accent-400">"quantity"</span>: <span class="text-orange-300">24</span>
+    },
+    {
+      <span class="text-accent-400">"product_name_raw"</span>: <span class="text-green-300">"ช้าง คลาสสิค"</span>,
+      <span class="text-accent-400">"product_code"</span>: <span class="text-yellow-300">"CHG-CLS-BTL"</span> <span class="text-red-300">⚠ คู่แข่ง</span>,
+      <span class="text-accent-400">"quantity"</span>: <span class="text-orange-300">10</span>
+    }
+  ]
+<span class="text-gray-500">}</span></pre>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3 mt-4">
+          <div class="card rounded-xl p-3 text-center">
+            <div class="text-xs text-gray-500">items</div>
+            <div class="text-xl font-bold text-white num-counter">5</div>
+          </div>
+          <div class="card rounded-xl p-3 text-center">
+            <div class="text-xs text-gray-500">matched</div>
+            <div class="text-xl font-bold text-accent-400 num-counter">5/5</div>
+          </div>
+          <div class="card rounded-xl p-3 text-center">
+            <div class="text-xs text-gray-500">conf</div>
+            <div class="text-xl font-bold text-green-300 num-counter">0.94</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI features -->
+    <div class="grid md:grid-cols-3 gap-6 mt-20">
+      <div class="reveal card rounded-2xl p-6 stage-card">
+        <div class="text-3xl mb-3">✋</div>
+        <div class="font-semibold text-white mb-2">อ่านลายมือไทย</div>
+        <div class="text-sm text-gray-400">Vision model ของ Gemini จัดการตัวอักษรไทย เลขไทย/อารบิก กระดาษย่น มุมพับได้</div>
+      </div>
+      <div class="reveal card rounded-2xl p-6 stage-card" style="transition-delay: 0.1s">
+        <div class="text-3xl mb-3">🎯</div>
+        <div class="font-semibold text-white mb-2">Code-first matching</div>
+        <div class="text-sm text-gray-400">LLM ส่ง product code ระบบ map ชื่อ display เอง (code, name) ไม่มีทางเพี้ยน</div>
+      </div>
+      <div class="reveal card rounded-2xl p-6 stage-card" style="transition-delay: 0.2s">
+        <div class="text-3xl mb-3">🧠</div>
+        <div class="font-semibold text-white mb-2">เรียนรู้จากการแก้</div>
+        <div class="text-sm text-gray-400">Product aliases สะสมทุกครั้งที่เซลส์แก้ ครั้งถัดไปจับได้เอง</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CHAPTER 2: TRIAGE -->
+<section id="chapter-2" class="py-32 px-6 relative overflow-hidden">
+  <div class="absolute top-1/4 -right-40 w-[500px] h-[500px] bg-accent-500/10 rounded-full blur-[120px]"></div>
+
+  <div class="relative max-w-7xl mx-auto">
+    <div class="reveal text-center mb-20">
+      <div class="text-6xl font-bold text-accent-400/20 mb-2">02</div>
+      <div class="chip mb-4">บทที่ 2 · The Sorter</div>
+      <h2 class="text-4xl md:text-5xl font-bold mb-6">โยนรูปปนกัน<br /><span class="gradient-text">ระบบจัดเข้าร้านให้เอง</span></h2>
+      <p class="text-lg text-gray-400 max-w-2xl mx-auto">
+        Merchant normalization (rapidfuzz) + Auto-attach Visit → ไม่ต้องแยกรูปก่อนอัปโหลด ระบบรู้เองว่าใบไหนเข้า visit ไหน
+      </p>
+    </div>
+
+    <!-- Triage diagram -->
+    <div class="reveal mb-16">
+      <div class="card rounded-3xl p-8 md:p-12">
+        <div class="grid md:grid-cols-5 gap-6 items-center">
+          <!-- Source -->
+          <div class="md:col-span-1">
+            <div class="text-xs text-gray-500 uppercase tracking-wider mb-2">Upload</div>
+            <div class="space-y-2">
+              <div class="bg-ink-700 rounded-lg p-3 flex items-center gap-2 text-sm">
+                <span>📷</span><span class="text-gray-300">IMG_8721.jpg</span>
+              </div>
+              <div class="bg-ink-700 rounded-lg p-3 flex items-center gap-2 text-sm">
+                <span>📷</span><span class="text-gray-300">IMG_8722.jpg</span>
+              </div>
+              <div class="bg-ink-700 rounded-lg p-3 flex items-center gap-2 text-sm">
+                <span>📷</span><span class="text-gray-300">IMG_8723.jpg</span>
+              </div>
+              <div class="text-center text-xs text-gray-600">+ 17 ใบ</div>
+            </div>
+          </div>
+
+          <!-- Arrow -->
+          <div class="md:col-span-1 text-center text-accent-400 text-4xl">→</div>
+
+          <!-- Buckets -->
+          <div class="md:col-span-3 grid grid-cols-2 gap-4">
+            <div class="bg-accent-500/10 border border-accent-500/30 rounded-xl p-4">
+              <div class="flex items-center justify-between mb-2">
+                <div class="text-xs font-semibold text-accent-300">VISIT (auto-attached)</div>
+                <div class="text-2xl font-bold text-accent-300 num-counter">14</div>
+              </div>
+              <div class="text-xs text-gray-400">ตรงกับร้านใน Store master + อยู่ในเดือนของ visit</div>
+            </div>
+            <div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
+              <div class="flex items-center justify-between mb-2">
+                <div class="text-xs font-semibold text-yellow-300">UNKNOWN STORE</div>
+                <div class="text-2xl font-bold text-yellow-300 num-counter">4</div>
+              </div>
+              <div class="text-xs text-gray-400">อ่านชื่อร้านได้ แต่ยังไม่มีใน master</div>
+            </div>
+            <div class="bg-orange-500/10 border border-orange-500/30 rounded-xl p-4">
+              <div class="flex items-center justify-between mb-2">
+                <div class="text-xs font-semibold text-orange-300">ORPHAN</div>
+                <div class="text-2xl font-bold text-orange-300 num-counter">1</div>
+              </div>
+              <div class="text-xs text-gray-400">อ่านชื่อร้านไม่ออกเลย</div>
+            </div>
+            <div class="bg-gray-500/10 border border-gray-500/30 rounded-xl p-4">
+              <div class="flex items-center justify-between mb-2">
+                <div class="text-xs font-semibold text-gray-300">NON-RECEIPT</div>
+                <div class="text-2xl font-bold text-gray-300 num-counter">1</div>
+              </div>
+              <div class="text-xs text-gray-400">ไม่ใช่ใบเสร็จ · auto-purge ใน 7 วัน</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mismatch warnings -->
+    <div class="grid md:grid-cols-2 gap-6">
+      <div class="reveal card rounded-2xl p-6 stage-card">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-10 h-10 rounded-lg bg-yellow-500/20 flex items-center justify-center text-yellow-400 text-xl">⚠</div>
+          <div class="font-semibold text-white">Period mismatch</div>
+        </div>
+        <p class="text-sm text-gray-400 mb-3">เตือนเมื่อวันที่ในใบเสร็จไม่ตรงกับเดือนของ Visit</p>
+        <div class="bg-ink-900 rounded-lg p-3 text-xs font-mono">
+          <div class="text-yellow-400">visit period: 2026-05</div>
+          <div class="text-gray-500">document_date: 2026-<span class="text-yellow-400">04</span>-29 ⚠</div>
+        </div>
+      </div>
+      <div class="reveal card rounded-2xl p-6 stage-card" style="transition-delay: 0.1s">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-10 h-10 rounded-lg bg-yellow-500/20 flex items-center justify-center text-yellow-400 text-xl">🏪</div>
+          <div class="font-semibold text-white">Store mismatch</div>
+        </div>
+        <p class="text-sm text-gray-400 mb-3">เตือนเมื่อชื่อร้านใน OCR ต่างจากร้านของ Visit</p>
+        <div class="bg-ink-900 rounded-lg p-3 text-xs font-mono">
+          <div class="text-yellow-400">visit.store: "ร้านป้าน้อย"</div>
+          <div class="text-gray-500">merchant: "ร้าน<span class="text-yellow-400">ลุง</span>น้อย" ⚠</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CHAPTER 3: ROLLUP -->
+<section id="chapter-3" class="py-32 px-6 relative overflow-hidden">
+  <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-accent-600/10 rounded-full blur-[150px]"></div>
+
+  <div class="relative max-w-7xl mx-auto">
+    <div class="reveal text-center mb-20">
+      <div class="text-6xl font-bold text-accent-400/20 mb-2">03</div>
+      <div class="chip mb-4">บทที่ 3 · The Answer</div>
+      <h2 class="text-4xl md:text-5xl font-bold mb-6">หัวใจของระบบ —<br /><span class="gradient-text">Visit Rollup</span></h2>
+      <p class="text-lg text-gray-400 max-w-2xl mx-auto">
+        เปิดหน้า Visit แล้วเห็น <span class="text-white font-semibold">เดือนนี้ร้านนี้ขายอะไรไปเท่าไหร่</span> ทันที — สิ่งที่เคยต้องนั่งรวม Excel ทีละบรรทัด
+      </p>
+    </div>
+
+    <!-- Visit detail mockup -->
+    <div class="reveal max-w-5xl mx-auto">
+      <div class="card rounded-3xl overflow-hidden glow">
+        <!-- Visit header -->
+        <div class="bg-gradient-to-r from-accent-600/20 to-accent-500/10 p-6 border-b border-white/5">
+          <div class="flex items-start justify-between flex-wrap gap-4">
+            <div>
+              <div class="text-xs text-accent-300 uppercase tracking-wider mb-1">Visit</div>
+              <div class="text-2xl font-bold text-white">ร้านป้าน้อย ตลาดเช้า</div>
+              <div class="text-sm text-gray-400 mt-1">📍 เชียงใหม่ · 📅 พฤษภาคม 2026 · 👤 เซลส์ A</div>
+            </div>
+            <div class="grid grid-cols-3 gap-4 text-center">
+              <div>
+                <div class="text-xs text-gray-500">เอกสาร</div>
+                <div class="text-2xl font-bold text-white num-counter">8</div>
+              </div>
+              <div>
+                <div class="text-xs text-gray-500">รายการ</div>
+                <div class="text-2xl font-bold text-white num-counter">42</div>
+              </div>
+              <div>
+                <div class="text-xs text-gray-500">SKU</div>
+                <div class="text-2xl font-bold text-white num-counter">14</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Product rollup -->
+        <div class="p-6">
+          <div class="text-xs text-gray-500 uppercase tracking-wider mb-4">Product × Quantity rollup</div>
+          <div class="space-y-2">
+            <!-- Row -->
+            <div class="flex items-center gap-4 p-3 rounded-lg hover:bg-white/5 transition">
+              <div class="chip" style="background: rgba(34, 197, 94, 0.15); border-color: rgba(34, 197, 94, 0.3); color: #86efac;">Boonrawd</div>
+              <div class="flex-1">
+                <div class="text-white font-medium">สิงห์ ขวด 320ml</div>
+                <div class="text-xs text-gray-500">SNG-320-BTL · เครื่องดื่ม</div>
+              </div>
+              <div class="text-right">
+                <div class="text-xl font-bold text-white num-counter">120</div>
+                <div class="text-xs text-gray-500">ขวด</div>
+              </div>
+              <div class="w-32 h-2 bg-ink-700 rounded-full overflow-hidden">
+                <div class="h-full bg-gradient-to-r from-accent-400 to-accent-600" style="width: 95%"></div>
+              </div>
+            </div>
+            <div class="flex items-center gap-4 p-3 rounded-lg hover:bg-white/5 transition">
+              <div class="chip" style="background: rgba(34, 197, 94, 0.15); border-color: rgba(34, 197, 94, 0.3); color: #86efac;">Boonrawd</div>
+              <div class="flex-1">
+                <div class="text-white font-medium">ลีโอ กระป๋อง 330ml</div>
+                <div class="text-xs text-gray-500">LEO-330-CAN · เครื่องดื่ม</div>
+              </div>
+              <div class="text-right">
+                <div class="text-xl font-bold text-white num-counter">96</div>
+                <div class="text-xs text-gray-500">กระป๋อง</div>
+              </div>
+              <div class="w-32 h-2 bg-ink-700 rounded-full overflow-hidden">
+                <div class="h-full bg-gradient-to-r from-accent-400 to-accent-600" style="width: 76%"></div>
+              </div>
+            </div>
+            <div class="flex items-center gap-4 p-3 rounded-lg hover:bg-white/5 transition">
+              <div class="chip" style="background: rgba(34, 197, 94, 0.15); border-color: rgba(34, 197, 94, 0.3); color: #86efac;">Boonrawd</div>
+              <div class="flex-1">
+                <div class="text-white font-medium">น้ำดื่มสิงห์ 600ml</div>
+                <div class="text-xs text-gray-500">SNG-WTR-600 · เครื่องดื่ม</div>
+              </div>
+              <div class="text-right">
+                <div class="text-xl font-bold text-white num-counter">240</div>
+                <div class="text-xs text-gray-500">ขวด</div>
+              </div>
+              <div class="w-32 h-2 bg-ink-700 rounded-full overflow-hidden">
+                <div class="h-full bg-gradient-to-r from-accent-400 to-accent-600" style="width: 100%"></div>
+              </div>
+            </div>
+            <div class="flex items-center gap-4 p-3 rounded-lg hover:bg-white/5 transition">
+              <div class="chip" style="background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.3); color: #fca5a5;">คู่แข่ง</div>
+              <div class="flex-1">
+                <div class="text-white font-medium">ช้าง คลาสสิค</div>
+                <div class="text-xs text-gray-500">CHG-CLS-BTL · เครื่องดื่ม</div>
+              </div>
+              <div class="text-right">
+                <div class="text-xl font-bold text-red-300 num-counter">48</div>
+                <div class="text-xs text-gray-500">ขวด</div>
+              </div>
+              <div class="w-32 h-2 bg-ink-700 rounded-full overflow-hidden">
+                <div class="h-full bg-gradient-to-r from-red-400 to-red-600" style="width: 38%"></div>
+              </div>
+            </div>
+            <div class="flex items-center gap-4 p-3 rounded-lg hover:bg-white/5 transition">
+              <div class="chip" style="background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.3); color: #fca5a5;">คู่แข่ง</div>
+              <div class="flex-1">
+                <div class="text-white font-medium">ลีโอ คู่แข่ง (เปรียบเทียบ)</div>
+                <div class="text-xs text-gray-500">— · เครื่องดื่ม</div>
+              </div>
+              <div class="text-right">
+                <div class="text-xl font-bold text-red-300 num-counter">24</div>
+                <div class="text-xs text-gray-500">ขวด</div>
+              </div>
+              <div class="w-32 h-2 bg-ink-700 rounded-full overflow-hidden">
+                <div class="h-full bg-gradient-to-r from-red-400 to-red-600" style="width: 19%"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-6 pt-6 border-t border-white/5 flex items-center justify-between flex-wrap gap-4">
+            <div class="text-sm text-gray-400">
+              <span class="text-accent-300 font-semibold">Boonrawd share:</span>
+              <span class="text-white font-bold ml-2">88%</span>
+              <span class="text-gray-600 mx-2">·</span>
+              <span class="text-red-300 font-semibold">Competitor:</span>
+              <span class="text-white font-bold ml-2">12%</span>
+            </div>
+            <button class="px-4 py-2 rounded-lg bg-accent-500/20 border border-accent-500/40 text-accent-300 text-sm font-medium hover:bg-accent-500/30">
+              ↗ ดูใบเสร็จต้นฉบับทั้ง 8 ใบ
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Why it matters -->
+    <div class="grid md:grid-cols-3 gap-6 mt-16">
+      <div class="reveal card rounded-2xl p-6">
+        <div class="text-3xl mb-3">💡</div>
+        <div class="font-semibold text-white mb-2">ตอบคำถามธุรกิจจริง</div>
+        <div class="text-sm text-gray-400">ไม่ใช่ "เก็บใบเสร็จ" แต่คือ "เดือนนี้ขายอะไรไปเท่าไหร่"</div>
+      </div>
+      <div class="reveal card rounded-2xl p-6" style="transition-delay: 0.1s">
+        <div class="text-3xl mb-3">⚔️</div>
+        <div class="font-semibold text-white mb-2">เทียบกับคู่แข่งได้</div>
+        <div class="text-sm text-gray-400">Field manufacturer แยกของเรา vs คู่แข่ง → market share ต่อร้าน</div>
+      </div>
+      <div class="reveal card rounded-2xl p-6" style="transition-delay: 0.2s">
+        <div class="text-3xl mb-3">🔒</div>
+        <div class="font-semibold text-white mb-2">มีหลักฐานครบ</div>
+        <div class="text-sm text-gray-400">ทุกตัวเลข click กลับไปดูภาพต้นฉบับได้ + audit trail</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DIFFERENTIATORS -->
+<section class="py-32 px-6 border-t border-white/5">
+  <div class="max-w-6xl mx-auto">
+    <div class="reveal text-center mb-16">
+      <div class="chip mb-4">ทำไมไม่ใช่แค่ OCR</div>
+      <h2 class="text-4xl md:text-5xl font-bold">สิ่งที่ทำให้ระบบนี้ <span class="gradient-text">ต่าง</span></h2>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-6">
+      <div class="reveal card rounded-2xl p-8 stage-card">
+        <div class="text-accent-400 text-sm font-semibold mb-2">01 · Domain-aware</div>
+        <h3 class="text-2xl font-bold text-white mb-3">เข้าใจ catalog Boonrawd</h3>
+        <p class="text-gray-400">ไม่ใช่อ่านตัวอักษรเฉยๆ — โมเดลรู้จัก SKU จริง และ map กลับให้เป็น product code ที่ DB ใช้</p>
+      </div>
+      <div class="reveal card rounded-2xl p-8 stage-card" style="transition-delay: 0.1s">
+        <div class="text-accent-400 text-sm font-semibold mb-2">02 · Visit-centric</div>
+        <h3 class="text-2xl font-bold text-white mb-3">มองเป็นการเยี่ยมร้าน</h3>
+        <p class="text-gray-400">หน่วยข้อมูลคือ (ร้าน, เดือน) ไม่ใช่ใบเสร็จ — ตรง business flow ของเซลส์</p>
+      </div>
+      <div class="reveal card rounded-2xl p-8 stage-card" style="transition-delay: 0.2s">
+        <div class="text-accent-400 text-sm font-semibold mb-2">03 · Self-improving</div>
+        <h3 class="text-2xl font-bold text-white mb-3">เรียนรู้ทุกครั้งที่ใช้</h3>
+        <p class="text-gray-400">Product aliases + catalog gap events สะสมขึ้นทุก correction ครั้งหน้าทำงานน้อยลง</p>
+      </div>
+      <div class="reveal card rounded-2xl p-8 stage-card" style="transition-delay: 0.3s">
+        <div class="text-accent-400 text-sm font-semibold mb-2">04 · Audit-ready</div>
+        <h3 class="text-2xl font-bold text-white mb-3">ตามรอยได้ทุกตัวเลข</h3>
+        <p class="text-gray-400">ภาพต้นฉบับ + document_events + typo_recovery_events เก็บทุก trace</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STACK -->
+<section id="stack" class="py-32 px-6 border-t border-white/5">
+  <div class="max-w-6xl mx-auto">
+    <div class="reveal text-center mb-16">
+      <div class="chip mb-4">Under the hood</div>
+      <h2 class="text-4xl md:text-5xl font-bold">Stack</h2>
+    </div>
+
+    <div class="grid md:grid-cols-4 gap-4">
+      <div class="reveal card rounded-xl p-5">
+        <div class="text-xs text-gray-500 mb-1">Backend</div>
+        <div class="text-white font-semibold">FastAPI</div>
+        <div class="text-xs text-gray-500 mt-2">Python 3.11 · SQLAlchemy · Alembic</div>
+      </div>
+      <div class="reveal card rounded-xl p-5" style="transition-delay: 0.05s">
+        <div class="text-xs text-gray-500 mb-1">Frontend</div>
+        <div class="text-white font-semibold">React 19 + Vite</div>
+        <div class="text-xs text-gray-500 mt-2">Mantine v9 · Tailwind v4 · React Query</div>
+      </div>
+      <div class="reveal card rounded-xl p-5" style="transition-delay: 0.1s">
+        <div class="text-xs text-gray-500 mb-1">AI</div>
+        <div class="text-white font-semibold">Gemini 3 Flash</div>
+        <div class="text-xs text-gray-500 mt-2">via OpenRouter · OpenAI SDK</div>
+      </div>
+      <div class="reveal card rounded-xl p-5" style="transition-delay: 0.15s">
+        <div class="text-xs text-gray-500 mb-1">Worker</div>
+        <div class="text-white font-semibold">arq + Redis</div>
+        <div class="text-xs text-gray-500 mt-2">opt-in · fallback: BackgroundTasks</div>
+      </div>
+      <div class="reveal card rounded-xl p-5" style="transition-delay: 0.2s">
+        <div class="text-xs text-gray-500 mb-1">Matching</div>
+        <div class="text-white font-semibold">rapidfuzz</div>
+        <div class="text-xs text-gray-500 mt-2">Thai merchant normalization</div>
+      </div>
+      <div class="reveal card rounded-xl p-5" style="transition-delay: 0.25s">
+        <div class="text-xs text-gray-500 mb-1">Realtime</div>
+        <div class="text-white font-semibold">Server-Sent Events</div>
+        <div class="text-xs text-gray-500 mt-2">per-doc + per-visit streams</div>
+      </div>
+      <div class="reveal card rounded-xl p-5" style="transition-delay: 0.3s">
+        <div class="text-xs text-gray-500 mb-1">DB</div>
+        <div class="text-white font-semibold">SQLite</div>
+        <div class="text-xs text-gray-500 mt-2">24 migrations · audit tables</div>
+      </div>
+      <div class="reveal card rounded-xl p-5" style="transition-delay: 0.35s">
+        <div class="text-xs text-gray-500 mb-1">Tests</div>
+        <div class="text-white font-semibold">pytest · 113 tests</div>
+        <div class="text-xs text-gray-500 mt-2">in-memory SQLite + StaticPool</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="py-32 px-6 relative overflow-hidden">
+  <div class="absolute inset-0 grid-bg"></div>
+  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-accent-600/20 rounded-full blur-[120px]"></div>
+
+  <div class="relative max-w-3xl mx-auto text-center">
+    <div class="reveal">
+      <h2 class="text-4xl md:text-6xl font-bold mb-6">
+        พร้อมโยน <span class="gradient-text">รูปแรก</span> หรือยัง
+      </h2>
+      <p class="text-lg text-gray-400 mb-10">เปิดแอปแล้วลากใบเสร็จเข้า Inbox ได้เลย</p>
+      <div class="flex flex-wrap items-center justify-center gap-3">
+        <a href="http://localhost:5173/inbox" class="px-8 py-4 rounded-xl bg-accent-500 hover:bg-accent-600 text-white font-semibold text-lg transition glow">
+          เปิด Inbox →
+        </a>
+        <a href="http://localhost:5173/stores" class="px-8 py-4 rounded-xl border border-white/10 hover:border-white/30 text-white font-semibold text-lg transition">
+          ดู Stores
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="py-10 px-6 border-t border-white/5">
+  <div class="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-4 text-sm text-gray-500">
+    <div>Thai Receipt Intelligence · SBP AI Hackathon 2026</div>
+    <div>Built for Boonrawd field sales · Visit-centric pivot · พฤษภาคม 2026</div>
+  </div>
+</footer>
+
+<script>
+  // Reveal on scroll
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.15 });
+  document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+
+  // Count-up
+  function countUp(el) {
+    const target = el.textContent.trim();
+    const match = target.match(/^([\d]+)(.*)$/);
+    if (!match) return;
+    const num = parseInt(match[1], 10);
+    const suffix = match[2];
+    let current = 0;
+    const step = Math.max(1, Math.floor(num / 30));
+    const tick = () => {
+      current = Math.min(num, current + step);
+      el.textContent = current + suffix;
+      if (current < num) requestAnimationFrame(tick);
+    };
+    el.textContent = '0' + suffix;
+    tick();
+  }
+  const countObserver = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (e.isIntersecting) {
+        countUp(e.target);
+        countObserver.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.5 });
+  document.querySelectorAll('.num-counter').forEach((el) => countObserver.observe(el));
+</script>
+
+</body>
+</html>
