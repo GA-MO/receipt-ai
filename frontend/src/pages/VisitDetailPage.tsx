@@ -167,28 +167,29 @@ export default function VisitDetailPage() {
       </Group>
 
       {/* Summary — calm stat blocks, no chips */}
-      <Card withBorder radius="md" p="md" mb="md">
+      <div className="surface-accent rounded-2xl px-5 py-4 mb-4">
         <Group gap="xl" align="flex-start" wrap="wrap">
-          <Stat value={docs.length} label="ใบเสร็จ" />
+          <Stat value={docs.length} label="ใบเสร็จ" primary />
           <Stat
             value={`${visit.reviewed_count}/${docs.length}`}
             label="ตรวจสอบแล้ว"
+            primary
             color={
               docs.length > 0 && visit.reviewed_count === docs.length
                 ? "green.7"
                 : undefined
             }
           />
-          <Stat value={visit.aggregate.length} label="สินค้า" />
-          <Stat value={totalQty.toFixed(0)} label="หน่วยรวม" />
+          <Stat value={visit.aggregate.length} label="สินค้า" primary />
+          <Stat value={totalQty.toFixed(0)} label="หน่วยรวม" primary />
           {unknownCount > 0 && (
-            <Stat value={unknownCount} label="ไม่อยู่ catalog" color="orange.7" />
+            <Stat value={unknownCount} label="ไม่อยู่ catalog" color="orange.7" primary />
           )}
           {periodMismatchCount > 0 && (
-            <Stat value={periodMismatchCount} label="นอกเดือน" color="orange.7" />
+            <Stat value={periodMismatchCount} label="นอกเดือน" color="orange.7" primary />
           )}
           {storeMismatchCount > 0 && (
-            <Stat value={storeMismatchCount} label="คนละร้าน" color="red.7" />
+            <Stat value={storeMismatchCount} label="คนละร้าน" color="red.7" primary />
           )}
           {isFetching && (
             <div className="self-center">
@@ -196,7 +197,7 @@ export default function VisitDetailPage() {
             </div>
           )}
         </Group>
-      </Card>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Aggregate table — main pane */}
@@ -524,17 +525,25 @@ function Stat({
   value,
   label,
   color,
+  primary,
 }: {
   value: number | string;
   label: string;
   color?: string;
+  primary?: boolean;
 }) {
   return (
     <div>
-      <Text size="xl" fw={700} c={color} lh={1.1}>
+      <Text
+        size={primary ? "28px" : "xl"}
+        fw={700}
+        c={color}
+        lh={1.1}
+        className={primary && !color ? "gradient-text num-tabular" : "num-tabular"}
+      >
         {value}
       </Text>
-      <Text size="xs" c="dimmed">
+      <Text size="xs" c="dimmed" mt={2}>
         {label}
       </Text>
     </div>

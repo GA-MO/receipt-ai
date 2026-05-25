@@ -166,26 +166,45 @@ export default function InboxPage() {
 
   return (
     <div>
-      {/* Header */}
-      <Group justify="space-between" align="flex-start" mb="md">
-        <div>
-          <Group gap="xs" align="center">
-            <ThemeIcon
-              size="lg"
-              radius="md"
-              variant="gradient"
-              gradient={{ from: "indigo", to: "violet" }}
-            >
-              <InboxIcon size={20} />
-            </ThemeIcon>
-            <Title order={2}>อัปโหลด & จัดกลุ่ม</Title>
-          </Group>
-          <Text c="dimmed" size="sm" mt={4}>
-            โยนใบเสร็จมาทีเดียว AI จะแยกร้านให้อัตโนมัติ คุณรีวิวสินค้าและจำนวนทีหลัง
-          </Text>
-        </div>
-        <MonthSwitcher month={month} months={availableMonths} onChange={setMonth} />
-      </Group>
+      {/* Hero header */}
+      <div className="surface-accent grid-bg rounded-2xl px-6 py-5 mb-4 fade-up">
+        <Group justify="space-between" align="flex-start" wrap="nowrap">
+          <div className="min-w-0">
+            <Group gap="xs" align="center">
+              <ThemeIcon
+                size="lg"
+                radius="md"
+                variant="gradient"
+                gradient={{ from: "indigo", to: "violet" }}
+                className="glow-indigo"
+              >
+                <InboxIcon size={20} />
+              </ThemeIcon>
+              <Title order={2} className="gradient-text">
+                อัปโหลด & จัดกลุ่ม
+              </Title>
+            </Group>
+            <Text c="dimmed" size="sm" mt={6}>
+              โยนใบเสร็จมาทีเดียว AI จะแยกร้านให้อัตโนมัติ คุณรีวิวสินค้าและจำนวนทีหลัง
+            </Text>
+            <Group gap={6} mt="sm">
+              <Badge variant="light" color="indigo" radius="xl" leftSection={<UploadIcon size={11} />}>
+                Bulk upload
+              </Badge>
+              <Badge variant="light" color="violet" radius="xl" leftSection={<Sparkles size={11} />}>
+                AI สกัด
+              </Badge>
+              <Badge variant="light" color="indigo" radius="xl" leftSection={<StoreIcon size={11} />}>
+                Auto-attach Visit
+              </Badge>
+              <Badge variant="light" color="grape" radius="xl" leftSection={<RefreshCw size={11} />}>
+                Live progress
+              </Badge>
+            </Group>
+          </div>
+          <MonthSwitcher month={month} months={availableMonths} onChange={setMonth} />
+        </Group>
+      </div>
 
       {/* Drop zone */}
       <Paper

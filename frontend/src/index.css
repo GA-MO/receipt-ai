@@ -8,3 +8,139 @@
    <html>. Re-point Tailwind's `dark:` variant at that attribute so the two
    stay in sync when the user toggles theme. */
 @custom-variant dark (&:where([data-mantine-color-scheme="dark"] *));
+
+/* ==========================================================================
+   Showcase-inspired polish — applied globally so every page benefits.
+   Light mode is the default; dark mode mirrors the values where it matters.
+   ========================================================================== */
+
+:root {
+  --accent-50: #eef2ff;
+  --accent-100: #e0e7ff;
+  --accent-200: #c7d2fe;
+  --accent-300: #a5b4fc;
+  --accent-400: #818cf8;
+  --accent-500: #6366f1;
+  --accent-600: #4f46e5;
+  --accent-700: #4338ca;
+}
+
+/* Subtle ambient gradient on the app background so it doesn't feel flat. */
+body {
+  background:
+    radial-gradient(1200px 600px at 85% -10%, rgba(99, 102, 241, 0.08), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgba(129, 140, 248, 0.06), transparent 60%),
+    var(--mantine-color-body);
+  background-attachment: fixed;
+}
+
+[data-mantine-color-scheme="dark"] body {
+  background:
+    radial-gradient(1200px 600px at 85% -10%, rgba(99, 102, 241, 0.12), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgba(129, 140, 248, 0.08), transparent 60%),
+    var(--mantine-color-body);
+}
+
+/* Cards/Papers get a softer "lifted" look with a faint accent edge on hover. */
+.mantine-Paper-root,
+.mantine-Card-root {
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+/* ---------- Utility classes (sprinkle on any page) ---------- */
+
+/* Gradient indigo headline — use on hero <Title> via className. */
+.gradient-text {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #6366f1 100%);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* Indigo glow — for hero CTAs and primary surfaces. */
+.glow-indigo {
+  box-shadow: 0 0 60px -20px rgba(99, 102, 241, 0.45);
+}
+
+/* Subtle dotted grid background — drop on hero/empty-state containers. */
+.grid-bg {
+  position: relative;
+  isolation: isolate;
+}
+.grid-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(99, 102, 241, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99, 102, 241, 0.06) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Soft accent surface — hero strips, KPI banners. */
+.surface-accent {
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--accent-500) 8%, transparent) 0%,
+    color-mix(in srgb, var(--accent-400) 4%, transparent) 100%);
+  border: 1px solid color-mix(in srgb, var(--accent-500) 18%, transparent);
+}
+
+[data-mantine-color-scheme="dark"] .surface-accent {
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--accent-500) 18%, transparent) 0%,
+    color-mix(in srgb, var(--accent-400) 10%, transparent) 100%);
+  border: 1px solid color-mix(in srgb, var(--accent-400) 25%, transparent);
+}
+
+/* Animated pulse dot — "live" indicators next to stream sources. */
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--accent-400);
+  box-shadow: 0 0 0 0 rgba(129, 140, 248, 0.6);
+  animation: livePulse 2s infinite;
+  display: inline-block;
+}
+@keyframes livePulse {
+  0% { box-shadow: 0 0 0 0 rgba(129, 140, 248, 0.6); }
+  70% { box-shadow: 0 0 0 8px rgba(129, 140, 248, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(129, 140, 248, 0); }
+}
+
+/* Fade-up entrance — drop on top-level page containers for a soft entrance. */
+.fade-up {
+  animation: fadeUp 0.5s ease-out both;
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Tabular numbers everywhere KPIs show up. */
+.num-tabular {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* Primary filled buttons get a soft glow on hover for a more "premium" feel. */
+.mantine-Button-root[data-variant="filled"]:hover {
+  box-shadow: 0 8px 24px -8px rgba(99, 102, 241, 0.55);
+}
+
+/* Active NavLink (sidebar): add a thin indigo bar on the left edge. */
+[data-active="true"].mantine-NavLink-root,
+a[data-active]:not([data-active="false"]) {
+  position: relative;
+}
