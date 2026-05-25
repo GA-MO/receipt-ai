@@ -57,6 +57,7 @@ import {
   useUploadInbox,
 } from "../api/queries";
 import type { StoreListItem } from "../api/client";
+import { BulkUploadProgress, type BulkUploadItem } from "@/components/BulkUploadProgress";
 import { ImageCanvas } from "@/components/ImageCanvas";
 import { useToast } from "@/components/Toast";
 
@@ -98,6 +99,8 @@ export default function InboxPage() {
   const stores = useStores();
   const upload = useUploadInbox();
   const purgeNonReceipts = usePurgeNonReceipts();
+  // Live progress for the most recent bulk upload. Cleared when user dismisses.
+  const [liveBatch, setLiveBatch] = useState<BulkUploadItem[]>([]);
 
   // Auto-cleanup of non-receipts > 7 days on first load. Quiet best-effort.
   useEffect(() => {
@@ -112,6 +115,22 @@ export default function InboxPage() {
         const res = await upload.mutateAsync(files);
         const skipped = res.duplicates.length + res.failures.length;
         if (res.document_ids.length) {
+          // Match returned doc_ids back to filenames in submission order. The
+          // backend skips duplicates/failures, so we walk both lists together.
+          const acceptedNames: string[] = [];
+          const dupSet = new Set(res.duplicates.map((d) => d.filename));
+          const failSet = new Set(res.failures.map((f) => f.filename));
+          for (const f of files) {
+            if (!dupSet.has(f.name) && !failSet.has(f.name)) {
+              acceptedNames.push(f.name);
+            }
+          }
+          setLiveBatch(
+            res.document_ids.map((id, i) => ({
+              id,
+              filename: acceptedNames[i] ?? `ไฟล์ ${i + 1}`,
+            })),
+          );
           toast(
             "success",
             `อัปโหลด ${res.document_ids.length} ไฟล์${skipped ? ` (ข้าม ${skipped})` : ""}`,
@@ -205,16 +224,28 @@ export default function InboxPage() {
         </Group>
       </Paper>
 
+      {liveBatch.length > 0 && (
+        <div style={{ marginBottom: "var(--mantine-spacing-md)" }}>
+          <BulkUploadProgress
+            items={liveBatch}
+            onDismiss={() => setLiveBatch([])}
+          />
+        </div>
+      )}
+
       {dashboard.isLoading ? (
         <Group justify="center" py={64}>
           <Loader />
         </Group>
       ) : !data ? null : (
         <Stack gap="md">
-          {/* Processing section */}
-          {data.processing.length > 0 && (
-            <ProcessingSection docs={data.processing} />
-          )}
+          {/* Processing section — only docs NOT in the live-progress panel,
+              so the two views never double up on the same batch. */}
+          {(() => {
+            const liveIds = new Set(liveBatch.map((i) => i.id));
+            const others = data.processing.filter((d) => !liveIds.has(d.id));
+            return others.length > 0 ? <ProcessingSection docs={others} /> : null;
+          })()}
 
           {/* Unknown stores — AI read merchant but no Store master row matches. */}
           {data.unknown_stores.length > 0 && (
