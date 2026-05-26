@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ActionIcon,
+  Alert,
   Autocomplete,
   Badge,
   Button,
@@ -17,12 +18,16 @@ import {
   Tooltip,
 } from "@mantine/core";
 import {
+  AlertTriangle,
   ArrowLeft,
+  CalendarX,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Eye,
   HelpCircle,
   Plus,
+  Store as StoreIcon,
   Trash2,
 } from "lucide-react";
 import {
@@ -62,6 +67,7 @@ export default function VisitReviewPage() {
 
   const docs = visit?.documents ?? [];
   const currentIndex = docs.findIndex((d) => d.id === docId);
+  const currentSummary = currentIndex >= 0 ? docs[currentIndex] : null;
   const prevDoc = currentIndex > 0 ? docs[currentIndex - 1] : null;
   const nextDoc =
     currentIndex >= 0 && currentIndex < docs.length - 1
@@ -197,6 +203,68 @@ export default function VisitReviewPage() {
           )}
         </Group>
       </Group>
+
+      {/* Mismatch warnings — backend flags surface here so the reviewer
+          sees them while they have the receipt image open, not just on the
+          visit summary. */}
+      {currentSummary?.store_mismatch && (
+        <Alert
+          icon={<StoreIcon size={18} />}
+          color="red"
+          variant="light"
+          mb="sm"
+          title="ใบเสร็จคนละร้านกับ visit นี้"
+        >
+          <Text size="sm">
+            ใบเสร็จมาจากร้าน{" "}
+            <Text span fw={700}>
+              {doc.merchant_name || doc.merchant_normalized || "(ไม่ระบุ)"}
+            </Text>
+            {" "}แต่ visit ตั้งเป็นร้าน{" "}
+            <Text span fw={700}>
+              {visit.store_label || visit.store_key}
+            </Text>
+            {" "}— ย้ายใบนี้ออก หรือยืนยันว่าใบนี้อยู่ visit ถูกต้อง
+          </Text>
+        </Alert>
+      )}
+      {currentSummary?.period_mismatch && (
+        <Alert
+          icon={<CalendarX size={18} />}
+          color="orange"
+          variant="light"
+          mb="sm"
+          title="วันที่บนใบเสร็จอยู่นอกเดือนของ visit"
+        >
+          <Text size="sm">
+            ใบเสร็จลงวันที่{" "}
+            <Text span fw={700}>
+              {doc.document_date}
+            </Text>
+            {" "}แต่ visit นี้รายงานเดือน{" "}
+            <Text span fw={700}>
+              {visit.report_period}
+            </Text>
+            {" "}— ตรวจสอบว่าใบนี้ควรอยู่เดือนถูก
+          </Text>
+        </Alert>
+      )}
+      {currentSummary?.needs_review
+        && !currentSummary?.period_mismatch
+        && !currentSummary?.store_mismatch && (
+        <Alert
+          icon={<Eye size={18} />}
+          color="yellow"
+          variant="light"
+          mb="sm"
+          title="เอกสารนี้ต้องตรวจ"
+        >
+          <Text size="sm">
+            AI สกัดเสร็จแล้วแต่มีสินค้าอย่างน้อย 1 รายการที่ไม่ตรงกับ catalog — ดูว่า
+            ควรเพิ่ม SKU ใหม่หรือแก้ชื่อสินค้าให้ตรง catalog
+          </Text>
+        </Alert>
+      )}
 
       {/* 2-column layout */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-[2fr_3fr] gap-4 min-h-0">

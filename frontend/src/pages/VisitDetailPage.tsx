@@ -100,6 +100,9 @@ export default function VisitDetailPage() {
   const unknownCount = visit.aggregate.length - catalogCount;
   const periodMismatchCount = docs.filter((d) => d.period_mismatch).length;
   const storeMismatchCount = docs.filter((d) => d.store_mismatch).length;
+  const needsReviewCount = docs.filter(
+    (d) => d.needs_review && !d.period_mismatch && !d.store_mismatch,
+  ).length;
 
   const toggleRow = (key: string) => {
     setExpanded((prev) => {
@@ -190,6 +193,9 @@ export default function VisitDetailPage() {
           )}
           {storeMismatchCount > 0 && (
             <Stat value={storeMismatchCount} label="คนละร้าน" color="red.7" primary />
+          )}
+          {needsReviewCount > 0 && (
+            <Stat value={needsReviewCount} label="ต้องตรวจ" color="orange.7" primary />
           )}
           {isFetching && (
             <div className="self-center">
@@ -395,7 +401,9 @@ export default function VisitDetailPage() {
                       ? "4px solid var(--mantine-color-red-5)"
                       : d.period_mismatch
                         ? "4px solid var(--mantine-color-orange-5)"
-                        : "4px solid transparent",
+                        : d.needs_review
+                          ? "4px solid var(--mantine-color-yellow-5)"
+                          : "4px solid transparent",
                     cursor: isLoading ? "wait" : undefined,
                   }}
                 >
