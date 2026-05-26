@@ -102,6 +102,31 @@
     box-shadow: 0 20px 60px -20px rgba(0,0,0,0.5);
   }
 
+  /* Live-app screenshots embedded in chapter sections. */
+  .screenshot {
+    width: 100%;
+    border-radius: 14px;
+    border: 1px solid rgba(129, 140, 248, 0.18);
+    box-shadow:
+      0 30px 80px -20px rgba(0, 0, 0, 0.6),
+      0 0 60px -20px rgba(99, 102, 241, 0.25);
+    display: block;
+  }
+  .screenshot-frame {
+    position: relative;
+    border-radius: 16px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0));
+    padding: 6px;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .screenshot-caption {
+    margin-top: 12px;
+    font-size: 12px;
+    color: #6b7280;
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
   .chip {
     display: inline-flex;
     align-items: center;
@@ -275,82 +300,31 @@
       </p>
     </div>
 
-    <div class="grid md:grid-cols-2 gap-12 items-center">
-      <!-- Receipt mockup -->
-      <div class="reveal">
-        <div class="receipt-paper rounded-lg p-8 max-w-sm mx-auto">
-          <div class="text-center border-b-2 border-dashed border-gray-400 pb-3 mb-3">
-            <div class="font-bold">ร้านป้าน้อย</div>
-            <div class="text-xs">ตลาดเช้า เชียงใหม่</div>
-            <div class="text-xs">25/05/2569</div>
-          </div>
-          <div class="space-y-1 text-sm">
-            <div class="flex justify-between"><span>สิงห์ ขวด 320</span><span>12</span></div>
-            <div class="flex justify-between"><span>ลีโอ กระป๋อง</span><span>24</span></div>
-            <div class="flex justify-between"><span>โซดา 325</span><span>6</span></div>
-            <div class="flex justify-between"><span>น้ำเปล่า 600ml</span><span>48</span></div>
-            <div class="flex justify-between"><span>ช้าง คลาสสิค</span><span>10</span></div>
-          </div>
-          <div class="border-t-2 border-dashed border-gray-400 mt-3 pt-3 text-xs text-center text-gray-600">
-            ลายมือ · กระดาษย่น · มุมพับ
-          </div>
-        </div>
-        <div class="text-center mt-6">
-          <div class="inline-flex items-center gap-2 text-gray-500 text-sm">
-            <span class="animate-pulse-soft">⚡</span>
-            <span>Gemini 3 Flash Vision via OpenRouter</span>
-          </div>
-        </div>
+    <!-- Live screenshot — actual review page with handwritten receipt + extracted items -->
+    <div class="reveal max-w-6xl mx-auto">
+      <div class="screenshot-frame">
+        <img src="showcase-assets/review-needs-review.png" alt="AI extracts a handwritten receipt — review page with items, ImageCanvas, and catalog-gap warning" class="screenshot" />
       </div>
+      <div class="screenshot-caption">/visits/{id}/review/{docId} — ของจริง: AI สกัด 4 รายการ + ขึ้น banner ว่ามีสินค้าไม่ตรง catalog</div>
+    </div>
 
-      <!-- Extracted JSON -->
-      <div class="reveal" style="transition-delay: 0.15s">
-        <div class="card rounded-2xl p-6 font-mono text-xs leading-relaxed overflow-x-auto">
-          <div class="flex items-center gap-2 mb-4 text-gray-500">
-            <span class="w-2 h-2 rounded-full bg-red-400"></span>
-            <span class="w-2 h-2 rounded-full bg-yellow-400"></span>
-            <span class="w-2 h-2 rounded-full bg-green-400"></span>
-            <span class="ml-2">extracted.json</span>
-          </div>
-<pre class="text-gray-300"><span class="text-gray-500">{</span>
-  <span class="text-accent-400">"merchant_name"</span>: <span class="text-green-300">"ร้านป้าน้อย"</span>,
-  <span class="text-accent-400">"merchant_normalized"</span>: <span class="text-green-300">"ร้านป้าน้อย ตลาดเช้า"</span>,
-  <span class="text-accent-400">"document_date"</span>: <span class="text-green-300">"2026-05-25"</span>,
-  <span class="text-accent-400">"category"</span>: <span class="text-green-300">"เครื่องดื่ม"</span>,
-  <span class="text-accent-400">"items"</span>: [
-    {
-      <span class="text-accent-400">"product_name_raw"</span>: <span class="text-green-300">"สิงห์ ขวด 320"</span>,
-      <span class="text-accent-400">"product_code"</span>: <span class="text-yellow-300">"SNG-320-BTL"</span> <span class="text-gray-500">✓</span>,
-      <span class="text-accent-400">"quantity"</span>: <span class="text-orange-300">12</span>
-    },
-    {
-      <span class="text-accent-400">"product_name_raw"</span>: <span class="text-green-300">"ลีโอ กระป๋อง"</span>,
-      <span class="text-accent-400">"product_code"</span>: <span class="text-yellow-300">"LEO-330-CAN"</span> <span class="text-gray-500">✓</span>,
-      <span class="text-accent-400">"quantity"</span>: <span class="text-orange-300">24</span>
-    },
-    {
-      <span class="text-accent-400">"product_name_raw"</span>: <span class="text-green-300">"ช้าง คลาสสิค"</span>,
-      <span class="text-accent-400">"product_code"</span>: <span class="text-yellow-300">"CHG-CLS-BTL"</span> <span class="text-red-300">⚠ คู่แข่ง</span>,
-      <span class="text-accent-400">"quantity"</span>: <span class="text-orange-300">10</span>
-    }
-  ]
-<span class="text-gray-500">}</span></pre>
-        </div>
-
-        <div class="grid grid-cols-3 gap-3 mt-4">
-          <div class="card rounded-xl p-3 text-center">
-            <div class="text-xs text-gray-500">items</div>
-            <div class="text-xl font-bold text-white num-counter">5</div>
-          </div>
-          <div class="card rounded-xl p-3 text-center">
-            <div class="text-xs text-gray-500">matched</div>
-            <div class="text-xl font-bold text-accent-400 num-counter">5/5</div>
-          </div>
-          <div class="card rounded-xl p-3 text-center">
-            <div class="text-xs text-gray-500">conf</div>
-            <div class="text-xl font-bold text-green-300 num-counter">0.94</div>
-          </div>
-        </div>
+    <!-- Stats from the real run (E2E suite) -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-10 max-w-4xl mx-auto">
+      <div class="card rounded-xl p-4 text-center">
+        <div class="text-xs text-gray-500">total line items</div>
+        <div class="text-2xl font-bold text-white num-counter">96</div>
+      </div>
+      <div class="card rounded-xl p-4 text-center">
+        <div class="text-xs text-gray-500">matched to catalog</div>
+        <div class="text-2xl font-bold text-accent-400 num-counter">91</div>
+      </div>
+      <div class="card rounded-xl p-4 text-center">
+        <div class="text-xs text-gray-500">match rate</div>
+        <div class="text-2xl font-bold text-accent-300 num-counter">95%</div>
+      </div>
+      <div class="card rounded-xl p-4 text-center">
+        <div class="text-xs text-gray-500">extraction / doc</div>
+        <div class="text-2xl font-bold text-white">~1.2s</div>
       </div>
     </div>
 
@@ -389,88 +363,55 @@
       </p>
     </div>
 
-    <!-- Triage diagram -->
-    <div class="reveal mb-16">
-      <div class="card rounded-3xl p-8 md:p-12">
-        <div class="grid md:grid-cols-5 gap-6 items-center">
-          <!-- Source -->
-          <div class="md:col-span-1">
-            <div class="text-xs text-gray-500 uppercase tracking-wider mb-2">Upload</div>
-            <div class="space-y-2">
-              <div class="bg-ink-700 rounded-lg p-3 flex items-center gap-2 text-sm">
-                <span>📷</span><span class="text-gray-300">IMG_8721.jpg</span>
-              </div>
-              <div class="bg-ink-700 rounded-lg p-3 flex items-center gap-2 text-sm">
-                <span>📷</span><span class="text-gray-300">IMG_8722.jpg</span>
-              </div>
-              <div class="bg-ink-700 rounded-lg p-3 flex items-center gap-2 text-sm">
-                <span>📷</span><span class="text-gray-300">IMG_8723.jpg</span>
-              </div>
-              <div class="text-center text-xs text-gray-600">+ 17 ใบ</div>
-            </div>
-          </div>
+    <!-- Live screenshot of Inbox: actual triage at work -->
+    <div class="reveal max-w-6xl mx-auto mb-12">
+      <div class="screenshot-frame">
+        <img src="showcase-assets/inbox.png" alt="Inbox page with unknown-stores section + auto-attached visits" class="screenshot" />
+      </div>
+      <div class="screenshot-caption">/inbox — ของจริง: 18 ใบที่อัปโหลด → 10 visits + 2 unknown-stores</div>
+    </div>
 
-          <!-- Arrow -->
-          <div class="md:col-span-1 text-center text-accent-400 text-4xl">→</div>
-
-          <!-- Buckets -->
-          <div class="md:col-span-3 grid grid-cols-2 gap-4">
-            <div class="bg-accent-500/10 border border-accent-500/30 rounded-xl p-4">
-              <div class="flex items-center justify-between mb-2">
-                <div class="text-xs font-semibold text-accent-300">VISIT (auto-attached)</div>
-                <div class="text-2xl font-bold text-accent-300 num-counter">14</div>
-              </div>
-              <div class="text-xs text-gray-400">ตรงกับร้านใน Store master + อยู่ในเดือนของ visit</div>
-            </div>
-            <div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
-              <div class="flex items-center justify-between mb-2">
-                <div class="text-xs font-semibold text-yellow-300">UNKNOWN STORE</div>
-                <div class="text-2xl font-bold text-yellow-300 num-counter">4</div>
-              </div>
-              <div class="text-xs text-gray-400">อ่านชื่อร้านได้ แต่ยังไม่มีใน master</div>
-            </div>
-            <div class="bg-orange-500/10 border border-orange-500/30 rounded-xl p-4">
-              <div class="flex items-center justify-between mb-2">
-                <div class="text-xs font-semibold text-orange-300">ORPHAN</div>
-                <div class="text-2xl font-bold text-orange-300 num-counter">1</div>
-              </div>
-              <div class="text-xs text-gray-400">อ่านชื่อร้านไม่ออกเลย</div>
-            </div>
-            <div class="bg-gray-500/10 border border-gray-500/30 rounded-xl p-4">
-              <div class="flex items-center justify-between mb-2">
-                <div class="text-xs font-semibold text-gray-300">NON-RECEIPT</div>
-                <div class="text-2xl font-bold text-gray-300 num-counter">1</div>
-              </div>
-              <div class="text-xs text-gray-400">ไม่ใช่ใบเสร็จ · auto-purge ใน 7 วัน</div>
-            </div>
-          </div>
-        </div>
+    <!-- Real triage counts from the E2E run -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-4xl mx-auto mb-16">
+      <div class="bg-accent-500/10 border border-accent-500/30 rounded-xl p-4 text-center">
+        <div class="text-xs font-semibold text-accent-300 mb-1">VISITS</div>
+        <div class="text-3xl font-bold text-accent-300 num-counter">10</div>
+        <div class="text-xs text-gray-400 mt-1">auto-attached</div>
+      </div>
+      <div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 text-center">
+        <div class="text-xs font-semibold text-yellow-300 mb-1">UNKNOWN STORES</div>
+        <div class="text-3xl font-bold text-yellow-300 num-counter">2</div>
+        <div class="text-xs text-gray-400 mt-1">รอ admin ตัดสิน</div>
+      </div>
+      <div class="bg-orange-500/10 border border-orange-500/30 rounded-xl p-4 text-center">
+        <div class="text-xs font-semibold text-orange-300 mb-1">ORPHANS</div>
+        <div class="text-3xl font-bold text-orange-300 num-counter">0</div>
+        <div class="text-xs text-gray-400 mt-1">ทุกใบอ่านชื่อร้านได้</div>
+      </div>
+      <div class="bg-gray-500/10 border border-gray-500/30 rounded-xl p-4 text-center">
+        <div class="text-xs font-semibold text-gray-300 mb-1">NON-RECEIPT</div>
+        <div class="text-3xl font-bold text-gray-300 num-counter">0</div>
+        <div class="text-xs text-gray-400 mt-1">auto-purge 7 วัน</div>
       </div>
     </div>
 
-    <!-- Mismatch warnings -->
-    <div class="grid md:grid-cols-2 gap-6">
-      <div class="reveal card rounded-2xl p-6 stage-card">
-        <div class="flex items-center gap-3 mb-3">
-          <div class="w-10 h-10 rounded-lg bg-yellow-500/20 flex items-center justify-center text-yellow-400 text-xl">⚠</div>
-          <div class="font-semibold text-white">Period mismatch</div>
+    <!-- Mismatch warnings — real screenshots -->
+    <div class="reveal text-center mb-8">
+      <h3 class="text-2xl md:text-3xl font-bold mb-3">ถ้าใบเสร็จ <span class="gradient-text">ผิดที่</span> ระบบก็เตือน</h3>
+      <p class="text-gray-400 max-w-2xl mx-auto">วันที่นอกเดือน หรือชื่อร้านไม่ตรงกับ Visit — ขึ้นเตือนทันทีในหน้า review</p>
+    </div>
+    <div class="grid md:grid-cols-2 gap-6 max-w-6xl mx-auto">
+      <div class="reveal">
+        <div class="screenshot-frame">
+          <img src="showcase-assets/visit-mismatch.png" alt="Visit page KPI strip with 'นอกเดือน 1' and 'คนละร้าน 1' counters" class="screenshot" />
         </div>
-        <p class="text-sm text-gray-400 mb-3">เตือนเมื่อวันที่ในใบเสร็จไม่ตรงกับเดือนของ Visit</p>
-        <div class="bg-ink-900 rounded-lg p-3 text-xs font-mono">
-          <div class="text-yellow-400">visit period: 2026-05</div>
-          <div class="text-gray-500">document_date: 2026-<span class="text-yellow-400">04</span>-29 ⚠</div>
-        </div>
+        <div class="screenshot-caption">KPI ของ visit นับใบที่ mismatch</div>
       </div>
-      <div class="reveal card rounded-2xl p-6 stage-card" style="transition-delay: 0.1s">
-        <div class="flex items-center gap-3 mb-3">
-          <div class="w-10 h-10 rounded-lg bg-yellow-500/20 flex items-center justify-center text-yellow-400 text-xl">🏪</div>
-          <div class="font-semibold text-white">Store mismatch</div>
+      <div class="reveal" style="transition-delay: 0.1s">
+        <div class="screenshot-frame">
+          <img src="showcase-assets/review-mismatch-alerts.png" alt="Review page with red store-mismatch alert + orange period-mismatch alert" class="screenshot" />
         </div>
-        <p class="text-sm text-gray-400 mb-3">เตือนเมื่อชื่อร้านใน OCR ต่างจากร้านของ Visit</p>
-        <div class="bg-ink-900 rounded-lg p-3 text-xs font-mono">
-          <div class="text-yellow-400">visit.store: "ร้านป้าน้อย"</div>
-          <div class="text-gray-500">merchant: "ร้าน<span class="text-yellow-400">ลุง</span>น้อย" ⚠</div>
-        </div>
+        <div class="screenshot-caption">หน้า review per-doc — alert ขึ้นทั้ง 2 แบบ</div>
       </div>
     </div>
   </div>
@@ -490,34 +431,57 @@
       </p>
     </div>
 
-    <!-- Visit detail mockup -->
-    <div class="reveal max-w-5xl mx-auto">
-      <div class="card rounded-3xl overflow-hidden glow">
-        <!-- Visit header -->
-        <div class="bg-gradient-to-r from-accent-600/20 to-accent-500/10 p-6 border-b border-white/5">
-          <div class="flex items-start justify-between flex-wrap gap-4">
-            <div>
-              <div class="text-xs text-accent-300 uppercase tracking-wider mb-1">Visit</div>
-              <div class="text-2xl font-bold text-white">ร้านป้าน้อย ตลาดเช้า</div>
-              <div class="text-sm text-gray-400 mt-1">📍 เชียงใหม่ · 📅 พฤษภาคม 2026 · 👤 เซลส์ A</div>
-            </div>
-            <div class="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <div class="text-xs text-gray-500">เอกสาร</div>
-                <div class="text-2xl font-bold text-white num-counter">8</div>
-              </div>
-              <div>
-                <div class="text-xs text-gray-500">รายการ</div>
-                <div class="text-2xl font-bold text-white num-counter">42</div>
-              </div>
-              <div>
-                <div class="text-xs text-gray-500">SKU</div>
-                <div class="text-2xl font-bold text-white num-counter">14</div>
-              </div>
-            </div>
-          </div>
-        </div>
+    <!-- Live screenshot — real visit detail page with rollup + manufacturer split -->
+    <div class="reveal max-w-6xl mx-auto mb-10">
+      <div class="screenshot-frame glow">
+        <img src="showcase-assets/visit-rollup.png" alt="Visit detail page with product × quantity rollup, manufacturer column, KPI strip" class="screenshot" />
+      </div>
+      <div class="screenshot-caption">/visits/{id} — ร้านรวยสุรา ธ.ค. 2025 · 5 ใบเสร็จ → 14 SKUs สรุปได้ทันที</div>
+    </div>
 
+    <!-- Real numbers from the actual visit -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-4xl mx-auto mb-10">
+      <div class="card rounded-xl p-4 text-center">
+        <div class="text-xs text-gray-500">ใบเสร็จ</div>
+        <div class="text-2xl font-bold text-white num-counter">5</div>
+      </div>
+      <div class="card rounded-xl p-4 text-center">
+        <div class="text-xs text-gray-500">SKUs ที่รวมแล้ว</div>
+        <div class="text-2xl font-bold text-accent-400 num-counter">14</div>
+      </div>
+      <div class="card rounded-xl p-4 text-center">
+        <div class="text-xs text-gray-500">หน่วยรวม</div>
+        <div class="text-2xl font-bold text-accent-300 num-counter">306</div>
+      </div>
+      <div class="card rounded-xl p-4 text-center">
+        <div class="text-xs text-gray-500">ผู้ผลิต</div>
+        <div class="text-xl font-bold text-white">Boonrawd<br/><span class="text-red-300 text-sm">+ ThaiBev</span></div>
+      </div>
+    </div>
+
+    <!-- needs_review surface — admin queue -->
+    <div class="reveal text-center mt-20 mb-8">
+      <h3 class="text-2xl md:text-3xl font-bold mb-3">ระบบรู้เอง ว่า <span class="gradient-text">ใบไหนต้องดู</span></h3>
+      <p class="text-gray-400 max-w-2xl mx-auto">เมื่อ AI เจอสินค้าที่ไม่ตรง catalog — flag ใบนั้นทันที + บอกเหตุผลในหน้า review</p>
+    </div>
+    <div class="grid md:grid-cols-2 gap-6 max-w-6xl mx-auto mb-16">
+      <div class="reveal">
+        <div class="screenshot-frame">
+          <img src="showcase-assets/visit-needs-review.png" alt="Visit page KPI with 'ไม่อยู่ catalog 1' and 'ต้องตรวจ 1' counts" class="screenshot" />
+        </div>
+        <div class="screenshot-caption">KPI ของ visit นับใบที่ต้องตรวจ — KULOV ใบที่มีสินค้านอก catalog</div>
+      </div>
+      <div class="reveal" style="transition-delay: 0.1s">
+        <div class="screenshot-frame">
+          <img src="showcase-assets/review-needs-review.png" alt="Review page with yellow 'document needs review' alert" class="screenshot" />
+        </div>
+        <div class="screenshot-caption">หน้า review บอกชัด: "มีสินค้าไม่ตรง catalog — ดูว่าควรเพิ่ม SKU ใหม่หรือแก้ชื่อ"</div>
+      </div>
+    </div>
+
+    <!-- Legacy mock kept hidden — replaced by screenshot above -->
+    <div class="hidden">
+      <div class="card rounded-3xl overflow-hidden glow">
         <!-- Product rollup -->
         <div class="p-6">
           <div class="text-xs text-gray-500 uppercase tracking-wider mb-4">Product × Quantity rollup</div>
