@@ -127,7 +127,36 @@ def _resolve_product_code(
         except Exception as exc:  # noqa: BLE001
             logger.warning("Failed to record catalog_gap_event: %s", exc)
         return None
-    return find_code_by_name(db, name)
+
+    # No code emitted by Gemini → try fuzzy match by name.
+    resolved = find_code_by_name(db, name)
+    if resolved is None and _is_primary_product_category(item.category):
+        # Gemini correctly abstained on a primary-category item (e.g. a
+        # competitor liquor brand) — record a gap with no emitted_code so
+        # admins can decide whether to add the SKU.
+        try:
+            db.add(
+                CatalogGapEvent(
+                    document_id=document_id,
+                    emitted_code=None,
+                    product_name=name,
+                    product_name_raw=item.product_name_raw,
+                )
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Failed to record catalog_gap_event (no-code path): %s", exc)
+    return resolved
+
+
+# Categories where a missing product_code likely means "real SKU we don't
+# have in catalog yet" rather than "packaging / delivery fee / supplies".
+_PRIMARY_PRODUCT_CATEGORIES = frozenset(
+    {"เครื่องดื่ม", "สินค้าพรีเมียมสิงห์"}
+)
+
+
+def _is_primary_product_category(category: str | None) -> bool:
+    return bool(category) and category in _PRIMARY_PRODUCT_CATEGORIES
 
 
 from ..services.storage import save_bytes, validate_and_hash
@@ -237,6 +266,7 @@ def _run_processing(doc_id: str, file_path: str) -> None:
             separator = "\n" if existing else ""
             doc.notes = existing + separator + "\n".join(f"⚠️ {w}" for w in warnings)
 
+        has_catalog_gap = False
         for item_data in result.items:
             # Raw snapshot of what Gemini read — fall back to normalized when
             # the model didn't emit raw (older extraction paths or legacy
@@ -246,6 +276,11 @@ def _run_processing(doc_id: str, file_path: str) -> None:
             # 1. Gemini-emitted product_code (from prompt catalog) when valid.
             # 2. Fuzzy fallback against products.canonical_name / display_name.
             code = _resolve_product_code(db, item_data, document_id=doc_id)
+            # A primary-category item with no resolved code is a real catalog
+            # gap (KULOV case) — the admin should review the doc to decide
+            # whether to add the SKU.
+            if code is None and _is_primary_product_category(item_data.category):
+                has_catalog_gap = True
             item = DocumentItem(
                 id=str(uuid.uuid4()),
                 document_id=doc_id,
@@ -258,6 +293,12 @@ def _run_processing(doc_id: str, file_path: str) -> None:
                 confidence=result.confidence,
             )
             db.add(item)
+
+        # Surface docs with at least one catalog gap so the admin sees them
+        # — without this, Gemini's uniformly-high confidence (≥0.95) would
+        # let real "missing SKU" cases slip past the review queue.
+        if has_catalog_gap:
+            doc.needs_review = True
 
         db.flush()
         db.refresh(doc)

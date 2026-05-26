@@ -200,7 +200,9 @@ class CatalogGapEvent(Base):
 
     id = Column(String, primary_key=True, default=_gen_id)
     document_id = Column(String, ForeignKey("documents.id", ondelete="CASCADE"), index=True)
-    emitted_code = Column(String, nullable=False, index=True)
+    # Nullable: ``None`` means Gemini abstained from emitting a code but the
+    # item still belongs in a primary product category (likely a missing SKU).
+    emitted_code = Column(String, nullable=True, index=True)
     product_name = Column(String, nullable=True)
     product_name_raw = Column(String, nullable=True)
     seen_at = Column(DateTime, default=_utcnow, index=True)

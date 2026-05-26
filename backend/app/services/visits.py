@@ -156,11 +156,14 @@ def ensure_visit_for_doc(db: Session, doc: Document) -> Visit | None:
     if not doc.merchant_normalized:
         return None
     period = derive_doc_period(doc)
+    # ``store_label`` is intentionally NOT passed so the helper defaults to
+    # ``matching_store.name`` (Store master). The raw receipt text lives on
+    # ``doc.merchant_name`` for audit; the Visit label belongs to the admin's
+    # canonical name in the Store master.
     visit = get_or_create_visit_for_merchant(
         db,
         store_key=doc.merchant_normalized,
         report_period=period,
-        store_label=doc.merchant_name,
     )
     if visit is None:
         return None
@@ -179,11 +182,14 @@ def reattach_visit_for_doc(db: Session, doc: Document) -> Visit | None:
         doc.visit_id = None
         return None
     period = derive_doc_period(doc)
+    # ``store_label`` is intentionally NOT passed so the helper defaults to
+    # ``matching_store.name`` (Store master). The raw receipt text lives on
+    # ``doc.merchant_name`` for audit; the Visit label belongs to the admin's
+    # canonical name in the Store master.
     visit = get_or_create_visit_for_merchant(
         db,
         store_key=doc.merchant_normalized,
         report_period=period,
-        store_label=doc.merchant_name,
     )
     if visit is None:
         doc.visit_id = None
@@ -194,11 +200,22 @@ def reattach_visit_for_doc(db: Session, doc: Document) -> Visit | None:
 
 
 def recompute_store_label(db: Session, visit: Visit) -> None:
-    """Pick the most-common merchant_name across the visit's live docs.
+    """Refresh ``store_label`` / ``store_key`` on a Visit.
 
-    Called after bulk uploads finish so a Visit reflects the merchant text
-    most receipts agreed on.
+    When the Visit is attached to a Store master row (``store_id`` set), both
+    the label and the key come from that Store — the admin's canonical name
+    is the single source of truth. The most-common ``merchant_name`` from
+    docs is only used as a fallback for orphan visits with no Store yet.
     """
+    if visit.store_id:
+        store = db.query(Store).filter(Store.id == visit.store_id).first()
+        if store:
+            visit.store_label = store.name
+            visit.store_key = store.normalized_name or store.name
+            visit.updated_at = datetime.now(UTC)
+            return
+
+    # Orphan visit (no Store master yet) — fall back to receipt consensus.
     docs = (
         db.query(Document)
         .filter(Document.visit_id == visit.id, Document.deleted_at.is_(None))

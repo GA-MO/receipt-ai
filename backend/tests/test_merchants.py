@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.database import Base
-from app.models import Document
+from app.models import Store
 from app.services.merchants import _rule_based_clean, normalize_merchant
 
 
@@ -28,17 +28,19 @@ def db():
         session.close()
 
 
-def _add_doc(session, merchant_name: str, normalized: str) -> None:
-    session.add(
-        Document(
-            filename=f"{merchant_name}.png",
-            file_path=f"/tmp/{merchant_name}.png",
-            merchant_name=merchant_name,
-            merchant_normalized=normalized,
-            status="reviewed",
-        )
-    )
+def _add_store(session, name: str, normalized: str, active: bool = True) -> Store:
+    """Seed an active Store master row. Merchant clustering keys off this."""
+    store = Store(name=name, normalized_name=normalized, active=active)
+    session.add(store)
     session.commit()
+    return store
+
+
+def _add_doc(session, merchant_name: str, normalized: str) -> None:
+    """Legacy alias retained for tests that intent to assert clustering;
+    rewritten to seed a Store master row instead of a Document so it matches
+    the new ``_load_known_canonicals`` source."""
+    _add_store(session, merchant_name, normalized)
 
 
 class TestRuleBasedClean:
@@ -63,6 +65,17 @@ class TestRuleBasedClean:
             # Public company marker — trailing period is canonicalized off so
             # "ปตท." and "ปตท" map to the same canonical.
             ("บริษัท ปตท. จำกัด (มหาชน)", "ปตท"),
+            # Romanised (English) form in trailing parens — receipts often print
+            # both the Thai name and an English translation. Strip the
+            # romanisation so it doesn't skew token_set_ratio.
+            ("จำปิสโตร์ (Jampi Store)", "จำปิสโตร์"),
+            ("จำปิสโตร์(Jampi Store)", "จำปิสโตร์"),
+            ("ร้านสมศักดิ์ (Somsak Shop)", "สมศักดิ์"),
+            # Thai-content parens are preserved — they may disambiguate
+            # genuinely different stores (e.g. branch markers, old vs new).
+            ("ร้านโจ (เก่า)", "โจ (เก่า)"),
+            # Branch markers with opening paren should leave nothing dangling.
+            ("ร้านโจ (สาขา 2)", "โจ"),
         ],
     )
     def test_strips_common_thai_prefixes_and_suffixes(self, raw, expected):
@@ -108,6 +121,56 @@ class TestNormalizeMerchant:
             db=db,
         )
         assert result == "สมชาย ของชำ"
+
+    def test_fuzzy_matches_through_romanised_parens(self, db):
+        """LLM-emitted name with English translation in parens should still
+        cluster to the existing canonical."""
+        _add_store(db, "จำปีสโตร์", "จำปีสโตร์")
+
+        # 'จำปิสโตร์ (Jampi Store)' (one-char typo + romanisation) should
+        # collapse to the existing 'จำปีสโตร์' after stripping the parens.
+        result = normalize_merchant(
+            raw_name="จำปิสโตร์ (Jampi Store)",
+            llm_hint=None,
+            db=db,
+        )
+        assert result == "จำปีสโตร์"
+
+    def test_inactive_store_does_not_influence_clustering(self, db):
+        """Soft-deleted (active=False) stores must NOT pull future merchants
+        toward their old names. Store master is the single source of truth.
+
+        Regression for: admin deletes a duplicate store ("จำปิสโตร์ (Jampi Store)")
+        but its merchant string keeps clustering future docs to it because
+        clustering used Document.merchant_normalized history instead of
+        active Store master.
+        """
+        _add_store(db, "จำปีสโตร์", "จำปีสโตร์")
+        _add_store(db, "จำปิสโตร์ (Jampi Store)", "จำปิสโตร์", active=False)
+
+        # A new doc reads almost-identical name to the deleted store. Without
+        # the fix, it would match the inactive store's canonical and "resurrect"
+        # the duplicate identity. With the fix, it must fall to the active
+        # 'จำปีสโตร์'.
+        result = normalize_merchant(
+            raw_name="จำปิสโตร์",
+            llm_hint=None,
+            db=db,
+        )
+        assert result == "จำปีสโตร์"
+
+    def test_no_clustering_when_only_inactive_stores_present(self, db):
+        """If every candidate Store is inactive, clustering must return the
+        cleaned candidate as-is — never a stale inactive name."""
+        _add_store(db, "Old Shop", "Old Shop", active=False)
+
+        result = normalize_merchant(
+            raw_name="ร้านโอลด์ ชอป",
+            llm_hint=None,
+            db=db,
+        )
+        # No active stores → just returns the rule-cleaned candidate.
+        assert result == "โอลด์ ชอป"
 
     def test_fuzzy_matches_with_extra_branch_suffix(self, db):
         _add_doc(db, "ร้านสมชาย", "สมชาย")

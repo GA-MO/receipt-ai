@@ -22,7 +22,7 @@ from collections.abc import Iterable
 from sqlalchemy.orm import Session
 
 from ..config import settings
-from ..models import Document
+from ..models import Store
 
 logger = logging.getLogger(__name__)
 
@@ -39,10 +39,19 @@ _STRIP_PATTERNS = [
         r"\s*[(（]\s*(สำนักงานใหญ่|สนญ\.?|HQ|Head\s*Office)\s*[)）]\s*$",
         re.IGNORECASE,
     ),
+    # Trailing parens containing only ASCII (a romanized form of the Thai name,
+    # e.g. "จำปิสโตร์ (Jampi Store)"). We strip these because Thai merchants
+    # often include the English translation but it skews token_set_ratio.
+    # Kept conservative: only matches when the *entire* parenthesised content
+    # is ASCII printable + spaces — Thai-language clarifiers like "(เก่า)" or
+    # "(สาขา 2)" are preserved as they may disambiguate genuinely different
+    # stores.
+    re.compile(r"\s*[(（]\s*[\x20-\x7E]+\s*[)）]\s*$"),
     # Trailing standalone "สำนักงานใหญ่" without parentheses.
     re.compile(r"\s*สำนักงานใหญ่\s*$", re.IGNORECASE),
     # \b doesn't work well with Thai (no word boundaries), so just match everything after "สาขา".
-    re.compile(r"\s*สาขา.*$", re.IGNORECASE),
+    # Optional opening paren in front so "(สาขา 2)" doesn't leave a dangling "(".
+    re.compile(r"\s*[(（]?\s*สาขา.*$", re.IGNORECASE),
     # Company-type prefixes at the start.
     re.compile(
         r"^\s*(บริษัท|บจก\.?|หจก\.?|ห้างหุ้นส่วนจำกัด|ห้างหุ้นส่วนสามัญ)\s*",
@@ -73,13 +82,25 @@ def _rule_based_clean(name: str) -> str:
 
 
 def _load_known_canonicals(db: Session) -> list[str]:
+    """Canonical merchant names come from the **active** Store master.
+
+    Store master is the single source of truth for merchants (see CLAUDE.md).
+    Document.merchant_normalized must not be used here — a soft-deleted store
+    would otherwise keep influencing future clustering through orphaned doc
+    rows. Each Store contributes both its ``normalized_name`` and ``name`` so
+    cleaning catches either form.
+    """
     rows = (
-        db.query(Document.merchant_normalized)
-        .filter(Document.merchant_normalized.isnot(None))
-        .distinct()
+        db.query(Store.normalized_name, Store.name)
+        .filter(Store.active.is_(True))
         .all()
     )
-    return [r[0] for r in rows if r[0]]
+    canonicals: list[str] = []
+    for normalized, name in rows:
+        for val in (normalized, name):
+            if val:
+                canonicals.append(val)
+    return canonicals
 
 
 def _fuzzy_match(candidate: str, known: Iterable[str], threshold: int) -> str | None:
@@ -113,7 +134,7 @@ def normalize_merchant(
     """Produce a canonical merchant string for grouping / dedup.
 
     Preference order:
-      1. Fuzzy match against an existing canonical in the DB.
+      1. Fuzzy match against an active Store master row.
       2. LLM-provided ``merchant_normalized`` — but always passed through
          rule-based cleaning to catch leftover company-type / branch markers
          (LLMs sometimes forget to strip "จำกัด(สำนักงานใหญ่)", for example).
@@ -131,9 +152,9 @@ def normalize_merchant(
     if not candidate:
         return None
 
-    # Fuzzy-match against cleaned-up versions of existing canonicals so we
-    # never bring back old-style noisy values (e.g. pre-cleanup records that
-    # still have "(สำนักงานใหญ่)" attached).
+    # Fuzzy-match against cleaned-up names from the active Store master.
+    # Inactive (soft-deleted) stores are excluded so they don't keep
+    # poisoning future clustering after the admin has cleaned them up.
     raw_known = _load_known_canonicals(db)
     # Map cleaned -> original-cleaned so the returned canonical is already normalised.
     cleaned_known = {_rule_based_clean(k) for k in raw_known if k}

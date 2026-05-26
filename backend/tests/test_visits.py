@@ -16,6 +16,7 @@ from app.services.visits import (
     ensure_visit_for_doc,
     get_or_create_visit_for_merchant,
     is_store_mismatch,
+    recompute_store_label,
     sweep_empty_visits,
 )
 
@@ -102,6 +103,74 @@ class TestVisitHelpers:
         visit = ensure_visit_for_doc(db_session, doc)
         assert visit is not None
         assert doc.visit_id == visit.id
+
+    def test_ensure_visit_for_doc_uses_store_master_label(self, db_session):
+        """Visit label must come from Store master, not the raw merchant text
+        on the receipt. Receipt may say "จำปิสโตร์ (Jampi Store)" but the
+        canonical "จำปีสโตร์" is what the dashboard shows."""
+        doc = _seed_doc(db_session, merchant_normalized="ร้านX")
+        # _seed_doc sets merchant_name to "ร้าน ร้านX"; verify we drop that.
+        doc.merchant_name = "ร้าน X (X Shop)"
+        visit = ensure_visit_for_doc(db_session, doc)
+        assert visit is not None
+        assert visit.store_label == "ร้านX"  # store.name from seeded fixture
+
+    def test_recompute_store_label_uses_master_when_attached(self, db_session):
+        """When a Visit has store_id, recompute_store_label must pull the
+        label from the Store master, ignoring per-doc merchant_name noise."""
+        # Visit attached to ร้านX.
+        visit = get_or_create_visit_for_merchant(
+            db_session, "ร้านX", report_period="2026-05"
+        )
+        # Two docs disagree on merchant_name spelling (inline to dodge the
+        # id collision in _seed_doc when called repeatedly with items=None).
+        for idx, raw_label in enumerate(["ร้าน X (สำนักงานใหญ่)", "ร้าน X จำกัด"]):
+            db_session.add(
+                Document(
+                    id=f"doc-label-{idx}",
+                    filename="r.png",
+                    file_path="/tmp/r.png",
+                    status="extracted",
+                    merchant_name=raw_label,
+                    merchant_normalized="ร้านX",
+                    visit_id=visit.id,
+                )
+            )
+        # Sanity: mess up the visit label deliberately so the assert is real.
+        visit.store_label = "ร้าน X จำกัด"
+        db_session.flush()
+
+        recompute_store_label(db_session, visit)
+        assert visit.store_label == "ร้านX"  # store master canonical wins
+
+    def test_recompute_store_label_falls_back_for_orphan_visit(self, db_session):
+        """A Visit without store_id (e.g. legacy orphan) falls back to the
+        most-common merchant_name across its docs."""
+        visit = Visit(
+            id="orphan-visit",
+            store_id=None,
+            store_key="legacy",
+            store_label="legacy",
+            report_period="2026-05",
+        )
+        db_session.add(visit)
+        db_session.flush()
+        for idx in range(2):
+            db_session.add(
+                Document(
+                    id=f"doc-orphan-{idx}",
+                    filename="r.png",
+                    file_path="/tmp/r.png",
+                    status="extracted",
+                    merchant_name="ร้านลึกลับ",
+                    merchant_normalized="legacy",
+                    visit_id=visit.id,
+                )
+            )
+        db_session.flush()
+
+        recompute_store_label(db_session, visit)
+        assert visit.store_label == "ร้านลึกลับ"
 
 
 class TestEmptyVisitCleanup:
