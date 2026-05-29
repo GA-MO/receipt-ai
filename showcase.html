@@ -182,7 +182,6 @@
       <a href="#chapter-2" class="hover:text-white">Triage</a>
       <a href="#chapter-3" class="hover:text-white">Rollup</a>
       <a href="#stack" class="hover:text-white">Stack</a>
-      <a href="http://localhost:5173" class="px-4 py-1.5 rounded-lg bg-accent-500 hover:bg-accent-600 text-white font-medium">เปิดแอป</a>
     </div>
   </div>
 </nav>
@@ -204,8 +203,8 @@
     </h1>
 
     <p class="text-xl md:text-2xl text-gray-400 max-w-3xl mx-auto mb-12 leading-relaxed animate-fade-up" style="animation-delay: 0.2s">
-      เซลส์ Boonrawd ถ่ายใบเสร็จเดือนละหลายสิบใบต่อร้าน<br />
-      ระบบจัดร้าน อ่านสินค้า สรุปยอดให้ <span class="text-white font-semibold">โดยไม่ต้องเปิด Excel</span>
+      เซลส์ Boonrawd ถ่ายใบเสร็จเดือนละหลายสิบใบต่อร้าน — เดิมต้องกรอกมือทีละรายการ<br />
+      ระบบใหม่ให้ AI อ่านให้ คนแค่ตรวจ <span class="text-white font-semibold">ภาพยังเก็บครบ ให้ audit สุ่มตรวจได้เหมือนเดิม</span>
     </p>
 
     <div class="flex flex-wrap items-center justify-center gap-3 mb-20 animate-fade-up" style="animation-delay: 0.3s">
@@ -214,6 +213,7 @@
       <span class="chip">🗂️ Auto-attach Visit</span>
       <span class="chip">📊 Product × Qty rollup</span>
       <span class="chip">🇹🇭 Thai handwriting</span>
+      <span class="chip">🔒 หลักฐานครบ · audit ได้</span>
     </div>
 
     <!-- Flow animation -->
@@ -251,20 +251,21 @@
   <div class="max-w-5xl mx-auto">
     <div class="reveal text-center mb-16">
       <div class="chip mb-4">ปัญหาที่เกิดขึ้นจริง</div>
-      <h2 class="text-4xl md:text-5xl font-bold mb-6">เซลส์ใช้เวลาเป็นวันต่อรอบ<br /><span class="text-gray-500">เพื่อทำสิ่งที่ Excel ไม่ควรต้องทำ</span></h2>
+      <h2 class="text-4xl md:text-5xl font-bold mb-6">ระบบเดิมให้เซลส์กรอกมือทุกบรรทัด<br /><span class="text-gray-500">แล้วแนบรูปไว้ให้ audit สุ่มตรวจ</span></h2>
+      <p class="reveal text-gray-400 max-w-2xl mx-auto mt-4">การแนบรูปเป็นหลักฐานคือสิ่งที่ต้องมี — ระบบใหม่ไม่ตัดทิ้ง แต่ตัด "งานกรอกมือ" ออก</p>
     </div>
 
     <div class="grid md:grid-cols-2 gap-8 items-center">
       <!-- Before -->
       <div class="reveal card rounded-3xl p-8 relative">
-        <div class="absolute -top-3 left-6 px-3 py-1 rounded-full bg-red-500/20 border border-red-500/40 text-xs text-red-300 font-semibold">เดิม</div>
-        <div class="text-2xl font-bold mb-6 text-white">นั่งพิมพ์ Excel</div>
+        <div class="absolute -top-3 left-6 px-3 py-1 rounded-full bg-red-500/20 border border-red-500/40 text-xs text-red-300 font-semibold">ระบบเดิม</div>
+        <div class="text-2xl font-bold mb-6 text-white">กรอกมือทีละรายการ</div>
         <ul class="space-y-3 text-gray-400">
-          <li class="flex gap-3"><span class="text-red-400">✗</span><span>เปิดทีละใบ พิมพ์ทีละบรรทัด</span></li>
-          <li class="flex gap-3"><span class="text-red-400">✗</span><span>ใบลายมือ ต้องเดาสินค้า</span></li>
-          <li class="flex gap-3"><span class="text-red-400">✗</span><span>คัดแยกร้านเอง</span></li>
-          <li class="flex gap-3"><span class="text-red-400">✗</span><span>ตรวจซ้ำกับเดือนก่อนเอง</span></li>
-          <li class="flex gap-3"><span class="text-red-400">✗</span><span>สรุปยอดสุดท้ายในไฟล์แยก</span></li>
+          <li class="flex gap-3"><span class="text-red-400">✗</span><span>เปิดทีละใบ พิมพ์สินค้าทีละบรรทัด</span></li>
+          <li class="flex gap-3"><span class="text-red-400">✗</span><span>ใบลายมือ ต้องเดาสินค้าเอง</span></li>
+          <li class="flex gap-3"><span class="text-red-400">✗</span><span>เลือกร้าน-เดือนให้ถูกเองทุกใบ</span></li>
+          <li class="flex gap-3"><span class="text-red-400">✗</span><span>ใบซ้ำ-ใบผิดร้าน หลุดได้</span></li>
+          <li class="flex gap-3"><span class="text-gray-500">•</span><span>แนบรูปทุกใบไว้ให้ audit สุ่มตรวจ <span class="text-gray-500">(จำเป็น — ทำซ้ำทุกครั้ง)</span></span></li>
         </ul>
         <div class="mt-6 pt-6 border-t border-white/5 text-3xl font-bold text-red-300 num-counter">~2 ชั่วโมง / รอบ</div>
       </div>
@@ -272,13 +273,13 @@
       <!-- After -->
       <div class="reveal card rounded-3xl p-8 relative glow" style="transition-delay: 0.1s">
         <div class="absolute -top-3 left-6 px-3 py-1 rounded-full bg-accent-500/20 border border-accent-500/40 text-xs text-accent-300 font-semibold">ระบบใหม่</div>
-        <div class="text-2xl font-bold mb-6 text-white">โยน · รอ · ตรวจ · เสร็จ</div>
+        <div class="text-2xl font-bold mb-6 text-white">AI กรอกให้ · คนแค่ตรวจ</div>
         <ul class="space-y-3 text-gray-300">
           <li class="flex gap-3"><span class="text-accent-400">✓</span><span>Bulk upload หลายไฟล์ทีเดียว</span></li>
-          <li class="flex gap-3"><span class="text-accent-400">✓</span><span>Gemini อ่านลายมือไทย</span></li>
+          <li class="flex gap-3"><span class="text-accent-400">✓</span><span>Gemini อ่านลายมือไทย กรอกรายการให้</span></li>
           <li class="flex gap-3"><span class="text-accent-400">✓</span><span>จัด Visit ตามร้าน-เดือนอัตโนมัติ</span></li>
-          <li class="flex gap-3"><span class="text-accent-400">✓</span><span>File hash กันใบซ้ำให้</span></li>
-          <li class="flex gap-3"><span class="text-accent-400">✓</span><span>เห็น product × qty ทันทีหน้า Visit</span></li>
+          <li class="flex gap-3"><span class="text-accent-400">✓</span><span>File hash กันใบซ้ำ + เตือนใบผิดร้าน/ผิดเดือน</span></li>
+          <li class="flex gap-3"><span class="text-accent-400">✓</span><span>ภาพ + audit trail เก็บครบ — สุ่มตรวจได้เหมือนเดิม</span></li>
         </ul>
         <div class="mt-6 pt-6 border-t border-white/5 text-3xl font-bold text-accent-300 num-counter">~10 นาที / รอบ</div>
       </div>
@@ -427,7 +428,7 @@
       <div class="chip mb-4">บทที่ 3 · The Answer</div>
       <h2 class="text-4xl md:text-5xl font-bold mb-6">หัวใจของระบบ —<br /><span class="gradient-text">Visit Rollup</span></h2>
       <p class="text-lg text-gray-400 max-w-2xl mx-auto">
-        เปิดหน้า Visit แล้วเห็น <span class="text-white font-semibold">เดือนนี้ร้านนี้ขายอะไรไปเท่าไหร่</span> ทันที — สิ่งที่เคยต้องนั่งรวม Excel ทีละบรรทัด
+        เปิดหน้า Visit แล้วเห็น <span class="text-white font-semibold">เดือนนี้ร้านนี้ขายอะไรไปเท่าไหร่</span> ทันที — สิ่งที่เดิมต้องนั่งกรอกแล้วรวมเองทีละบรรทัด
       </p>
     </div>
 
@@ -589,8 +590,8 @@
       </div>
       <div class="reveal card rounded-2xl p-6" style="transition-delay: 0.2s">
         <div class="text-3xl mb-3">🔒</div>
-        <div class="font-semibold text-white mb-2">มีหลักฐานครบ</div>
-        <div class="text-sm text-gray-400">ทุกตัวเลข click กลับไปดูภาพต้นฉบับได้ + audit trail</div>
+        <div class="font-semibold text-white mb-2">สุ่มตรวจได้เหมือนเดิม</div>
+        <div class="text-sm text-gray-400">ทุกตัวเลข click กลับไปดูภาพต้นฉบับได้ — auditor สุ่มตรวจใบไหนก็เทียบได้ทันที</div>
       </div>
     </div>
   </div>
@@ -622,8 +623,8 @@
       </div>
       <div class="reveal card rounded-2xl p-8 stage-card" style="transition-delay: 0.3s">
         <div class="text-accent-400 text-sm font-semibold mb-2">04 · Audit-ready</div>
-        <h3 class="text-2xl font-bold text-white mb-3">ตามรอยได้ทุกตัวเลข</h3>
-        <p class="text-gray-400">ภาพต้นฉบับ + document_events + typo_recovery_events เก็บทุก trace</p>
+        <h3 class="text-2xl font-bold text-white mb-3">คงงานสุ่มตรวจไว้ — แต่ดีกว่าเดิม</h3>
+        <p class="text-gray-400">ภาพต้นฉบับเก็บครบทุกใบเหมือนระบบเดิม + เพิ่ม document_events / typo_recovery_events บันทึกทุกการแก้ พร้อมว่าใครแก้ — สุ่มตรวจแล้วตามรอยได้ถึงต้นทาง</p>
       </div>
     </div>
   </div>
@@ -690,16 +691,16 @@
   <div class="relative max-w-3xl mx-auto text-center">
     <div class="reveal">
       <h2 class="text-4xl md:text-6xl font-bold mb-6">
-        พร้อมโยน <span class="gradient-text">รูปแรก</span> หรือยัง
+        ใบเสร็จกองโต → ยอดขายรายเดือน<br /><span class="gradient-text">ในไม่กี่นาที</span>
       </h2>
-      <p class="text-lg text-gray-400 mb-10">เปิดแอปแล้วลากใบเสร็จเข้า Inbox ได้เลย</p>
+      <p class="text-lg text-gray-400 mb-10 max-w-2xl mx-auto">
+        โยนรูปเข้า Inbox · AI กรอกให้ · คนแค่ตรวจ — ภาพต้นฉบับยังเก็บครบทุกใบ ให้ audit สุ่มตรวจได้เหมือนเดิม
+      </p>
       <div class="flex flex-wrap items-center justify-center gap-3">
-        <a href="http://localhost:5173/inbox" class="px-8 py-4 rounded-xl bg-accent-500 hover:bg-accent-600 text-white font-semibold text-lg transition glow">
-          เปิด Inbox →
-        </a>
-        <a href="http://localhost:5173/stores" class="px-8 py-4 rounded-xl border border-white/10 hover:border-white/30 text-white font-semibold text-lg transition">
-          ดู Stores
-        </a>
+        <span class="chip">📸 Bulk upload</span>
+        <span class="chip">🤖 Gemini 3 Vision</span>
+        <span class="chip">📊 Product × Qty rollup</span>
+        <span class="chip">🔒 หลักฐานครบ · audit ได้</span>
       </div>
     </div>
   </div>
