@@ -409,7 +409,7 @@ export default function DocumentsPage() {
                       <Table.Td>
                         <Link to={doc.visit_id ? `/visits/${doc.visit_id}` : "/documents"} className="block">
                           {doc.file_type === "pdf" ? (
-                            <div className="w-14 h-14 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex items-center justify-center">
+                            <div className="w-14 h-14 rounded-md border border-gray-200 bg-gray-50 flex items-center justify-center">
                               <FileText className="w-6 h-6 text-gray-400" />
                             </div>
                           ) : (
@@ -417,7 +417,7 @@ export default function DocumentsPage() {
                               src={getDocumentImageUrl(doc.id)}
                               alt=""
                               loading="lazy"
-                              className="w-14 h-14 rounded-md border border-gray-200 dark:border-gray-700 object-cover bg-gray-50 dark:bg-gray-800 hover:opacity-80 transition-opacity"
+                              className="w-14 h-14 rounded-md border border-gray-200 object-cover bg-gray-50 hover:opacity-80 transition-opacity"
                               onError={(e) => {
                                 e.currentTarget.style.visibility = "hidden";
                               }}

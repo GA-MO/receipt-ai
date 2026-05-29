@@ -4,14 +4,9 @@
   --font-sans: "IBM Plex Sans Thai", system-ui, sans-serif;
 }
 
-/* Mantine controls light/dark via [data-mantine-color-scheme="dark"] on
-   <html>. Re-point Tailwind's `dark:` variant at that attribute so the two
-   stay in sync when the user toggles theme. */
-@custom-variant dark (&:where([data-mantine-color-scheme="dark"] *));
-
 /* ==========================================================================
    Showcase-inspired polish — applied globally so every page benefits.
-   Light mode is the default; dark mode mirrors the values where it matters.
+   The app is light-only.
    ========================================================================== */
 
 :root {
@@ -32,13 +27,6 @@ body {
     radial-gradient(900px 500px at -10% 110%, rgba(129, 140, 248, 0.06), transparent 60%),
     var(--mantine-color-body);
   background-attachment: fixed;
-}
-
-[data-mantine-color-scheme="dark"] body {
-  background:
-    radial-gradient(1200px 600px at 85% -10%, rgba(99, 102, 241, 0.12), transparent 60%),
-    radial-gradient(900px 500px at -10% 110%, rgba(129, 140, 248, 0.08), transparent 60%),
-    var(--mantine-color-body);
 }
 
 /* Cards/Papers get a softer "lifted" look with a faint accent edge on hover. */
@@ -94,13 +82,6 @@ body {
     color-mix(in srgb, var(--accent-500) 8%, transparent) 0%,
     color-mix(in srgb, var(--accent-400) 4%, transparent) 100%);
   border: 1px solid color-mix(in srgb, var(--accent-500) 18%, transparent);
-}
-
-[data-mantine-color-scheme="dark"] .surface-accent {
-  background: linear-gradient(135deg,
-    color-mix(in srgb, var(--accent-500) 18%, transparent) 0%,
-    color-mix(in srgb, var(--accent-400) 10%, transparent) 100%);
-  border: 1px solid color-mix(in srgb, var(--accent-400) 25%, transparent);
 }
 
 /* Animated pulse dot — "live" indicators next to stream sources. */

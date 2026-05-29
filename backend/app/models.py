@@ -287,22 +287,3 @@ class Store(Base):
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
 
     visits = relationship("Visit", back_populates="store")
-
-
-class PushSubscription(Base):
-    """Web Push subscription record.
-
-    One row per (browser, device) combo. ``endpoint`` is the push service URL
-    supplied by the browser's Push API and is naturally unique.
-    """
-
-    __tablename__ = "push_subscriptions"
-
-    id = Column(String, primary_key=True, default=_gen_id)
-    endpoint = Column(String, nullable=False, unique=True, index=True)
-    p256dh = Column(String, nullable=False)
-    auth = Column(String, nullable=False)
-    user_agent = Column(String, nullable=True)
-    created_at = Column(DateTime, default=_utcnow)
-    last_used_at = Column(DateTime, nullable=True)
-    enabled = Column(Boolean, default=True)

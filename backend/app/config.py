@@ -41,11 +41,6 @@ class Settings(BaseSettings):
     use_arq: bool = False
     redis_url: str = "redis://localhost:6379/0"
 
-    # Web Push (VAPID)
-    vapid_public_key: str = ""
-    vapid_private_key: str = ""
-    vapid_subject: str = "mailto:admin@example.com"
-
     # ``extra=ignore`` so a stale .env carrying retired keys (LLM_PROVIDER,
     # GEMINI_*, GCP_*, EXTRACTION_MODE) doesn't crash boot.
     model_config = {"env_file": ".env", "extra": "ignore"}

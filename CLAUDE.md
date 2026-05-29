@@ -18,7 +18,7 @@ they were not part of the real workflow.
 - **Frontend** — React 19 + Vite + Mantine v9 + Tailwind v4 at `frontend/`
 - **AI** — Gemini 3 Flash (default) via OpenRouter using the OpenAI SDK,
   vision-only. Swap model via `OPENROUTER_MODEL`.
-- **DB** — SQLite via SQLAlchemy + Alembic (head: `0024`)
+- **DB** — SQLite via SQLAlchemy + Alembic (head: `0026`)
 - **Worker** — arq + Redis, opt-in via `USE_ARQ=true`; default falls back
   to FastAPI `BackgroundTasks` guarded by a `threading.Semaphore(1)`
 
@@ -163,7 +163,8 @@ frontend/src/theme.ts                       # indigo, IBM Plex Sans Thai
   components; Tailwind v4 for layout utilities; Thai for UI labels.
 - Commit messages in English.
 - Use `var(--mantine-color-default-border)` (not Tailwind `border-t`) for
-  dividers so dark mode + theme tokens stay consistent.
+  dividers so theme tokens stay consistent. The app is light-only — no
+  `dark:` classes or `light-dark()` CSS.
 
 ## Things that used to exist but are gone
 
@@ -192,3 +193,11 @@ If a doc/comment references any of these, it's stale:
 - **`product_name_normalized` from LLM** — model now emits only
   `product_name_raw + product_code`; display name is derived server-side
   from `catalog.name_by_code(code)`.
+- **Web Push notifications** (`routers/push.py`, `services/push.py`,
+  `scripts/gen_vapid.py`, `hooks/useWebPush.ts`, `public/sw.js`,
+  `push_subscriptions` table, `VAPID_*` env vars, `pywebpush` dep) — removed
+  (migration `0026`). The toast feedback (`@mantine/notifications`) and the
+  SSE live-progress streams are unrelated and stay.
+- **Dark mode / color-scheme toggle** (Moon/Sun button, `useMantineColorScheme`,
+  `dark:` Tailwind classes, `light-dark()` CSS) — removed; the app is
+  light-only.

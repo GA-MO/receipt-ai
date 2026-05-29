@@ -465,36 +465,6 @@ export function getDocumentHistory(id: string, limit = 200) {
   );
 }
 
-// ---------- Web Push ----------
-
-export function getPushPublicKey() {
-  return request<{ public_key: string }>("/push/public-key");
-}
-
-export function subscribePush(sub: PushSubscriptionJSON) {
-  return request<{ id: string; status: string }>("/push/subscribe", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(sub),
-  });
-}
-
-export function unsubscribePush(endpoint: string) {
-  return request<{ status: string }>("/push/unsubscribe", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ endpoint }),
-  });
-}
-
-export function sendTestPush(payload?: { title?: string; body?: string; url?: string }) {
-  return request<{ delivered: number }>("/push/test", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload ?? {}),
-  });
-}
-
 // ---------- Learned aliases ----------
 
 export function getAliases(limit = 100) {

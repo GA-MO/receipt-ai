@@ -80,8 +80,7 @@ backend/
 │   │   │                     # name orphan, purge non-receipts
 │   │   ├── products.py       # catalog stats + lookup
 │   │   ├── aliases.py        # learned product aliases
-│   │   ├── autocomplete.py   # store + product autocomplete
-│   │   └── push.py           # web push subscriptions
+│   │   └── autocomplete.py   # store + product autocomplete
 │   └── services/
 │       ├── extraction.py     # default Gemini call (prompt + catalog)
 │       ├── extraction_agentic.py  # tool-calling mode (opt-in)

@@ -8,7 +8,7 @@ Common ``event_type`` values (free-form strings):
     uploaded, extracted, extraction_failed, edited,
     item_added, item_updated, item_deleted,
     approved, reextracted, trashed, restored, purged,
-    alias_learned, fraud_detected, push_sent.
+    alias_learned.
 """
 
 from __future__ import annotations

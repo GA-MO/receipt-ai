@@ -399,7 +399,7 @@ function ProcessingSection({ docs }: { docs: DocumentListItem[] }) {
       <Group gap="xs" mt="sm">
         {docs.slice(0, 12).map((d) => (
           <Tooltip key={d.id} label={d.filename}>
-            <div className="w-10 h-10 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex items-center justify-center">
+            <div className="w-10 h-10 rounded border border-gray-200 bg-gray-50 flex items-center justify-center">
               <Loader size="xs" />
             </div>
           </Tooltip>
@@ -500,7 +500,7 @@ function OrphanSection({
         {naming && (
           <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] h-full min-h-0">
             {/* Left — image */}
-            <div className="overflow-hidden border-r border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 min-h-0">
+            <div className="overflow-hidden border-r border-gray-200 bg-gray-50 min-h-0">
               {naming.file_type === "pdf" ? (
                 <iframe
                   src={getDocumentImageUrl(naming.id)}
@@ -690,7 +690,7 @@ function ResolveStoreModal({
     >
       <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] h-full min-h-0">
         {/* Left — image */}
-        <div className="overflow-hidden border-r border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 min-h-0">
+        <div className="overflow-hidden border-r border-gray-200 bg-gray-50 min-h-0">
           {doc.file_type === "pdf" ? (
             <iframe
               src={getDocumentImageUrl(doc.id)}
@@ -757,10 +757,10 @@ function ResolveStoreModal({
                     <div
                       key={s.id}
                       onClick={() => setSelectedStoreId(s.id)}
-                      className={`px-3 py-2 cursor-pointer border-b border-gray-100 dark:border-gray-800 last:border-0 transition-colors ${
+                      className={`px-3 py-2 cursor-pointer border-b border-gray-100 last:border-0 transition-colors ${
                         selectedStoreId === s.id
-                          ? "bg-indigo-50 dark:bg-indigo-900/30"
-                          : "hover:bg-gray-50 dark:hover:bg-gray-800/40"
+                          ? "bg-indigo-50"
+                          : "hover:bg-gray-50"
                       }`}
                     >
                       <Group justify="space-between" wrap="nowrap">
@@ -855,7 +855,7 @@ function UnknownStoreThumb({
   const label = doc.merchant_name || doc.merchant_normalized || "(ไม่ระบุ)";
   return (
     <div className="flex flex-col gap-1 w-28">
-      <div className="relative w-28 h-28 rounded-md overflow-hidden border-2 border-yellow-400 bg-gray-50 dark:bg-gray-800">
+      <div className="relative w-28 h-28 rounded-md overflow-hidden border-2 border-yellow-400 bg-gray-50">
         {doc.file_type === "image" ? (
           <img
             src={getDocumentImageUrl(doc.id)}
@@ -953,7 +953,7 @@ function NonReceiptSection({ docs }: { docs: DocumentListItem[] }) {
         {docs.map((d) => (
           <div
             key={d.id}
-            className="relative w-20 h-20 rounded-md overflow-hidden border bg-gray-50 dark:bg-gray-800"
+            className="relative w-20 h-20 rounded-md overflow-hidden border bg-gray-50"
           >
             <img
               src={getDocumentImageUrl(d.id)}
@@ -1045,7 +1045,7 @@ function VisitsSection({
           </Badge>
         </Group>
       </Group>
-      <Stack gap={0} className="border-t border-gray-100 dark:border-gray-800">
+      <Stack gap={0} className="border-t border-gray-100">
         {sorted.map((v) => (
           <VisitRow key={v.id} visit={v} showPeriod={isAll} />
         ))}
@@ -1067,7 +1067,7 @@ function VisitRow({ visit, showPeriod }: { visit: DashboardVisit; showPeriod: bo
   return (
     <Link
       to={`/visits/${visit.id}`}
-      className="block px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors no-underline text-inherit"
+      className="block px-4 py-3 hover:bg-gray-50 transition-colors no-underline text-inherit"
       style={{
         borderLeft: hasNew
           ? "3px solid var(--mantine-color-orange-5)"
@@ -1134,7 +1134,7 @@ function OrphanThumb({
   onDiscard: () => void;
 }) {
   return (
-    <div className="relative w-24 h-24 rounded-md overflow-hidden border-2 border-orange-300 bg-gray-50 dark:bg-gray-800 group">
+    <div className="relative w-24 h-24 rounded-md overflow-hidden border-2 border-orange-300 bg-gray-50 group">
       {doc.file_type === "image" ? (
         <img
           src={getDocumentImageUrl(doc.id)}

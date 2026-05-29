@@ -224,14 +224,13 @@ function DocTile({
   useDocumentStream(item.id, {
     enabled: status === "processing",
     onEvent: (ev) => {
-      const next = ev.status as Status;
-      if (
-        next === "extracted" ||
-        next === "reviewed" ||
-        next === "not_receipt" ||
-        next === "error"
-      ) {
-        onStatus(next === "reviewed" ? "extracted" : next);
+      // ev.status is the raw SSE string — the stream can emit "reviewed"
+      // (a terminal state) which we collapse into "extracted" for the tile.
+      const next = ev.status;
+      if (next === "extracted" || next === "reviewed") {
+        onStatus("extracted");
+      } else if (next === "not_receipt" || next === "error") {
+        onStatus(next);
       }
     },
   });

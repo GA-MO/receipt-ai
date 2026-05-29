@@ -391,7 +391,7 @@ export default function VisitDetailPage() {
                   className={
                     isLoading
                       ? "opacity-70"
-                      : "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
+                      : "cursor-pointer hover:bg-gray-50"
                   }
                   onClick={isLoading ? undefined : () => openReview(d.id)}
                   style={{
@@ -409,7 +409,7 @@ export default function VisitDetailPage() {
                 >
                   <Group gap="sm" wrap="nowrap" align="flex-start">
                     {d.file_type === "pdf" ? (
-                      <div className="w-12 h-12 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex items-center justify-center shrink-0">
+                      <div className="w-12 h-12 rounded-md border border-gray-200 bg-gray-50 flex items-center justify-center shrink-0">
                         <FileText className="w-5 h-5 text-gray-400" />
                       </div>
                     ) : (
@@ -417,7 +417,7 @@ export default function VisitDetailPage() {
                         src={getDocumentImageUrl(d.id)}
                         alt=""
                         loading="lazy"
-                        className="w-12 h-12 rounded-md border border-gray-200 dark:border-gray-700 object-cover bg-gray-50 dark:bg-gray-800 shrink-0"
+                        className="w-12 h-12 rounded-md border border-gray-200 object-cover bg-gray-50 shrink-0"
                         onError={(e) => {
                           e.currentTarget.style.visibility = "hidden";
                         }}
