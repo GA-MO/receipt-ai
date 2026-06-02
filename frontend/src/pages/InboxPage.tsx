@@ -192,7 +192,7 @@ export default function InboxPage() {
                 Bulk upload
               </Badge>
               <Badge variant="light" color="violet" radius="xl" leftSection={<Sparkles size={11} />}>
-                AI สกัด
+                AI อ่าน
               </Badge>
               <Badge variant="light" color="indigo" radius="xl" leftSection={<StoreIcon size={11} />}>
                 Auto-attach Visit

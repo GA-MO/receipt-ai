@@ -260,7 +260,7 @@ export default function VisitReviewPage() {
           title="เอกสารนี้ต้องตรวจ"
         >
           <Text size="sm">
-            AI สกัดเสร็จแล้วแต่มีสินค้าอย่างน้อย 1 รายการที่ไม่ตรงกับ catalog — ดูว่า
+            AI อ่านเสร็จแล้วแต่มีสินค้าอย่างน้อย 1 รายการที่ไม่ตรงกับ catalog — ดูว่า
             ควรเพิ่ม SKU ใหม่หรือแก้ชื่อสินค้าให้ตรง catalog
           </Text>
         </Alert>
