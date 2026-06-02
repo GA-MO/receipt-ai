@@ -282,6 +282,15 @@ def _parse_items(raw_items: object, default_category: str | None) -> list[Docume
         normalized = catalog_name or legacy_normalized or raw_name
         if raw_name is None:
             raw_name = normalized
+        # Unit override: for a catalog match the SELLING unit is fixed by the
+        # SKU (the shop sells by ลัง/ถาด/แพ็ค, never a single ขวด), so trust the
+        # catalog over the model's per-document guess. Only the unit label is
+        # corrected — the quantity is left as written. Off-catalog items keep
+        # the extracted unit.
+        unit = it.get("unit")
+        catalog_unit = catalog.selling_unit_by_code(product_code)
+        if catalog_unit:
+            unit = catalog_unit
         items.append(
             DocumentItemBase(
                 product_name_raw=raw_name,
@@ -289,7 +298,7 @@ def _parse_items(raw_items: object, default_category: str | None) -> list[Docume
                 product_code=product_code,
                 category=cat,
                 quantity=it.get("quantity"),
-                unit=it.get("unit"),
+                unit=unit,
             )
         )
     return items

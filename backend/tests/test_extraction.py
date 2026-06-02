@@ -193,3 +193,63 @@ class TestParseExtractionPayload:
         assert item.product_code == "INT-BEER-SINGHA-L"
         assert item.product_name_normalized == "เบียร์สิงห์ขวดใหญ่"
         assert item.product_name_raw == "สิงห์"
+
+    def test_catalog_selling_unit_overrides_model_unit(self, monkeypatch):
+        """The shop sells by ลัง/ถาด/แพ็ค, never a single ขวด. A catalog match
+        must take its unit from the SKU's selling unit, overriding whatever the
+        model guessed; the quantity is left untouched. Off-catalog items keep
+        the extracted unit."""
+        from app.services import catalog
+
+        monkeypatch.setattr(
+            catalog,
+            "name_by_code",
+            lambda code: "เบียร์สิงห์ขวดใหญ่" if code == "INT-BEER-SINGHA-L" else None,
+        )
+        monkeypatch.setattr(
+            catalog,
+            "selling_unit_by_code",
+            lambda code: "ลัง" if code == "INT-BEER-SINGHA-L" else None,
+        )
+        payload = {
+            "items": [
+                {
+                    "product_name_raw": "เบียร์สิงห์",
+                    "product_code": "INT-BEER-SINGHA-L",
+                    "category": "เครื่องดื่ม",
+                    "quantity": 120,
+                    "unit": "ขวด",  # model mislabel — must be overridden
+                },
+                {
+                    "product_name_raw": "น้ำคริสตัล แพ็ค",
+                    "product_code": None,
+                    "category": "เครื่องดื่ม",
+                    "quantity": 1,
+                    "unit": "แพ็ค",  # off-catalog — kept as-is
+                },
+            ],
+        }
+        items = parse_extraction_payload(payload).items
+        assert items[0].unit == "ลัง"
+        assert items[0].quantity == 120  # quantity untouched
+        assert items[1].unit == "แพ็ค"
+
+    def test_derive_selling_unit_rules(self):
+        """Selling unit derivation: explicit pack clause wins; beverages with a
+        volume-only size fall back to the case unit; volume tokens are ignored."""
+        from app.models import Product
+        from app.services.catalog import _derive_selling_unit
+
+        def mk(**kw):
+            return Product(**kw)
+
+        # explicit "จำนวน 1 X" wins even when a volume "1 ล." precedes it
+        assert _derive_selling_unit(mk(size="1 ล. x 12 ขวด / จำนวน 1 ลัง")) == "ลัง"
+        assert _derive_selling_unit(mk(size="325 มล. x 24 ขวด / จำนวน 1 ถาด")) == "ถาด"
+        assert _derive_selling_unit(mk(size="1 แพ็ก")) == "แพ็ค"
+        assert _derive_selling_unit(mk(size="1 ชิ้น")) == "ชิ้น"
+        # beer with volume-only size → case unit from the name
+        assert _derive_selling_unit(mk(size="630ml", canonical_name="เบียร์สิงห์ขวดใหญ่")) == "ลัง"
+        assert _derive_selling_unit(mk(size="700ml", sub_category="วิสกี้", canonical_name="จอห์นนี่ฯ")) == "ลัง"
+        # genuine single-bottle non-beverage → no override
+        assert _derive_selling_unit(mk(size="350 มล. / จำนวน 1 ขวด", canonical_name="ซอสพริก")) is None

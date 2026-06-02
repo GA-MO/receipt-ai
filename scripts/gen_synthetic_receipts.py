@@ -123,6 +123,40 @@ CASES: list[tuple[str, str]] = [
         "มีคอลัมน์: ลูกค้า, ยอดขาย, จำนวน, vol — รวมรายการ catalog บุญรอด "
         "เช่น เบียร์สิงห์/ลีโอ/น้ำสิงห์เพ็ท",
     ),
+    (
+        # Demo for the "alias IS learned" happy path. Prints a beer line as a
+        # shop-style abbreviation ("บ.สิงห์ ใหญ่") so the AI captures the raw
+        # text but does not confidently match a catalog SKU; in the demo the
+        # rep corrects it to "เบียร์สิงห์ขวดใหญ่". fuzzy(raw, canonical) ≈ 75
+        # (≥ the 50 semantic-jump floor and source is not a catalog canonical),
+        # so upsert_product_alias learns it (product_alias_learned) — the badge
+        # "เรียนรู้แล้ว" increments. Merchant "รวยสุรา" is an ACTIVE store, so
+        # the doc attaches to a real Visit rather than the unknown-store bin.
+        "30_alias_learn_beer",
+        "ใบกำกับภาษี ร้าน 'หจก. รวยสุรา กรุ๊ป' วันที่ 02/06/2026 "
+        "เลขบิล RS-2606-031 จำนวน 5 รายการ — สำคัญมาก: ต้องมี 1 บรรทัดที่พิมพ์ "
+        "ชื่อสินค้าเป๊ะแบบย่อว่า 'บ.สิงห์ ใหญ่' จำนวน 3 ลัง (เลียนแบบลายมือ/ชื่อย่อ "
+        "ที่ร้านชอบเขียน) ที่เหลือเป็นสินค้าบุญรอดชื่อเต็มชัดเจน: เบียร์ลีโอขวดใหญ่ "
+        "2 ลัง, โซดาสิงห์ 2 ถาด, น้ำสิงห์เพ็ท 600ml 4 แพ็ค, สิงห์เลมอนโซดา 1 ถาด "
+        "— ยอดรวม ~฿9,500 VAT 7% พิมพ์คมชัด อ่านชื่อสินค้าได้ชัดทุกบรรทัด "
+        "มุมเอียงเล็กน้อย",
+    ),
+    (
+        # Demo for AI READING STRENGTH (zero-shot shorthand decode). A
+        # handwritten cash bill full of cryptic shop shorthands; Gemini matches
+        # every line to the right catalog SKU with no aliases configured. The
+        # punch line: the model decodes "บส.ญ", "อซฮ.ก" etc. purely from the
+        # in-prompt catalog — no training, no learned aliases needed. Uses the
+        # ACTIVE store "รวยสุรา" so it lands in a real Visit. (Confirmed: all 6
+        # shorthands coded correctly on upload.)
+        "31_ai_reads_shorthand",
+        "บิลเงินสดเขียนด้วยลายมือ บนกระดาษเส้นบรรทัด ร้าน 'หจก. รวยสุรา กรุ๊ป' "
+        "วันที่ 02/06/2026 จำนวน 6 รายการ เขียนชื่อสินค้าแบบย่อตามสไตล์ร้านโชห่วย "
+        "ให้พิมพ์ชื่อสินค้าเป๊ะตามนี้ทีละบรรทัด: "
+        "(1) 'B ลีโอ ญ' 2 ลัง  (2) 'บส.ญ' 3 ลัง  (3) 'ช.ลัง' 1 ลัง  "
+        "(4) 'ลีโอ L' 2 ลัง  (5) 'สห ใหญ่' 1 ลัง  (6) 'อซฮ.ก' 4 แพ็ค "
+        "— ลายมืออ่านออกแต่เป็นตัวย่อ ยอดรวมประมาณ ฿20,000",
+    ),
 ]
 
 

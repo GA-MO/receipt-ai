@@ -150,6 +150,7 @@ _canonical_cache: frozenset[str] | None = None
 _prompt_entries_cache: list[dict[str, Any]] | None = None
 _prompt_markdown_cache: str | None = None
 _name_by_code_cache: dict[str, str] | None = None
+_unit_by_code_cache: dict[str, str] | None = None
 
 
 def _norm(text: str | None) -> str:
@@ -166,11 +167,12 @@ def invalidate_cache() -> None:
     The gap-resolve sweep is best-effort — failures are logged, not raised,
     so cache invalidation always succeeds.
     """
-    global _canonical_cache, _prompt_entries_cache, _prompt_markdown_cache, _name_by_code_cache
+    global _canonical_cache, _prompt_entries_cache, _prompt_markdown_cache, _name_by_code_cache, _unit_by_code_cache
     _canonical_cache = None
     _prompt_entries_cache = None
     _prompt_markdown_cache = None
     _name_by_code_cache = None
+    _unit_by_code_cache = None
 
     try:
         from ..database import SessionLocal
@@ -340,6 +342,53 @@ def _parse_seed_aliases(raw: str | None) -> list[str]:
     return [s.strip() for s in data if isinstance(s, str) and s.strip()]
 
 
+# Pack-level unit words a receipt/catalog uses to express the SELLING unit
+# (a case/tray/pack), as opposed to a per-piece unit (a single bottle/can).
+# This business never sells beverages by the single ขวด/กระป๋อง, so when a
+# beverage SKU's catalog metadata only carries a per-piece unit we fall back
+# to the case-level unit by category.
+_PER_PIECE_UNITS = {"ขวด", "กระป๋อง", "กป", "กป.", "ป๋อง"}
+_UNIT_CANON = {"แพ็ก": "แพ็ค", "กป.": "กระป๋อง", "กป": "กระป๋อง"}
+# Volume / weight tokens that follow a "1" in a size string ("1 ล.", "1 ก.")
+# but are NOT pack units — must not be mistaken for the selling unit.
+_MEASURE_UNITS = {"ล", "มล", "ลิตร", "มิลลิลิตร", "ก", "กก", "กรัม", "กิโลกรัม", "ซีซี", "cc"}
+
+
+def _derive_selling_unit(p: Product) -> str | None:
+    """Best-effort SELLING unit for a SKU (ลัง / ถาด / แพ็ค / ชิ้น / …).
+
+    Source of truth precedence:
+      1. The pack unit encoded in ``size`` as "… จำนวน 1 <unit>" or a bare
+         "1 <unit>" (covers real Boonrawd SKUs, e.g. "… / จำนวน 1 ถาด").
+      2. For seed beverage SKUs whose ``size`` only carries a volume
+         (e.g. beer "630ml") → the case-level unit inferred from the
+         brand/sub-category (beer & spirits → ลัง).
+
+    Returns ``None`` when nothing reliable can be derived, so callers keep
+    whatever unit the model extracted.
+    """
+    size = (p.size or "").strip()
+    # Prefer the explicit pack clause "จำนวน 1 <unit>"; fall back to a bare
+    # "1 <unit>" (e.g. premium goods sized just "1 ชิ้น"). The จำนวน clause
+    # must win so a volume like "1 ล." earlier in the string can't shadow it.
+    m = re.search(r"จำนวน\s*1\s*([ก-๙]+)", size) or re.search(r"(?:^|\s)1\s*([ก-๙]+)", size)
+    if m:
+        u = _UNIT_CANON.get(m.group(1), m.group(1))
+        # Ignore volume/weight tokens ("1 ล.") and genuine per-piece packs
+        # ("1 ขวด" sauce/juice — trust those, beverages are handled below).
+        if u in _MEASURE_UNITS:
+            pass
+        elif u not in _PER_PIECE_UNITS:
+            return u
+
+    hay = f"{p.sub_category or ''} {p.canonical_name or ''} {p.display_name or ''}"
+    if "เบียร์" in hay:
+        return "ลัง"
+    if any(kw in hay for kw in ("วิสกี้", "สุรา", "บรั่นดี", "ไวน์", "เหล้า", "สปาย")):
+        return "ลัง"
+    return None
+
+
 def _build_prompt_entries(db: Session) -> list[dict[str, Any]]:
     """Build catalog entries (one per active SKU) for prompt injection.
 
@@ -407,6 +456,7 @@ def _build_prompt_entries(db: Session) -> list[dict[str, Any]]:
                 "name": name,
                 "category": p.category or "สินค้าอื่นๆ",
                 "aliases": aliases,
+                "selling_unit": _derive_selling_unit(p),
             }
         )
 
@@ -449,6 +499,26 @@ def name_by_code(code: str | None) -> str | None:
             if e.get("code") and e.get("name")
         }
     return _name_by_code_cache.get(code)
+
+
+def selling_unit_by_code(code: str | None) -> str | None:
+    """The canonical SELLING unit for a SKU (ลัง / ถาด / แพ็ค / …), or None.
+
+    The business sells the same SKU in the same unit regardless of how a
+    given receipt happened to write it, so this is the source of truth the
+    extraction parser uses to override the model's per-document unit guess
+    (which can mislabel a case as a single ขวด). See :func:`_derive_selling_unit`.
+    """
+    if not code:
+        return None
+    global _unit_by_code_cache
+    if _unit_by_code_cache is None:
+        _unit_by_code_cache = {
+            e["code"]: e["selling_unit"]
+            for e in prompt_catalog_entries()
+            if e.get("code") and e.get("selling_unit")
+        }
+    return _unit_by_code_cache.get(code)
 
 
 def _format_markdown(entries: list[dict[str, Any]]) -> str:

@@ -43,7 +43,7 @@ from ..services.product_aliases import (
 )
 from ..services.audit import record as record_event
 from ..models import CatalogGapEvent, Product, TypoRecoveryEvent
-from ..services.catalog import find_code_by_name, is_canonical_name
+from ..services.catalog import find_code_by_name, is_canonical_name, selling_unit_by_code
 from ..services.merchants import assign_normalized_merchant
 from ..services.visits import (
     check_period_mismatch,
@@ -754,6 +754,14 @@ def update_item(
     # explicitly passed one (UI picking from the autocomplete).
     if "product_name_normalized" in incoming and "product_code" not in incoming:
         item.product_code = find_code_by_name(db, new_name)
+
+    # Snap the unit to the SKU's selling unit when a catalog match resolves,
+    # unless the user is explicitly editing the unit in this same request.
+    # Keeps manual corrections consistent with the extraction-time override.
+    if item.product_code and "unit" not in incoming:
+        catalog_unit = selling_unit_by_code(item.product_code)
+        if catalog_unit:
+            item.unit = catalog_unit
 
     db.commit()
     doc = db.query(Document).filter(Document.id == doc_id).first()

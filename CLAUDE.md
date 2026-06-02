@@ -70,6 +70,14 @@ make docker-up     # docker compose
   `product_name_raw`, `product_code`, `quantity`, `unit`.
   **Prices, VAT, discount, totals are not extracted** — they were removed
   from the schema, the prompt, and the DB.
+- **Unit is catalog-driven, not model-driven.** The shop sells by
+  ลัง/ถาด/แพ็ค (never a single ขวด), so for a catalog match the parser
+  overrides the model's per-document `unit` guess with the SKU's selling
+  unit via `catalog.selling_unit_by_code` (derived from `products.size`'s
+  "จำนวน 1 …" clause, falling back to ลัง for beer/spirits). Quantity is
+  left as written; off-catalog items keep the extracted unit. This keeps the
+  visit aggregate from mixing ขวด with ลัง. Backfill old rows with
+  `scripts/backfill_units.py`.
 
 ## Data model
 
