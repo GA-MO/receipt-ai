@@ -1,516 +1,1201 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="th">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Thai Receipt Intelligence — Pitch Deck</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Thai Receipt Intelligence — Pitch Deck</title>
 
-<!-- Fonts: Kanit (display, Thai) · IBM Plex Sans Thai (body) · DM Mono (latin labels) -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@500;600;700;800&family=IBM+Plex+Sans+Thai:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Font: Anuphan — Thai loopless แบบเดียวกับ SF Thai ของ Apple, ครอบคลุม Latin ด้วย -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Anuphan:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
 
-<style>
-/* ===========================================
-   THEME — Mat (forest green / cream / warm orange)
-   Adapted to Thai: Kanit display, IBM Plex Sans Thai body
+    <style>
+      /* ===========================================
+   THEME — Apple light + bento cards
+   พื้นเทาอ่อน #f5f5f7 · การ์ดขาวมุมโค้ง · ตัวหนังสือดำ
+   gradient ทองอำพันเป็น accent เดียวทั้ง deck
    =========================================== */
-:root{
-  --bg-dark:#232E26;
-  --bg-dark-alt:#2E3D30;
-  --bg-cream:#EDE6D0;
-  --bg-cream-alt:#E4DAC4;
-  --ink-cream:#F0E8D2;
-  --ink-cream-2:rgba(240,232,210,.58);
-  --ink-cream-3:rgba(240,232,210,.30);
-  --ink-dark:#1E2820;
-  --ink-dark-2:rgba(30,40,32,.62);
-  --ink-dark-3:rgba(30,40,32,.32);
-  --accent:#C07030;
-  --wood:#7A4E24;
-  --border-on-dark:rgba(240,232,210,.12);
-  --border-on-cream:rgba(30,40,32,.14);
+      :root {
+        --stage-bg: #e9e9ee; /* แถบ letterbox นอกสไลด์ */
+        --slide-bg: #f5f5f7; /* พื้นสไลด์ — Apple gray */
+        --card: #ffffff; /* การ์ด bento */
+        --text: #1d1d1f;
+        --text-dim: #6e6e73;
+        --hairline: rgba(0, 0, 0, 0.08);
+        --grad: linear-gradient(96deg, #f7b500 0%, #ff7a00 40%, #ff4d4d 75%, #ff2d8d 100%);
+        --card-radius: 36px;
+        --card-shadow: 0 2px 10px rgba(0, 0, 0, 0.04), 0 18px 50px rgba(0, 0, 0, 0.07);
+        --font: "Anuphan", sans-serif;
+        --ease: cubic-bezier(0.16, 1, 0.3, 1);
+      }
 
-  --font-display:'Kanit',sans-serif;
-  --font-body:'IBM Plex Sans Thai',sans-serif;
-  --font-mono:'DM Mono',monospace;
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-  --pad-x:130px;
-  --pad-y:96px;
-  --ease:cubic-bezier(.16,1,.3,1);
-  --stage-bg:#171f19;
-}
-
-*{margin:0;padding:0;box-sizing:border-box;}
-
-/* --- viewport-base.css (fixed 16:9 stage) --- */
-html,body{width:100%;height:100%;margin:0;overflow:hidden;background:var(--stage-bg);}
-.deck-viewport{position:fixed;inset:0;overflow:hidden;background:var(--stage-bg);}
-.deck-stage{position:absolute;left:0;top:0;width:1920px;height:1080px;overflow:hidden;transform-origin:0 0;background:var(--bg-dark);}
-.slide{position:absolute;inset:0;width:1920px;height:1080px;overflow:hidden;display:block;visibility:hidden;opacity:0;pointer-events:none;background:var(--bg-dark);}
-.slide.active,.slide.visible{visibility:visible;opacity:1;pointer-events:auto;z-index:1;}
-img,video,canvas,svg{max-width:100%;max-height:100%;}
-
-/* atmospheric wood-brown glow on every dark slide (non-optional) */
-.slide.dark::before{
-  content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
-  background:radial-gradient(ellipse 60% 70% at 78% 86%,
-    rgba(122,78,36,.32) 0%, rgba(80,50,20,.15) 40%, transparent 70%);
-}
-.slide.cream{background:var(--bg-cream);}
-.slide.cream::before{
-  content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
-  background:radial-gradient(ellipse 60% 70% at 80% 88%,
-    rgba(192,112,48,.12) 0%, transparent 65%);
-}
-.slide > *{position:relative;z-index:1;}
-
-/* ---- type roles ---- */
-.kicker{font-family:var(--font-body);font-weight:500;font-size:21px;letter-spacing:.16em;color:var(--accent);}
-.kicker.mono{font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.2em;font-size:18px;}
-h1.display{font-family:var(--font-display);font-weight:800;font-size:150px;line-height:.98;letter-spacing:-.02em;color:var(--ink-cream);}
-h2{font-family:var(--font-display);font-weight:700;font-size:78px;line-height:1.04;letter-spacing:-.01em;color:var(--ink-cream);}
-.cream h2,.cream h1{color:var(--ink-dark);}
-.lead{font-family:var(--font-body);font-weight:300;font-size:33px;line-height:1.5;color:var(--ink-cream-2);}
-.cream .lead{color:var(--ink-dark-2);}
-.body{font-family:var(--font-body);font-weight:300;font-size:24px;line-height:1.6;color:var(--ink-cream-2);}
-em{font-style:normal;color:var(--accent);}
-
-/* chrome + foot bands */
-.chrome,.foot{position:absolute;left:var(--pad-x);right:var(--pad-x);display:flex;justify-content:space-between;align-items:center;
-  font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.18em;font-size:16px;color:var(--ink-cream-3);}
-.chrome{top:66px;padding-bottom:18px;border-bottom:1px solid var(--border-on-dark);}
-.foot{bottom:60px;padding-top:18px;border-top:1px solid var(--border-on-dark);}
-.cream .chrome,.cream .foot{color:var(--ink-dark-3);border-color:var(--border-on-cream);}
-.chrome .l{color:var(--ink-cream-2);} .cream .chrome .l{color:var(--ink-dark-2);}
-
-/* content wrapper */
-.wrap{position:absolute;left:var(--pad-x);right:var(--pad-x);top:170px;bottom:150px;display:flex;flex-direction:column;}
-
-/* bullet list — em-dash marker in mono orange */
-ul.marks{list-style:none;display:flex;flex-direction:column;gap:22px;margin-top:14px;}
-ul.marks li{position:relative;padding-left:46px;
-  font-family:var(--font-body);font-weight:300;font-size:30px;line-height:1.45;color:var(--ink-cream-2);}
-.cream ul.marks li{color:var(--ink-dark-2);}
-ul.marks li::before{content:"—";position:absolute;left:0;top:0;font-family:var(--font-mono);color:var(--accent);}
-ul.marks li b{font-weight:500;color:var(--ink-cream);} .cream ul.marks li b{color:var(--ink-dark);}
-
-/* info-card — cream paper inset, no border/shadow/radius */
-.info-card{background:var(--bg-cream);color:var(--ink-dark);padding:30px 38px;max-width:520px;}
-.info-card .ic-h{font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.16em;font-size:16px;color:#6a6253;margin-bottom:4px;}
-.info-card .ic-t{font-family:var(--font-display);font-weight:600;font-size:32px;color:var(--ink-dark);margin-bottom:14px;}
-.info-card .ic-row{display:flex;justify-content:space-between;font-family:var(--font-body);font-size:25px;padding:11px 0;color:var(--ink-dark-2);}
-.info-card .ic-row+.ic-row{border-top:1px solid var(--border-on-cream);}
-.info-card .ic-row b{font-family:var(--font-display);font-weight:600;color:var(--accent);}
-
-/* screenshot held in a cream "mat" (passe-partout) — hairline, no shadow, no radius */
-.shot{background:var(--bg-cream);padding:14px;border:1px solid var(--border-on-cream);}
-.shot img{display:block;width:100%;height:auto;}
-.shot-cap{font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.16em;font-size:15px;color:var(--ink-cream-3);margin-top:16px;}
-
-/* stat cells */
-.stats{display:flex;}
-.stat{flex:1;padding:0 48px;border-right:1px solid var(--border-on-dark);}
-.stat:first-child{padding-left:0;} .stat:last-child{border-right:0;padding-right:0;}
-.stat .v{font-family:var(--font-display);font-weight:800;font-size:96px;line-height:1;letter-spacing:-.02em;color:var(--ink-cream);}
-.stat .v em{font-size:54px;}
-.stat .l{font-family:var(--font-body);font-weight:300;font-size:24px;color:var(--ink-cream-2);margin-top:14px;}
-.cream .stat .v{color:var(--ink-dark);} .cream .stat .l{color:var(--ink-dark-2);}
-
-.rule{width:36px;height:2px;background:var(--accent);margin:22px 0;}
-
-/* benchmark comparison — Mat bar-fill + 1px hairline rows */
-.bench{display:flex;flex-direction:column;}
-.bench .hd,.bench .row{display:grid;grid-template-columns:300px 1fr 92px 120px 96px;align-items:center;gap:26px;padding:13px 0;border-bottom:1px solid var(--border-on-dark);}
-.bench .hd{font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.13em;font-size:15px;color:var(--ink-cream-3);}
-.bench .row{font-family:var(--font-body);font-weight:300;font-size:23px;color:var(--ink-cream-2);}
-.bench .row .m{font-family:var(--font-display);font-weight:500;font-size:24px;color:var(--ink-cream);}
-.bench .track{display:block;width:100%;height:12px;background:rgba(240,232,210,.06);}
-.bench .fill{display:block;height:100%;background:rgba(240,232,210,.55);}
-.bench .row.win{color:var(--ink-cream);}
-.bench .row.win .m{color:var(--accent);}
-.bench .row.win .fill{background:var(--accent);}
-.bench .r{text-align:right;font-variant-numeric:tabular-nums;}
-.bench .num{font-family:var(--font-display);font-weight:600;}
-
-/* ---- reveal animation ---- */
-.reveal{opacity:0;transform:translateY(34px);transition:opacity .7s var(--ease),transform .7s var(--ease);}
-.slide.visible .reveal{opacity:1;transform:none;}
-.slide.visible .reveal:nth-child(1){transition-delay:.10s;}
-.slide.visible .reveal:nth-child(2){transition-delay:.20s;}
-.slide.visible .reveal:nth-child(3){transition-delay:.30s;}
-.slide.visible .reveal:nth-child(4){transition-delay:.40s;}
-.slide.visible .reveal:nth-child(5){transition-delay:.50s;}
-.slide.visible .reveal:nth-child(6){transition-delay:.60s;}
-.d1{transition-delay:.15s!important;}.d2{transition-delay:.30s!important;}.d3{transition-delay:.45s!important;}.d4{transition-delay:.60s!important;}
-
-/* ---- presentation chrome (nav dots + counter) ---- */
-.deck-dots{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);display:flex;gap:11px;z-index:1000;}
-.deck-dots .dot{width:7px;height:7px;border-radius:50%;background:rgba(240,232,210,.28);cursor:pointer;transition:.3s;}
-.deck-dots .dot.on{background:var(--accent);width:22px;border-radius:4px;}
-.deck-count{position:fixed;right:26px;bottom:22px;z-index:1000;font-family:var(--font-mono);font-size:14px;letter-spacing:.18em;color:rgba(240,232,210,.4);}
-
-/* ---- inline edit affordance ---- */
-.edit-hotzone{position:fixed;top:0;left:0;width:80px;height:80px;z-index:10000;cursor:pointer;}
-.edit-toggle{position:fixed;top:18px;left:18px;z-index:10001;border:1px solid var(--border-on-dark);background:var(--bg-dark-alt);
-  color:var(--ink-cream);font-size:18px;width:42px;height:42px;border-radius:50%;cursor:pointer;opacity:0;pointer-events:none;transition:opacity .3s;}
-.edit-toggle.show,.edit-toggle.active{opacity:1;pointer-events:auto;}
-.edit-toggle.active{background:var(--accent);color:#fff;border-color:var(--accent);}
-[contenteditable="true"]{outline:1px dashed var(--accent);outline-offset:6px;border-radius:2px;}
-
-@page{size:20in 11.25in;margin:0;}
-@media print{
-  html,body{width:1920px;height:auto;overflow:visible;background:#fff;}
-  .deck-viewport{position:static;overflow:visible;}
-  .deck-stage{position:static;width:auto;height:auto;transform:none!important;}
-  .slide{position:relative;display:block!important;visibility:visible!important;opacity:1!important;width:1920px;height:1080px;break-after:page;}
-  .slide .reveal{opacity:1!important;transform:none!important;}
-  .deck-dots,.deck-count,.edit-toggle,.edit-hotzone{display:none!important;}
-}
-@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.2s!important;}}
-</style>
-</head>
-<body>
-<div class="deck-viewport">
-<main class="deck-stage" id="deckStage">
-
-  <!-- 1 · COVER (chromeless) -->
-  <section class="slide dark active">
-    <div style="position:absolute;left:var(--pad-x);top:300px;width:1080px;">
-      <div class="kicker reveal" style="margin-bottom:22px;">จากกรอกมือ สู่ AI</div>
-      <h1 class="display reveal">รวมยอดสินค้า<br>ต่อร้าน ต่อเดือน<br><em>ให้อัตโนมัติ</em></h1>
-      <p class="lead reveal" style="margin-top:34px;max-width:980px;">เซลส์ถ่ายใบเสร็จทั้งเดือน — ระบบจัดกลุ่มร้าน อ่านสินค้า และสรุปยอดให้ คนแค่ตรวจ ภาพต้นฉบับยังเก็บครบเป็นหลักฐาน</p>
-    </div>
-    <div class="info-card reveal d4" style="position:absolute;right:var(--pad-x);top:360px;width:440px;">
-      <div class="ic-h">Visit · ร้านสมชัย</div>
-      <div class="ic-t">พฤษภาคม 2026</div>
-      <div class="ic-row"><span>เบียร์สิงห์ 320ml</span><b>48</b></div>
-      <div class="ic-row"><span>โซดาสิงห์</span><b>36</b></div>
-      <div class="ic-row"><span>น้ำดื่มสิงห์ 600ml</span><b>120</b></div>
-    </div>
-    <div style="position:absolute;left:var(--pad-x);bottom:84px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.2em;font-size:17px;color:var(--ink-cream-3);" class="reveal">
-      Thai Receipt Intelligence &nbsp;·&nbsp; SBP AI Hackathon 2026
-    </div>
-  </section>
-
-  <!-- 2 · PROBLEM -->
-  <section class="slide dark">
-    <div class="chrome"><span class="l">ปัญหา</span><span class="cnum"></span></div>
-    <div class="wrap">
-      <div class="kicker reveal">ระบบเดิม</div>
-      <h2 class="reveal" style="margin-top:16px;max-width:1080px;">กรอกมือทีละบรรทัด<br>แล้วยังต้องนั่งรวมเอง</h2>
-      <ul class="marks reveal" style="margin-top:48px;max-width:1040px;">
-        <li>ใบเสร็จ <b>หลายสิบใบต่อร้าน</b> หลายร้านต่อเซลส์ทุกเดือน</li>
-        <li>เปิดทีละใบ พิมพ์สินค้าลงระบบ<b>ทีละบรรทัดด้วยมือ</b></li>
-        <li>ใบลายมือเยอะ สินค้าหลากหลาย ต้อง<b>แยกร้านให้ถูกเอง</b></li>
-        <li>งานซ้ำๆ กินเวลา — แต่หลักฐานก็ยัง<b>ต้องเก็บไว้ให้ audit</b></li>
-      </ul>
-    </div>
-    <!-- ใบเสร็จเขียนมือจริง — วางเอียงแบบรูปถ่ายบนโต๊ะ -->
-    <div class="reveal d3" style="position:absolute;right:150px;top:172px;width:512px;transform:rotate(-2.2deg);">
-      <div class="shot"><img src="showcase-assets/handwritten-05.jpeg" alt="ใบเสร็จเขียนมือจริงจากหน้าร้าน"></div>
-      <div class="shot-cap" style="text-align:center;">ใบจริงจากหน้าร้าน · ลายมือ + สินค้าหลายสิบรายการ</div>
-    </div>
-    <div class="foot"><span>Thai Receipt Intelligence</span><span>ปัญหา</span></div>
-  </section>
-
-  <!-- 3 · SOLUTION FLOW -->
-  <section class="slide dark">
-    <div class="chrome"><span class="l">ทางออก</span><span class="cnum"></span></div>
-    <div class="wrap">
-      <div class="kicker reveal">ระบบนี้</div>
-      <h2 class="reveal" style="margin-top:16px;">โยนรูปเข้าไป — ที่เหลือ AI จัดการ</h2>
-      <div class="stats reveal" style="margin-top:80px;">
-        <div class="stat"><div class="v"><em>1</em></div><div class="l">อัปโหลดใบเสร็จเป็น<b style="color:var(--ink-cream)">ล็อต</b> ไม่ต้องทีละใบ</div></div>
-        <div class="stat"><div class="v"><em>2</em></div><div class="l">AI อ่านสินค้า + จับคู่ catalog Boonrawd</div></div>
-        <div class="stat"><div class="v"><em>3</em></div><div class="l">จัดเข้า Visit ของแต่ละร้าน-เดือนอัตโนมัติ</div></div>
-        <div class="stat"><div class="v"><em>4</em></div><div class="l">คนแค่ตรวจ — ได้ยอดทั้งเดือนทันที</div></div>
-      </div>
-      <p class="lead reveal" style="margin-top:70px;max-width:1200px;">ภาพต้นฉบับทุกใบยังเก็บไว้ครบ ให้ audit สุ่มตรวจได้เหมือนเดิม</p>
-    </div>
-    <div class="foot"><span>Thai Receipt Intelligence</span><span>ทางออก</span></div>
-  </section>
-
-  <!-- 4 · DEMO: INBOX -->
-  <section class="slide dark">
-    <div class="chrome"><span class="l">Demo</span><span class="cnum"></span></div>
-    <div style="position:absolute;left:var(--pad-x);top:230px;width:660px;">
-      <div class="kicker reveal">หน้า Inbox</div>
-      <h2 class="reveal" style="margin-top:16px;font-size:64px;">รับงานเป็นล็อต<br>แยกให้เองตั้งแต่ต้น</h2>
-      <ul class="marks reveal" style="margin-top:40px;">
-        <li>อัปโหลดหลายไฟล์พร้อมกัน + <b>เห็นสถานะเรียลไทม์</b></li>
-        <li>ร้านรู้จัก → เข้า <b>Visit</b> ให้เลย</li>
-        <li>ร้านใหม่ / อ่านชื่อไม่ออก / ไม่ใช่ใบเสร็จ → <b>แยกกองให้ตรวจ</b></li>
-      </ul>
-    </div>
-    <div class="shot reveal d2" style="position:absolute;right:var(--pad-x);top:210px;width:900px;">
-      <img src="showcase-assets/inbox.png" alt="หน้า Inbox จัดกลุ่มเอกสารอัตโนมัติ">
-    </div>
-    <div class="foot"><span>Thai Receipt Intelligence</span><span>Demo · Inbox</span></div>
-  </section>
-
-  <!-- 5 · DEMO: VISIT ROLLUP (the wow) -->
-  <section class="slide dark">
-    <div class="chrome"><span class="l">Demo</span><span class="cnum"></span></div>
-    <div style="position:absolute;left:var(--pad-x);top:230px;width:660px;">
-      <div class="kicker reveal">หน้า Visit</div>
-      <h2 class="reveal" style="margin-top:16px;font-size:64px;">เห็นยอดทั้งเดือน<br>ในหน้าจอเดียว</h2>
-      <p class="lead reveal" style="margin-top:34px;">สรุป <em>product × quantity</em> ต่อร้านต่อเดือนให้อัตโนมัติ — ที่เดิมต้องกรอกมือแล้วนั่งรวมเอง</p>
-      <ul class="marks reveal" style="margin-top:36px;">
-        <li>แยก <b>ของเรา vs คู่แข่ง</b> ทำ market share ได้เลย</li>
-        <li>คลิกเข้าไปดูภาพต้นฉบับ<b>ทุกใบ</b>ที่รวมมา</li>
-      </ul>
-    </div>
-    <div class="shot reveal d2" style="position:absolute;right:var(--pad-x);top:210px;width:900px;">
-      <img src="showcase-assets/visit-rollup.png" alt="หน้า Visit แสดงยอดสินค้าต่อเดือน">
-    </div>
-    <div class="foot"><span>Thai Receipt Intelligence</span><span>Demo · Visit</span></div>
-  </section>
-
-  <!-- 6 · DEMO: REVIEW + ALERTS -->
-  <section class="slide dark">
-    <div class="chrome"><span class="l">Demo</span><span class="cnum"></span></div>
-    <div style="position:absolute;left:var(--pad-x);top:230px;width:660px;">
-      <div class="kicker reveal">หน้าตรวจสอบ</div>
-      <h2 class="reveal" style="margin-top:16px;font-size:64px;">AI เดา —<br>คนยืนยันได้เร็ว</h2>
-      <ul class="marks reveal" style="margin-top:40px;">
-        <li>ภาพต้นฉบับ + รายการสินค้า<b>อยู่ข้างกัน</b></li>
-        <li>Autocomplete จาก catalog + flag <b>needs_review</b></li>
-        <li>เตือนทันทีเมื่อ <b>วันที่/ร้าน</b> ไม่ตรง Visit</li>
-        <li>แก้แล้วระบบ<b>จำเป็น alias</b> — ครั้งหน้าจับเอง</li>
-      </ul>
-    </div>
-    <div class="shot reveal d2" style="position:absolute;right:var(--pad-x);top:210px;width:900px;">
-      <img src="showcase-assets/review-mismatch-alerts.png" alt="หน้าตรวจสอบพร้อมแจ้งเตือน mismatch">
-    </div>
-    <div class="foot"><span>Thai Receipt Intelligence</span><span>Demo · Review</span></div>
-  </section>
-
-  <!-- 7 · DIFFERENTIATION (cream tonal break) -->
-  <section class="slide cream">
-    <div class="chrome"><span class="l">จุดต่าง</span><span class="cnum"></span></div>
-    <div class="wrap">
-      <div class="kicker reveal">ทำไมไม่ใช่แค่ OCR</div>
-      <h2 class="reveal" style="margin-top:16px;">เครื่องมือที่เข้าใจธุรกิจ</h2>
-      <ul class="marks reveal" style="margin-top:48px;max-width:1500px;">
-        <li><b>ไม่ใช่ OCR ทั่วไป</b> — เข้าใจ catalog Boonrawd และจับคู่ (code, name) ให้ ไม่มีทางเพี้ยน</li>
-        <li><b>Visit-centric</b> — ตอบว่าเดือนนี้ร้านนี้ขายอะไรเท่าไหร่ ไม่ใช่แค่เก็บใบเสร็จ</li>
-        <li><b>เรียนรู้จากการใช้งาน</b> — product aliases และ catalog gaps สะสมขึ้นทุกครั้งที่แก้</li>
-        <li><b>Store master เป็น source of truth</b> — ไม่เดาร้านจากชื่อในใบเสร็จทุกครั้ง</li>
-      </ul>
-    </div>
-    <div class="foot"><span>Thai Receipt Intelligence</span><span>จุดต่าง</span></div>
-  </section>
-
-  <!-- 8 · IMPACT (stat cells) -->
-  <section class="slide dark">
-    <div class="chrome"><span class="l">Impact</span><span class="cnum"></span></div>
-    <div class="wrap">
-      <div class="kicker reveal">ผลลัพธ์</div>
-      <h2 class="reveal" style="margin-top:16px;">งานที่เคยเป็นชั่วโมง<br>เหลือไม่กี่นาที</h2>
-      <div class="stats reveal" style="margin-top:78px;">
-        <div class="stat"><div class="v">~90<em>%</em></div><div class="l">เวลากรอกมือต่อร้าน-เดือนที่ลดลง</div></div>
-        <div class="stat"><div class="v">20<em>+</em></div><div class="l">ใบหลายร้านในล็อตเดียว ระบบแยกให้เอง</div></div>
-        <div class="stat"><div class="v">100<em>%</em></div><div class="l">ภาพต้นฉบับเก็บครบ audit สุ่มตรวจได้</div></div>
-      </div>
-      <p class="lead reveal" style="margin-top:74px;max-width:1240px;">คนเปลี่ยนจาก <em>พิมพ์ทีละบรรทัด</em> เป็น <em>ตรวจ</em> — เร็วขึ้นและผิดพลาดน้อยลง</p>
-      <div class="shot-cap reveal" style="margin-top:28px;">* AI ~6.9 วิ/ใบ (ผลทดสอบจริง 11 ใบ) เทียบการกรอกมือ ~1–2 นาที/ใบ</div>
-    </div>
-    <div class="foot"><span>Thai Receipt Intelligence</span><span>Impact</span></div>
-  </section>
-
-  <!-- 9 · CLOSING / WOW + ASK (chromeless) -->
-  <section class="slide dark">
-    <div style="position:absolute;left:var(--pad-x);top:140px;width:1300px;">
-      <div class="kicker reveal">3 จุดว้าวตอน demo</div>
-      <h1 class="display reveal" style="font-size:100px;margin-top:14px;">เลิกกรอกมือ<br>ได้ยอด<em>ทั้งเดือน</em></h1>
-    </div>
-    <ul class="marks reveal d2" style="position:absolute;left:var(--pad-x);top:556px;max-width:1060px;font-size:30px;">
-      <li>โยนรูป 20 ใบจากหลายร้าน → ระบบ<b>แยกร้าน + จัดเข้า Visit</b>ให้เอง</li>
-      <li>เปิดหน้า Visit → เห็น <b>product × qty</b> ของเดือนนั้นทันที</li>
-      <li>ใบเสร็จลายมือ → AI <b>อ่านออก + match catalog</b> Boonrawd ถูก</li>
-    </ul>
-    <!-- Ask: warm-paper CTA anchor -->
-    <div class="info-card reveal d3" style="position:absolute;right:var(--pad-x);top:540px;width:480px;">
-      <div class="ic-h">ขั้นต่อไป</div>
-      <div class="ic-t">นำร่องของจริง</div>
-      <div style="font-family:var(--font-body);font-weight:300;font-size:25px;color:var(--ink-dark-2);line-height:1.55;">
-        <span style="color:var(--accent);font-family:var(--font-mono);">—</span> นำร่องกับเซลส์ 1 ทีม เดือนหน้า<br>
-        <span style="color:var(--accent);font-family:var(--font-mono);">—</span> ต่อยอดเป็น dashboard market-share ของเรา vs คู่แข่ง
-      </div>
-    </div>
-    <div style="position:absolute;left:var(--pad-x);bottom:80px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.2em;font-size:17px;color:var(--ink-cream-3);" class="reveal d4">
-      Thai Receipt Intelligence &nbsp;·&nbsp; SBP AI Hackathon 2026
-    </div>
-  </section>
-
-  <!-- 10 · APPENDIX: TECH (Q&A backup) -->
-  <section class="slide dark">
-    <div class="chrome"><span class="l">ภาคผนวก · Q&amp;A</span><span class="cnum"></span></div>
-    <div class="wrap">
-      <div class="kicker reveal">ใต้ฝากระโปรง</div>
-      <h2 class="reveal" style="margin-top:16px;">ทำงานยังไง</h2>
-      <ul class="marks reveal" style="margin-top:42px;max-width:1560px;font-size:28px;">
-        <li><b>Vision เดียวจบ</b> — Gemini 3 Flash อ่านรูป → ดึง merchant, เลขที่/วันที่, items[] เป็น JSON ในครั้งเดียว</li>
-        <li><b>Catalog matching</b> — LLM ส่งแค่ <em>product_code</em>, ระบบ map ชื่อ display จาก catalog → (code, name) ไม่มีทางเพี้ยน</li>
-        <li><b>จับร้านด้วย fuzzy</b> — rapidfuzz จับชื่อร้านที่สะกดต่างเล็กน้อย โดยมี <em>Store master</em> เป็น source of truth</li>
-        <li><b>Auto-attach Visit</b> — จับคู่ (ร้าน, เดือน) อัตโนมัติ + เตือนทันทีเมื่อวันที่/ร้านไม่ตรง</li>
-        <li><b>เรียนรู้ต่อเนื่อง</b> — product aliases + catalog gap events สะสมขึ้นจากการแก้ของคน</li>
-      </ul>
-      <div class="shot-cap reveal" style="margin-top:44px;">STACK · FastAPI · React 19 + Mantine · SQLite + Alembic · arq + Redis · LLM: OpenRouter (demo) → Vertex AI (production)</div>
-    </div>
-    <div class="foot"><span>Thai Receipt Intelligence</span><span>Appendix · Tech</span></div>
-  </section>
-
-  <!-- 11 · APPENDIX: BENCHMARK (Q&A backup) -->
-  <section class="slide dark">
-    <div class="chrome"><span class="l">ภาคผนวก · Q&amp;A</span><span class="cnum"></span></div>
-    <div class="wrap">
-      <div class="kicker reveal">เทสจริง 14 โมเดล บนใบเดียวกัน</div>
-      <h2 class="reveal" style="margin-top:14px;">แม่น เร็ว ถูก — เลือกด้วยข้อมูล</h2>
-      <div class="bench reveal" style="margin-top:30px;">
-        <div class="hd"><span>โมเดล</span><span>ความแม่น (composite)</span><span class="r">score</span><span class="r">฿/ใบ</span><span class="r">เวลา</span></div>
-        <div class="row win"><span class="m">Gemini 3 Flash ★</span><span class="track"><span class="fill" style="width:94.5%"></span></span><span class="r num">0.945</span><span class="r">฿0.16</span><span class="r">7.7s</span></div>
-        <div class="row"><span class="m">Gemini 3.1 Pro</span><span class="track"><span class="fill" style="width:94.5%"></span></span><span class="r num">0.945</span><span class="r">฿2.2</span><span class="r">39s</span></div>
-        <div class="row"><span class="m">Claude Opus 4.7</span><span class="track"><span class="fill" style="width:94.5%"></span></span><span class="r num">0.945</span><span class="r">฿3.0</span><span class="r">15s</span></div>
-        <div class="row"><span class="m">Qwen3-VL 32B</span><span class="track"><span class="fill" style="width:83.3%"></span></span><span class="r num">0.833</span><span class="r">฿0.04</span><span class="r">17s</span></div>
-        <div class="row"><span class="m">GPT-4.1 mini</span><span class="track"><span class="fill" style="width:52.8%"></span></span><span class="r num">0.528</span><span class="r">฿0.13</span><span class="r">17s</span></div>
-      </div>
-      <p class="lead reveal" style="margin-top:32px;max-width:1520px;font-size:28px;">3 โมเดลแม่นเท่ากัน (0.945) — แต่ <em>Gemini 3 Flash</em> ถูกกว่า 14–19× และเร็วกว่า · ตัวที่ถูกกว่า (Qwen, GPT-4.1 mini) แม่นไม่พอ</p>
-      <div class="shot-cap reveal" style="margin-top:16px;">* composite accuracy เทียบ ground truth · ราคา/ใบ = token จริง × เรท OpenRouter (~฿34/$)</div>
-    </div>
-    <div class="foot"><span>Thai Receipt Intelligence</span><span>Appendix · Benchmark</span></div>
-  </section>
-
-  <!-- 12 · APPENDIX: COST / ROI (Q&A backup) -->
-  <section class="slide dark">
-    <div class="chrome"><span class="l">ภาคผนวก · Q&amp;A</span><span class="cnum"></span></div>
-    <div class="wrap">
-      <div class="kicker reveal">ความคุ้มค่า</div>
-      <h2 class="reveal" style="margin-top:16px;">ต้นทุนต่อใบ ต่ำกว่าค่าแรงกรอกมือ</h2>
-      <div class="stats reveal" style="margin-top:84px;">
-        <div class="stat"><div class="v">&lt;<em>฿0.2</em></div><div class="l">ค่า AI ต่อใบ — Gemini 3 Flash (ผลทดสอบจริง)</div></div>
-        <div class="stat"><div class="v">~6<em> วิ</em></div><div class="l">เวลาประมวลผลต่อใบ (p50; p95 ~9 วิ)</div></div>
-        <div class="stat"><div class="v">0<em> GPU</em></div><div class="l">ไม่ต้องเทรน/โฮสต์โมเดลเอง · server เล็ก + SQLite</div></div>
-      </div>
-      <p class="lead reveal" style="margin-top:78px;max-width:1300px;">ค่า AI ต่อใบ <em>&lt; ฿0.2</em> เทียบกับเวลากรอกมือ ~1–2 นาที/ใบ — คุ้มตั้งแต่ใบแรก · ต้นทุนโตแบบ <em>linear</em> คาดการณ์ได้</p>
-      <div class="shot-cap reveal" style="margin-top:28px;">* ผลทดสอบจริง 11 ใบ: เฉลี่ย ~6.9 วิ/ใบ, confidence 0.93 · เทียบ 14 โมเดลก่อนเลือก Gemini 3 Flash</div>
-    </div>
-    <div class="foot"><span>Thai Receipt Intelligence</span><span>Appendix · Cost</span></div>
-  </section>
-
-  <!-- 12 · APPENDIX: SECURITY / DATA (Q&A backup) -->
-  <section class="slide dark">
-    <div class="chrome"><span class="l">ภาคผนวก · Q&amp;A</span><span class="cnum"></span></div>
-    <div class="wrap">
-      <div class="kicker reveal">ความปลอดภัยข้อมูล</div>
-      <h2 class="reveal" style="margin-top:16px;">ข้อมูลอยู่กับเรา ควบคุมได้</h2>
-      <ul class="marks reveal" style="margin-top:42px;max-width:1560px;font-size:28px;">
-        <li><b>ข้อมูลเก็บฝั่งเรา</b> — ภาพต้นฉบับ + ฐานข้อมูลอยู่ในระบบของเรา เข้าถึงผ่าน admin</li>
-        <li><b>กันซ้ำ/เพี้ยน</b> — <em>file hash</em> ตรวจไฟล์ซ้ำตั้งแต่อัปโหลด</li>
-        <li><b>ส่ง LLM แค่ภาพ</b> — vision-only ไม่ส่ง/ไม่เก็บราคาหรือข้อมูลการเงิน</li>
-        <li><b>Production ใช้ Vertex AI (GCP)</b> — ข้อมูลอยู่ใน project/region ของเราเอง (เลือก region ใกล้ไทยได้) + DPA กับ Google Cloud <span style="color:var(--ink-cream-3)">· demo นี้ใช้ OpenRouter เพื่อพัฒนาเร็ว · ถัดไป: มาส์ก PII + RBAC</span></li>
-      </ul>
-      <div class="shot-cap reveal" style="margin-top:40px;">อ้างอิง: Google Cloud — Vertex AI Data Governance · <em>"won't use your data to train or fine-tune any AI/ML models without your permission"</em> (ผูกพันตาม Cloud Data Processing Addendum)</div>
-    </div>
-    <div class="foot"><span>Thai Receipt Intelligence</span><span>Appendix · Security</span></div>
-  </section>
-
-</main>
-</div>
-
-<!-- presentation chrome -->
-<nav class="deck-dots" id="deckDots" aria-label="slide navigation"></nav>
-<div class="deck-count" id="deckCount">01 / 10</div>
-
-<!-- inline edit -->
-<div class="edit-hotzone" id="editHotzone"></div>
-<button class="edit-toggle" id="editToggle" title="แก้ข้อความ (กด E)" aria-label="toggle edit mode">✏️</button>
-
-<script>
-/* ===========================================
-   SLIDE CONTROLLER — fixed 16:9 stage
+      /* ===========================================
+   FIXED 16:9 STAGE: MANDATORY BASE STYLES
+   (viewport-base.css — ห้ามแก้)
    =========================================== */
-class SlidePresentation{
-  constructor(){
-    this.slides=[...document.querySelectorAll('.slide')];
-    this.stage=document.getElementById('deckStage');
-    this.count=document.getElementById('deckCount');
-    this.i=0;
-    this.fillChromeNums();
-    this.buildDots();
-    this.scaleStage();
-    addEventListener('resize',()=>this.scaleStage());
-    this.bindKeys();this.bindWheel();this.bindTouch();
-    addEventListener('hashchange',()=>this.show(this.fromHash()));
-    this.show(this.fromHash());
-  }
-  fromHash(){const n=parseInt((location.hash||'').replace('#',''),10);return isNaN(n)?0:n-1;}
-  scaleStage(){
-    const f=Math.min(innerWidth/1920,innerHeight/1080);
-    const x=(innerWidth-1920*f)/2, y=(innerHeight-1080*f)/2;
-    this.stage.style.transform=`translate(${x}px,${y}px) scale(${f})`;
-  }
-  buildDots(){
-    this.dots=this.slides.map((_,n)=>{
-      const d=document.createElement('button');d.className='dot';d.setAttribute('aria-label','slide '+(n+1));
-      d.onclick=()=>this.show(n);document.getElementById('deckDots').appendChild(d);return d;
-    });
-  }
-  pad(n){return String(n).padStart(2,'0');}
-  fillChromeNums(){const t=this.slides.length;this.slides.forEach((s,k)=>{
-    const c=s.querySelector('.chrome .cnum');if(c)c.textContent=this.pad(k+1)+' / '+this.pad(t);});}
-  show(n){
-    this.i=Math.max(0,Math.min(n,this.slides.length-1));
-    this.slides.forEach((s,k)=>{const on=k===this.i;s.classList.toggle('active',on);s.classList.toggle('visible',on);});
-    this.dots.forEach((d,k)=>d.classList.toggle('on',k===this.i));
-    this.count.textContent=this.pad(this.i+1)+' / '+this.pad(this.slides.length);
-    const h='#'+(this.i+1);if(location.hash!==h)history.replaceState(null,'',h);
-  }
-  next(){this.show(this.i+1);} prev(){this.show(this.i-1);}
-  bindKeys(){
-    addEventListener('keydown',e=>{
-      if(e.target.getAttribute('contenteditable')==='true')return;
-      if(['ArrowRight','ArrowDown',' ','PageDown'].includes(e.key)){e.preventDefault();this.next();}
-      else if(['ArrowLeft','ArrowUp','PageUp'].includes(e.key)){e.preventDefault();this.prev();}
-      else if(e.key==='Home')this.show(0);
-      else if(e.key==='End')this.show(this.slides.length-1);
-    });
-  }
-  bindWheel(){let lock=false;addEventListener('wheel',e=>{if(lock)return;if(Math.abs(e.deltaY)<20)return;
-    lock=true;e.deltaY>0?this.next():this.prev();setTimeout(()=>lock=false,800);},{passive:true});}
-  bindTouch(){let x0=null;addEventListener('touchstart',e=>x0=e.touches[0].clientX,{passive:true});
-    addEventListener('touchend',e=>{if(x0==null)return;const dx=e.changedTouches[0].clientX-x0;
-      if(Math.abs(dx)>50)dx<0?this.next():this.prev();x0=null;},{passive:true});}
-}
-const deck=new SlidePresentation();
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: var(--stage-bg, #000);
+      }
 
-/* ===========================================
-   INLINE EDIT — hover hotzone / E key, saves to localStorage
+      .deck-viewport {
+        position: fixed;
+        inset: 0;
+        overflow: hidden;
+        background: var(--stage-bg, #000);
+      }
+
+      .deck-stage {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        transform-origin: 0 0;
+        background: var(--slide-bg, #fff);
+      }
+
+      .slide {
+        position: absolute;
+        inset: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        display: block;
+        visibility: hidden;
+        opacity: 0;
+        pointer-events: none;
+        background: var(--slide-bg, #fff);
+      }
+
+      .slide.active,
+      .slide.visible {
+        visibility: visible;
+        opacity: 1;
+        pointer-events: auto;
+        z-index: 1;
+      }
+
+      img,
+      video,
+      canvas,
+      svg {
+        max-width: 100%;
+        max-height: 100%;
+      }
+
+      .deck-controls {
+        position: fixed;
+        left: 50%;
+        bottom: 22px;
+        transform: translateX(-50%);
+        z-index: 1000;
+      }
+
+      @media print {
+        html,
+        body {
+          width: 1920px;
+          height: auto;
+          overflow: visible;
+          background: #fff;
+        }
+        .deck-viewport {
+          position: static;
+          overflow: visible;
+          background: #fff;
+        }
+        .deck-stage {
+          position: static;
+          width: auto;
+          height: auto;
+          transform: none !important;
+          background: none;
+        }
+        .slide {
+          position: relative;
+          display: block !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+          pointer-events: auto !important;
+          width: 1920px;
+          height: 1080px;
+          break-after: page;
+          page-break-after: always;
+        }
+        .slide:last-child {
+          break-after: auto;
+          page-break-after: auto;
+        }
+        .deck-controls {
+          display: none !important;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          transition-duration: 0.2s !important;
+        }
+      }
+      /* === END viewport-base.css === */
+
+      /* ===========================================
+   TYPOGRAPHY SYSTEM
    =========================================== */
-const editor={
-  isActive:false,KEY:'tri-pitch-edits',
-  els:()=>document.querySelectorAll('h1,h2,p,li,.kicker,.ic-t,.ic-row,.stat .l,.shot-cap'),
-  toggle(){this.isActive=!this.isActive;
-    document.getElementById('editToggle').classList.toggle('active',this.isActive);
-    this.els().forEach(el=>el.setAttribute('contenteditable',this.isActive));
-    if(!this.isActive)this.save();
-  },
-  save(){const data={};this.els().forEach((el,k)=>data[k]=el.innerHTML);
-    try{localStorage.setItem(this.KEY,JSON.stringify(data));}catch(e){}},
-  load(){try{const d=JSON.parse(localStorage.getItem(this.KEY)||'null');if(!d)return;
-    this.els().forEach((el,k)=>{if(d[k]!=null)el.innerHTML=d[k];});}catch(e){}}
-};
-editor.load();
-const editToggle=document.getElementById('editToggle'),hotzone=document.getElementById('editHotzone');
-let hideT=null;
-editToggle.addEventListener('click',()=>editor.toggle());
-hotzone.addEventListener('click',()=>editor.toggle());
-hotzone.addEventListener('mouseenter',()=>{clearTimeout(hideT);editToggle.classList.add('show');});
-hotzone.addEventListener('mouseleave',()=>{hideT=setTimeout(()=>{if(!editor.isActive)editToggle.classList.remove('show');},400);});
-editToggle.addEventListener('mouseenter',()=>clearTimeout(hideT));
-editToggle.addEventListener('mouseleave',()=>{hideT=setTimeout(()=>{if(!editor.isActive)editToggle.classList.remove('show');},400);});
-addEventListener('keydown',e=>{if((e.key==='e'||e.key==='E')&&e.target.getAttribute('contenteditable')!=='true')editor.toggle();});
-</script>
-</body>
+      body {
+        font-family: var(--font);
+        color: var(--text);
+      }
+
+      /* ป้ายกำกับเล็กเหนือหัวเรื่อง */
+      .label {
+        font-size: 26px;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--text-dim);
+      }
+
+      /* ประโยคใหญ่ — หัวใจของสไตล์ keynote */
+      .statement {
+        font-size: 116px;
+        font-weight: 700;
+        line-height: 1.22;
+        letter-spacing: -0.01em;
+      }
+      .statement.sm {
+        font-size: 88px;
+      }
+
+      /* คำเน้น gradient */
+      .grad {
+        background: var(--grad);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+
+      /* คำอธิบายรอง */
+      .sub {
+        font-size: 36px;
+        font-weight: 400;
+        line-height: 1.65;
+        color: var(--text-dim);
+      }
+      .sub b,
+      .sub strong {
+        color: var(--text);
+        font-weight: 600;
+      }
+
+      .footnote {
+        font-size: 23px;
+        font-weight: 400;
+        color: var(--text-dim);
+        opacity: 0.85;
+      }
+
+      /* ===========================================
+   SLIDE LAYOUTS
+   =========================================== */
+      .slide-inner {
+        position: absolute;
+        inset: 0;
+        padding: 100px 140px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        gap: 40px;
+      }
+      .slide-inner.left {
+        align-items: flex-start;
+        text-align: left;
+      }
+
+      /* แสงอุ่นจางมากๆ หลังประโยคใหญ่ */
+      .glow::before {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 55%;
+        width: 1500px;
+        height: 800px;
+        transform: translate(-50%, -50%);
+        background: radial-gradient(closest-side, rgba(255, 150, 40, 0.1), transparent 70%);
+        pointer-events: none;
+      }
+
+      /* --- การ์ด bento พื้นฐาน --- */
+      .card {
+        background: var(--card);
+        border-radius: var(--card-radius);
+        box-shadow: var(--card-shadow);
+        text-align: left;
+      }
+
+      /* --- bento ความเจ็บปวด 2×2 --- */
+      .bento4 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 28px;
+        width: 1560px;
+      }
+      .bento4 .card {
+        padding: 58px 64px;
+      }
+      .bento4 h3 {
+        font-size: 52px;
+        font-weight: 700;
+        margin-bottom: 16px;
+      }
+      .bento4 h3 .tag {
+        display: inline-block;
+        font-size: 28px;
+        font-weight: 600;
+        vertical-align: middle;
+        margin-right: 20px;
+        background: var(--grad);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .bento4 p {
+        font-size: 30px;
+        line-height: 1.6;
+        color: var(--text-dim);
+      }
+
+      /* --- แถวการ์ด 3 ใบ --- */
+      .bento3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 28px;
+        width: 1640px;
+      }
+      .bento3 .card {
+        padding: 54px 56px;
+      }
+      .bento3 h3 {
+        font-size: 42px;
+        font-weight: 700;
+        line-height: 1.35;
+        margin-bottom: 16px;
+      }
+      .bento3 p {
+        font-size: 28px;
+        line-height: 1.62;
+        color: var(--text-dim);
+      }
+      .bento3 p b {
+        color: var(--text);
+        font-weight: 600;
+      }
+
+      /* --- แถวการ์ด 4 ใบ (จุดเด่น) --- */
+      .bento-row4 {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 26px;
+        width: 1680px;
+      }
+      .bento-row4 .card {
+        padding: 48px 46px;
+      }
+      .bento-row4 .num {
+        font-size: 28px;
+        font-weight: 700;
+        background: var(--grad);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        margin-bottom: 18px;
+      }
+      .bento-row4 h3 {
+        font-size: 40px;
+        font-weight: 700;
+        line-height: 1.3;
+        margin-bottom: 14px;
+      }
+      .bento-row4 p {
+        font-size: 27px;
+        line-height: 1.6;
+        color: var(--text-dim);
+      }
+
+      /* --- การ์ดสถิติใหญ่ 3 ใบ --- */
+      .stats3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 28px;
+        width: 1640px;
+        align-items: stretch;
+      }
+      .stats3 .card {
+        padding: 64px 52px;
+        text-align: center;
+      }
+      .stats3 .big {
+        font-size: 112px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        line-height: 1.12;
+        background: var(--grad);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .stats3 h3 {
+        font-size: 36px;
+        font-weight: 600;
+        margin-top: 16px;
+      }
+      .stats3 p {
+        font-size: 27px;
+        line-height: 1.6;
+        color: var(--text-dim);
+        margin-top: 12px;
+      }
+
+      /* --- bento ราคาที่จ่าย: การ์ดใหญ่ + 2 การ์ดเล็ก --- */
+      .bento-cost {
+        display: grid;
+        grid-template-columns: 1.45fr 1fr;
+        grid-template-rows: 1fr 1fr;
+        gap: 28px;
+        width: 1620px;
+        height: 620px;
+      }
+      .bento-cost .hero-card {
+        grid-row: 1 / span 2;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 60px;
+      }
+      .bento-cost .hero-card .big {
+        font-size: 190px;
+        font-weight: 700;
+        line-height: 1.05;
+        background: var(--grad);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .bento-cost .hero-card p {
+        font-size: 34px;
+        line-height: 1.6;
+        color: var(--text-dim);
+        margin-top: 26px;
+      }
+      .bento-cost .hero-card p b {
+        color: var(--text);
+      }
+      .bento-cost .side-card {
+        padding: 48px 54px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+      .bento-cost .side-card h3 {
+        font-size: 42px;
+        font-weight: 700;
+        margin-bottom: 12px;
+      }
+      .bento-cost .side-card p {
+        font-size: 28px;
+        line-height: 1.6;
+        color: var(--text-dim);
+      }
+
+      /* --- demo: ภาพหน้าจอในการ์ด --- */
+      .demo {
+        padding: 84px 140px 70px;
+        gap: 0;
+        justify-content: flex-start;
+      }
+      .demo .demo-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        width: 100%;
+        margin-bottom: 22px;
+      }
+      .demo h2 {
+        font-size: 68px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+      }
+      .demo .sub {
+        font-size: 29px;
+      }
+      .screenshot {
+        height: 660px; /* 1440×900 → 1056×660 พอดีไม่ล้นจอ */
+        width: auto;
+        align-self: center;
+        border-radius: 28px;
+        border: 1px solid rgba(0, 0, 0, 0.06);
+        box-shadow: var(--card-shadow);
+        margin-top: 34px;
+        background: #fff;
+      }
+
+      /* --- ภาพใบเสร็จลายมือ (slide ปัญหา) --- */
+      .pain-split {
+        flex-direction: row;
+        text-align: left;
+        align-items: center;
+        gap: 110px;
+        padding: 110px 150px;
+      }
+      .pain-split .txt {
+        flex: 1;
+      }
+      .receipt-photo {
+        width: 470px;
+        border-radius: 24px;
+        transform: rotate(2.6deg);
+        border: 1px solid rgba(0, 0, 0, 0.06);
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.16);
+      }
+
+      /* --- ชิปต่อยอด (scale up) --- */
+      .chips {
+        display: flex;
+        gap: 22px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      .chip {
+        background: var(--card);
+        border-radius: 100px;
+        box-shadow: var(--card-shadow);
+        padding: 22px 46px;
+        font-size: 32px;
+        font-weight: 600;
+      }
+
+      /* ===========================================
+   REVEAL ANIMATIONS — fade ขึ้นนุ่มๆ + stagger
+   =========================================== */
+      .reveal {
+        opacity: 0;
+        transform: translateY(30px) scale(0.99);
+        transition:
+          opacity 0.85s var(--ease),
+          transform 0.85s var(--ease);
+      }
+      .slide.visible .reveal {
+        opacity: 1;
+        transform: none;
+      }
+      .slide.visible .reveal:nth-child(1) {
+        transition-delay: 0.05s;
+      }
+      .slide.visible .reveal:nth-child(2) {
+        transition-delay: 0.2s;
+      }
+      .slide.visible .reveal:nth-child(3) {
+        transition-delay: 0.36s;
+      }
+      .slide.visible .reveal:nth-child(4) {
+        transition-delay: 0.52s;
+      }
+      .slide.visible .reveal:nth-child(5) {
+        transition-delay: 0.66s;
+      }
+
+      /* การ์ดใน grid ทยอยโผล่ทีละใบ */
+      .slide.visible .stagger > * {
+        opacity: 1;
+        transform: none;
+      }
+      .stagger > * {
+        opacity: 0;
+        transform: translateY(34px);
+        transition:
+          opacity 0.8s var(--ease),
+          transform 0.8s var(--ease);
+      }
+      .slide.visible .stagger > *:nth-child(1) {
+        transition-delay: 0.15s;
+      }
+      .slide.visible .stagger > *:nth-child(2) {
+        transition-delay: 0.28s;
+      }
+      .slide.visible .stagger > *:nth-child(3) {
+        transition-delay: 0.41s;
+      }
+      .slide.visible .stagger > *:nth-child(4) {
+        transition-delay: 0.54s;
+      }
+
+      .slide {
+        transition: opacity 0.5s ease;
+      }
+
+      /* Export / static capture: สไลด์มี .active แต่ยังไม่มี .visible → บังคับ reveal
+         ให้แสดงทันทีโดยไม่มี transition (ใช้เฉพาะตอน export PDF เท่านั้น) */
+      .slide.active:not(.visible) .reveal,
+      .slide.active:not(.visible) .stagger > * {
+        opacity: 1 !important;
+        transform: none !important;
+        visibility: visible !important;
+        transition: none !important;
+      }
+
+      /* ===========================================
+   CHROME — ตัวเลขหน้า + จุดนำทาง (นอก stage)
+   =========================================== */
+      .page-indicator {
+        position: fixed;
+        right: 26px;
+        bottom: 20px;
+        z-index: 1000;
+        font-family: var(--font);
+        font-size: 13px;
+        color: rgba(0, 0, 0, 0.4);
+        letter-spacing: 0.08em;
+        user-select: none;
+      }
+      .deck-controls {
+        display: flex;
+        gap: 8px;
+      }
+      .deck-controls .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.18);
+        cursor: pointer;
+        transition:
+          background 0.3s,
+          transform 0.3s;
+      }
+      .deck-controls .dot.on {
+        background: #ff7a00;
+        transform: scale(1.25);
+      }
+
+      /* ===========================================
+   INLINE EDITING — hover มุมซ้ายบน หรือกด E
+   =========================================== */
+      .edit-hotzone {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 80px;
+        height: 80px;
+        z-index: 10000;
+        cursor: pointer;
+      }
+      .edit-toggle {
+        position: fixed;
+        top: 18px;
+        left: 18px;
+        z-index: 10001;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        border: 1px solid rgba(0, 0, 0, 0.12);
+        background: rgba(255, 255, 255, 0.95);
+        color: #1d1d1f;
+        font-size: 18px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+        cursor: pointer;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+      }
+      .edit-toggle.show,
+      .edit-toggle.active {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      .edit-toggle.active {
+        background: #ff7a00;
+        color: #fff;
+      }
+      body.editing [contenteditable="true"] {
+        outline: 1px dashed rgba(255, 122, 0, 0.6);
+        outline-offset: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="deck-viewport">
+      <main class="deck-stage" id="deckStage">
+        <!-- ============ S1 · TITLE ============ -->
+        <section class="slide active">
+          <div class="slide-inner glow">
+            <div class="label reveal">SBP AI Hackathon 2026 · Boonrawd</div>
+            <h1 class="statement reveal" style="font-size: 142px">
+              (ใบ) <span class="grad">เสร็จแล้วครับ</span>
+            </h1>
+            <p class="sub reveal" style="font-size: 42px">
+              ใบเสร็จทั้งเดือน โยนเข้ามาทีเดียว — <b>เหลือแค่ตรวจ</b>
+            </p>
+            <p class="footnote reveal">SBP Digital · มิถุนายน 2026</p>
+          </div>
+        </section>
+
+        <!-- ============ S2 · CONTEXT — ที่มาจากหน้างานจริง (Draft: Idea) ============ -->
+        <section class="slide">
+          <div class="slide-inner">
+            <div class="label reveal">
+              จุดเริ่มต้น — เห็นจากหน้างานจริงในโปรเจกต์ Singha Survey Pro
+            </div>
+            <h2 class="statement sm reveal" style="font-size: 76px">
+              ทุกเดือน เจ้าหน้าที่ต้องเข้าเยี่ยมร้าน <br />
+              เพื่อเก็บข้อมูล
+              <span class="grad">ยอดขาย</span>
+            </h2>
+            <div class="bento3 stagger reveal">
+              <div class="card">
+                <h3>เข้าเยี่ยมร้านทุกเดือน</h3>
+                <p>
+                  เช็คอิน ถ่ายรูป และ<b>เก็บใบเสร็จ</b>จากร้านค้า เพื่อรวบรวมยอดซื้อของแต่ละร้าน
+                </p>
+              </div>
+              <div class="card">
+                <h3>1 คน หลายสิบร้าน</h3>
+                <p>
+                  เจ้าหน้าที่ 1 คนดูแลหลายสิบร้าน แต่ละร้านมีบิล<b>เต็มไปหมด</b> —
+                  ซื้อหลายตัวแทนก็ต้องเอายอดมาบวกกันอีก
+                </p>
+              </div>
+              <div class="card">
+                <h3>ยอดนี้ใช้ทำ Agreement</h3>
+                <p>
+                  ข้อมูลยอดซื้อต่อร้านต่อเดือนคือฐานของการ<b>พิจารณาทำข้อตกลง</b>กับร้านค้า —
+                  พลาดไม่ได้
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ S3 · PAIN: ใบเสร็จหน้างานจริง ============ -->
+        <section class="slide">
+          <div class="slide-inner pain-split">
+            <div class="txt">
+              <div class="label reveal" style="margin-bottom: 36px">หน้างานจริง</div>
+              <h2 class="statement sm reveal" style="margin-bottom: 38px">
+                และใบเสร็จ<br />หน้าตาแบบนี้
+              </h2>
+              <p class="sub reveal">
+                บิลพิมพ์มาตรฐานบ้าง กระดาษลายมือบ้าง<br />ตัวย่อที่รู้กันเฉพาะร้านบ้าง<br />สินค้าหลายสิบรายการต่อใบ
+                — ลายมือก็อ่านยาก
+              </p>
+            </div>
+            <img
+              class="receipt-photo reveal"
+              src="showcase-assets/handwritten-05.jpeg"
+              alt="ใบเสร็จลายมือจริงจากหน้าร้าน"
+            />
+          </div>
+        </section>
+
+        <!-- ============ S4 · PAIN BENTO 2×2 (Draft: Problems) ============ -->
+        <section class="slide">
+          <div class="slide-inner">
+            <div class="label reveal">ความเจ็บปวด</div>
+            <div class="bento4 stagger reveal">
+              <div class="card">
+                <h3>ใบเสร็จเยอะ</h3>
+                <p>หลายสิบใบต่อร้าน หลายร้านต่อคน ทุกเดือน</p>
+              </div>
+              <div class="card">
+                <h3>แยกร้านเหนื่อย</h3>
+                <p>ต้องจัดกองเองว่าใบไหนเป็นของร้านไหน</p>
+              </div>
+              <div class="card">
+                <h3>หลายฟอร์แมต</h3>
+                <p>บิลพิมพ์ ลายมือ ตัวย่อ — สินค้าต่อใบก็เยอะ</p>
+              </div>
+              <div class="card">
+                <h3>กรอกมือทีละใบ</h3>
+                <p>พิมพ์ลงระบบทีละบรรทัด แล้วนั่งบวกยอดเอง จนตาลาย</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ S5 · COST OF PAIN (Draft: เสียเวลา 2-3 วัน + audit + human error) ============ -->
+        <section class="slide">
+          <div class="slide-inner">
+            <div class="label reveal">ราคาที่จ่ายอยู่ทุกเดือน</div>
+            <div class="bento-cost stagger reveal">
+              <div class="card hero-card">
+                <div class="big">2–3 วัน</div>
+                <p>
+                  ต่อเดือน ต่อเจ้าหน้าที่ <b>1 คน</b><br />หมดไปกับการจัดการบิลด้วยมือ<br /><span
+                    style="font-size: 26px"
+                    >(จากการสอบถามผู้ใช้จริง)</span
+                  >
+                </p>
+              </div>
+              <div class="card side-card">
+                <h3>Human Error</h3>
+                <p>หลายร้านไม่รู้เลยว่ายอดที่กรอกเข้ามา ตรงกับบิลจริงหรือไม่</p>
+              </div>
+              <div class="card side-card">
+                <h3>Audit หลงทาง</h3>
+                <p>
+                  ผู้จัดการจังหวัดต้องสุ่มตรวจใบเสร็จกับยอด — แต่ไม่รู้ว่าควรตรวจร้านไหนเป็นพิเศษ
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ S6 · THE TURN (Draft: Solutions) ============ -->
+        <section class="slide">
+          <div class="slide-inner glow">
+            <h2 class="statement reveal" style="font-size: 160px">
+              <span class="grad">โยนเข้ามาให้หมด</span>
+            </h2>
+            <p class="sub reveal" style="font-size: 42px">
+              กี่ร้อยใบก็ตาม กี่ร้านก็ได้ กี่ฟอร์แมตก็ได้ — <b>พร้อมกันในครั้งเดียว</b>
+            </p>
+          </div>
+        </section>
+
+        <!-- ============ S7 · 4 STRENGTHS (จุดเด่น) ============ -->
+        <section class="slide">
+          <div class="slide-inner">
+            <div class="label reveal">สิ่งที่ระบบทำให้</div>
+            <div class="bento-row4 stagger reveal">
+              <div class="card">
+                <div class="num">01</div>
+                <h3>แยกร้านให้</h3>
+                <p>จับชื่อร้านแม้สะกดเพี้ยน เข้าร้าน-เดือนที่ถูกต้องอัตโนมัติ</p>
+              </div>
+              <div class="card">
+                <div class="num">02</div>
+                <h3>อ่านได้ทุกฟอร์แมต</h3>
+                <p>บิลพิมพ์ ลายมือ ตัวย่อ — AI อ่านและตีความให้</p>
+              </div>
+              <div class="card">
+                <div class="num">03</div>
+                <h3>จับคู่ Catalog ทันที</h3>
+                <p>ทั้งสินค้าของเราและคู่แข่ง map เข้ารหัสสินค้าให้เลย</p>
+              </div>
+              <div class="card">
+                <div class="num">04</div>
+                <h3>รวมยอดให้เสร็จ</h3>
+                <p>product × quantity ต่อร้านต่อเดือน พร้อมใช้ทันที</p>
+              </div>
+            </div>
+            <h2 class="statement sm reveal" style="font-size: 68px; margin-top: 24px">
+              งานที่เหลือของคนคือ <span class="grad">ตรวจสอบ</span>
+            </h2>
+          </div>
+        </section>
+
+        <!-- ============ S8 · DEMO: INBOX ============ -->
+        <section class="slide">
+          <div class="slide-inner demo left">
+            <div class="demo-head reveal">
+              <h2>อัปโหลดเป็นล็อต <span class="grad">แยกให้เองตั้งแต่ต้น</span></h2>
+              <div class="label">Demo · Inbox</div>
+            </div>
+            <p class="sub reveal">
+              ร้านที่รู้จักเข้า Visit อัตโนมัติ · ร้านใหม่หรืออ่านชื่อไม่ออก แยกกองให้คนตัดสิน ·
+              เห็นสถานะเรียลไทม์
+            </p>
+            <img
+              class="screenshot reveal"
+              src="showcase-assets/inbox.png"
+              alt="หน้า Inbox — อัปโหลดและคัดแยกอัตโนมัติ"
+            />
+          </div>
+        </section>
+
+        <!-- ============ S9 · DEMO: VISIT ============ -->
+        <section class="slide">
+          <div class="slide-inner demo left">
+            <div class="demo-head reveal">
+              <h2>ยอดทั้งเดือน <span class="grad">ในหน้าจอเดียว</span></h2>
+              <div class="label">Demo · Visit</div>
+            </div>
+            <p class="sub reveal">
+              สรุป product × quantity ต่อร้านต่อเดือนให้อัตโนมัติ · แยกของเรา vs คู่แข่ง ·
+              คลิกดูภาพต้นฉบับได้ทุกใบ
+            </p>
+            <img
+              class="screenshot reveal"
+              src="showcase-assets/visit-rollup.png"
+              alt="หน้า Visit — ยอดรวมต่อร้านต่อเดือน"
+            />
+          </div>
+        </section>
+
+        <!-- ============ S10 · DEMO: REVIEW ============ -->
+        <section class="slide">
+          <div class="slide-inner demo left">
+            <div class="demo-head reveal">
+              <h2>AI อ่าน <span class="grad">คนยืนยัน</span></h2>
+              <div class="label">Demo · Review</div>
+            </div>
+            <p class="sub reveal">
+              ภาพต้นฉบับคู่กับรายการสินค้า · เตือนทันทีเมื่อวันที่หรือร้านไม่ตรง Visit ·
+              แก้ครั้งเดียว ระบบจำ
+            </p>
+            <img
+              class="screenshot reveal"
+              src="showcase-assets/review-mismatch-alerts.png"
+              alt="หน้าตรวจสอบ — AI เดา คนยืนยัน"
+            />
+          </div>
+        </section>
+
+        <!-- ============ S11 · WHY AI NOT OCR (Draft: Why AI not OCR?) ============ -->
+        <section class="slide">
+          <div class="slide-inner">
+            <div class="label reveal">ทำไมต้อง AI — ไม่ใช่แค่ OCR</div>
+            <div class="bento3 stagger reveal">
+              <div class="card">
+                <h3>ใบเสร็จไม่มีฟอร์แมตตายตัว</h3>
+                <p>
+                  OCR อ่านได้แค่ตัวอักษร แต่ AI <b>เข้าใจ</b> ว่า “ลีโอ ข.ใหญ่ 12” หมายถึงสินค้าอะไร
+                  จำนวนเท่าไหร่ — ทั้งบิลพิมพ์มาตรฐานและลายมือลวก ๆ
+                </p>
+              </div>
+              <div class="card">
+                <h3>เข้าใจธุรกิจของเรา</h3>
+                <p>
+                  จับคู่เข้า <b>Catalog Boonrawd และคู่แข่ง</b> ด้วยรหัสสินค้า —
+                  ชื่อที่แสดงมาจากระบบ ไม่มีทางเพี้ยน
+                </p>
+              </div>
+              <div class="card">
+                <h3>เรียนรู้จากผู้ใช้</h3>
+                <p>
+                  ตัวหนังสือที่เคยอ่านผิด พอคนแก้ ระบบเก็บเป็น <b>alias</b> —
+                  อัปโหลดครั้งหน้าก็รู้แล้วว่าสิ่งนี้คืออะไร
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ S12 · EVIDENCE / FEASIBILITY ============ -->
+        <section class="slide">
+          <div class="slide-inner">
+            <div class="label reveal">
+              เลือกโมเดลด้วยข้อมูล — ทดสอบจริง 14 โมเดล บนใบเสร็จชุดเดียวกัน
+            </div>
+            <div class="stats3 stagger reveal">
+              <div class="card">
+                <div class="big">94.5%</div>
+                <h3>ความแม่นยำ</h3>
+                <p>composite accuracy เทียบ ground truth — เท่าโมเดลที่แพงที่สุด</p>
+              </div>
+              <div class="card">
+                <div class="big">฿0.16</div>
+                <h3>ต่อใบ</h3>
+                <p>ถูกกว่าโมเดลความแม่นเท่ากัน 14–19 เท่า</p>
+              </div>
+              <div class="card">
+                <div class="big">~7 วิ</div>
+                <h3>ต่อใบ</h3>
+                <p>เทียบการกรอกมือ ~1–2 นาทีต่อใบ</p>
+              </div>
+            </div>
+            <p class="footnote reveal">
+              Gemini 3 Flash — ผลทดสอบจริง · ไม่ต้องเทรนโมเดล ไม่ต้องมี GPU ของตัวเอง · ต้นทุนโตแบบ
+              linear คาดการณ์ได้
+            </p>
+          </div>
+        </section>
+
+        <!-- ============ S13 · BUSINESS VALUE (Draft: Results) ============ -->
+        <section class="slide">
+          <div class="slide-inner">
+            <div class="label reveal">ผลลัพธ์ทางธุรกิจ</div>
+            <div class="stats3 stagger reveal">
+              <div class="card">
+                <div class="big">~90%</div>
+                <h3>เวลากรอกที่ลดลง</h3>
+                <p>เอาเวลาที่นั่งกรอก นั่งบวกยอด ไปทำงานที่มี value กว่า</p>
+              </div>
+              <div class="card">
+                <div class="big">100%</div>
+                <h3>หลักฐานครบ</h3>
+                <p>ภาพต้นฉบับเก็บทุกใบ — audit ตรวจได้ตรงจุด ไม่ต้องสุ่มมั่ว</p>
+              </div>
+              <div class="card">
+                <div class="big">ทันที</div>
+                <h3>วิเคราะห์จาก data ได้เลย</h3>
+                <p>จุดไหนยอดขายเยอะผิดปกติ น้อยผิดปกติ เห็นจากข้อมูลทันที</p>
+              </div>
+            </div>
+            <p class="sub reveal" style="font-size: 33px">
+              ลด Human Error แน่นอน — คนเปลี่ยนจาก<b>พิมพ์ทีละบรรทัด</b>เป็น<b>ตรวจและยืนยัน</b>
+            </p>
+          </div>
+        </section>
+
+        <!-- ============ S14 · SCALE UP (Draft: Scale Up) ============ -->
+        <section class="slide">
+          <div class="slide-inner glow">
+            <h2 class="statement reveal">ใบเสร็จ คือแค่<span class="grad">จุดเริ่มต้น</span></h2>
+            <p class="sub reveal" style="font-size: 38px; max-width: 1400px">
+              การอ่านใบเสร็จเป็นแค่ use case เดียวที่เราเห็น pain point ชัด —<br />ความฉลาดของการอ่านภาพนี้ต่อยอดได้อีกมาก
+            </p>
+            <div class="chips stagger reveal">
+              <div class="chip">สัญญา</div>
+              <div class="chip">ป้ายราคา</div>
+              <div class="chip">ชั้นวางสินค้า</div>
+              <div class="chip">เอกสารหน้างานอื่น ๆ</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ S15 · ASK / CLOSING ============ -->
+        <section class="slide">
+          <div class="slide-inner glow">
+            <div class="label reveal">ขั้นต่อไป</div>
+            <h2 class="statement sm reveal">
+              ขอนำร่องกับเซลส์ <span class="grad">1 ทีม</span> เดือนหน้า
+            </h2>
+            <p class="sub reveal">
+              วัดผลจริงในพื้นที่ → ต่อยอด dashboard market share ของเรา vs คู่แข่ง
+            </p>
+            <p class="footnote reveal">
+              Thai Receipt Intelligence · SBP Digital · SBP AI Hackathon 2026
+            </p>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- chrome นอก stage -->
+    <div class="deck-controls" id="dots" aria-label="slide navigation"></div>
+    <div class="page-indicator" id="pageIndicator">1 / 15</div>
+    <div class="edit-hotzone" id="editHotzone"></div>
+    <button class="edit-toggle" id="editToggle" title="Edit mode (E)">✏️</button>
+
+    <script>
+      /* ===========================================
+   SLIDE PRESENTATION CONTROLLER
+   ← → / Space / PgUp PgDn / คลิกจุด / ปัดบนมือถือ
+   =========================================== */
+      class SlidePresentation {
+        constructor() {
+          this.slides = document.querySelectorAll(".slide");
+          this.current = 0;
+          this.stage = document.getElementById("deckStage");
+          this.dots = document.getElementById("dots");
+          this.indicator = document.getElementById("pageIndicator");
+          this.buildDots();
+          this.setupStageScale();
+          this.setupKeyboardNav();
+          this.setupTouchNav();
+          this.setupWheelNav();
+          this.show(0);
+        }
+
+        /* ย่อ-ขยาย stage 1920×1080 ให้พอดีจอ (letterbox ได้ ไม่ reflow) */
+        setupStageScale() {
+          const scale = () => {
+            const f = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+            const x = (window.innerWidth - 1920 * f) / 2;
+            const y = (window.innerHeight - 1080 * f) / 2;
+            this.stage.style.transform = `translate(${x}px, ${y}px) scale(${f})`;
+          };
+          scale();
+          window.addEventListener("resize", scale);
+        }
+
+        buildDots() {
+          this.slides.forEach((_, i) => {
+            const d = document.createElement("div");
+            d.className = "dot";
+            d.addEventListener("click", () => this.show(i));
+            this.dots.appendChild(d);
+          });
+        }
+
+        setupKeyboardNav() {
+          document.addEventListener("keydown", (e) => {
+            if (e.target.getAttribute && e.target.getAttribute("contenteditable")) return;
+            if (["ArrowRight", " ", "PageDown"].includes(e.key)) {
+              e.preventDefault();
+              this.show(this.current + 1);
+            }
+            if (["ArrowLeft", "PageUp"].includes(e.key)) {
+              e.preventDefault();
+              this.show(this.current - 1);
+            }
+            if (e.key === "Home") this.show(0);
+            if (e.key === "End") this.show(this.slides.length - 1);
+          });
+        }
+
+        setupTouchNav() {
+          let x0 = null;
+          document.addEventListener(
+            "touchstart",
+            (e) => {
+              x0 = e.touches[0].clientX;
+            },
+            { passive: true },
+          );
+          document.addEventListener(
+            "touchend",
+            (e) => {
+              if (x0 === null) return;
+              const dx = e.changedTouches[0].clientX - x0;
+              if (Math.abs(dx) > 60) this.show(this.current + (dx < 0 ? 1 : -1));
+              x0 = null;
+            },
+            { passive: true },
+          );
+        }
+
+        setupWheelNav() {
+          let lock = false;
+          document.addEventListener(
+            "wheel",
+            (e) => {
+              if (lock || document.body.classList.contains("editing")) return;
+              if (Math.abs(e.deltaY) < 24) return;
+              lock = true;
+              this.show(this.current + (e.deltaY > 0 ? 1 : -1));
+              setTimeout(() => {
+                lock = false;
+              }, 650);
+            },
+            { passive: true },
+          );
+        }
+
+        show(i) {
+          this.current = Math.max(0, Math.min(i, this.slides.length - 1));
+          this.slides.forEach((s, k) => {
+            s.classList.toggle("active", k === this.current);
+            s.classList.toggle("visible", k === this.current);
+          });
+          [...this.dots.children].forEach((d, k) => d.classList.toggle("on", k === this.current));
+          this.indicator.textContent = `${this.current + 1} / ${this.slides.length}`;
+        }
+      }
+
+      /* ===========================================
+   INLINE EDITOR — hover มุมซ้ายบน หรือกด E
+   แก้ข้อความได้ทุกจุด · เซฟอัตโนมัติลง localStorage
+   Ctrl/Cmd+S ดาวน์โหลดไฟล์ HTML ที่แก้แล้ว
+   =========================================== */
+      class InlineEditor {
+        constructor() {
+          this.isActive = false;
+          this.storageKey = "pitch-deck-edits-v2-light";
+          this.editables = document.querySelectorAll("h1, h2, h3, p, .label, .num, .big, .chip");
+          this.toggleBtn = document.getElementById("editToggle");
+          this.restore();
+          this.bind();
+        }
+
+        bind() {
+          const hotzone = document.getElementById("editHotzone");
+          let hideTimeout = null;
+          const scheduleHide = () => {
+            hideTimeout = setTimeout(() => {
+              if (!this.isActive) this.toggleBtn.classList.remove("show");
+            }, 400);
+          };
+          hotzone.addEventListener("mouseenter", () => {
+            clearTimeout(hideTimeout);
+            this.toggleBtn.classList.add("show");
+          });
+          hotzone.addEventListener("mouseleave", scheduleHide);
+          this.toggleBtn.addEventListener("mouseenter", () => clearTimeout(hideTimeout));
+          this.toggleBtn.addEventListener("mouseleave", scheduleHide);
+          this.toggleBtn.addEventListener("click", () => this.toggle());
+          hotzone.addEventListener("dblclick", () => this.toggle());
+
+          document.addEventListener("keydown", (e) => {
+            if (
+              (e.key === "e" || e.key === "E") &&
+              !(e.target.getAttribute && e.target.getAttribute("contenteditable"))
+            )
+              this.toggle();
+            if ((e.metaKey || e.ctrlKey) && e.key === "s" && this.isActive) {
+              e.preventDefault();
+              this.download();
+            }
+          });
+          document.addEventListener("input", () => {
+            if (this.isActive) this.persist();
+          });
+        }
+
+        toggle() {
+          this.isActive = !this.isActive;
+          document.body.classList.toggle("editing", this.isActive);
+          this.toggleBtn.classList.toggle("active", this.isActive);
+          this.toggleBtn.classList.add("show");
+          this.editables.forEach((el) =>
+            el.setAttribute("contenteditable", this.isActive ? "true" : "false"),
+          );
+          if (!this.isActive) this.persist();
+        }
+
+        persist() {
+          const data = [...this.editables].map((el) => el.innerHTML);
+          localStorage.setItem(this.storageKey, JSON.stringify(data));
+        }
+
+        restore() {
+          try {
+            const data = JSON.parse(localStorage.getItem(this.storageKey) || "null");
+            if (data && data.length === this.editables.length) {
+              this.editables.forEach((el, i) => {
+                el.innerHTML = data[i];
+              });
+            }
+          } catch (_) {
+            /* ละเว้นข้อมูลเสีย */
+          }
+        }
+
+        download() {
+          const blob = new Blob(["<!DOCTYPE html>\n" + document.documentElement.outerHTML], {
+            type: "text/html",
+          });
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = "pitch-deck-edited.html";
+          a.click();
+          URL.revokeObjectURL(a.href);
+        }
+      }
+
+      new SlidePresentation();
+      new InlineEditor();
+    </script>
+  </body>
 </html>

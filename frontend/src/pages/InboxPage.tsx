@@ -41,11 +41,7 @@ import {
   Upload as UploadIcon,
   X,
 } from "lucide-react";
-import {
-  type DashboardVisit,
-  type DocumentListItem,
-  getDocumentImageUrl,
-} from "../api/client";
+import { type DashboardVisit, type DocumentListItem, getDocumentImageUrl } from "../api/client";
 import {
   useAssignStoreToDoc,
   useCreateStoreFromDoc,
@@ -188,16 +184,36 @@ export default function InboxPage() {
               โยนใบเสร็จมาทีเดียว AI จะแยกร้านให้อัตโนมัติ คุณรีวิวสินค้าและจำนวนทีหลัง
             </Text>
             <Group gap={6} mt="sm">
-              <Badge variant="light" color="indigo" radius="xl" leftSection={<UploadIcon size={11} />}>
+              <Badge
+                variant="light"
+                color="indigo"
+                radius="xl"
+                leftSection={<UploadIcon size={11} />}
+              >
                 Bulk upload
               </Badge>
-              <Badge variant="light" color="violet" radius="xl" leftSection={<Sparkles size={11} />}>
+              <Badge
+                variant="light"
+                color="violet"
+                radius="xl"
+                leftSection={<Sparkles size={11} />}
+              >
                 AI อ่าน
               </Badge>
-              <Badge variant="light" color="indigo" radius="xl" leftSection={<StoreIcon size={11} />}>
+              <Badge
+                variant="light"
+                color="indigo"
+                radius="xl"
+                leftSection={<StoreIcon size={11} />}
+              >
                 Auto-attach Visit
               </Badge>
-              <Badge variant="light" color="grape" radius="xl" leftSection={<RefreshCw size={11} />}>
+              <Badge
+                variant="light"
+                color="grape"
+                radius="xl"
+                leftSection={<RefreshCw size={11} />}
+              >
                 Live progress
               </Badge>
             </Group>
@@ -219,9 +235,7 @@ export default function InboxPage() {
           borderColor: dropzone.isDragActive
             ? "var(--mantine-color-indigo-5)"
             : "var(--mantine-color-gray-4)",
-          background: dropzone.isDragActive
-            ? "var(--mantine-color-indigo-0)"
-            : undefined,
+          background: dropzone.isDragActive ? "var(--mantine-color-indigo-0)" : undefined,
           cursor: "pointer",
           transition: "all 0.15s ease",
         }}
@@ -245,10 +259,7 @@ export default function InboxPage() {
 
       {liveBatch.length > 0 && (
         <div style={{ marginBottom: "var(--mantine-spacing-md)" }}>
-          <BulkUploadProgress
-            items={liveBatch}
-            onDismiss={() => setLiveBatch([])}
-          />
+          <BulkUploadProgress items={liveBatch} onDismiss={() => setLiveBatch([])} />
         </div>
       )}
 
@@ -268,34 +279,22 @@ export default function InboxPage() {
 
           {/* Unknown stores — AI read merchant but no Store master row matches. */}
           {data.unknown_stores.length > 0 && (
-            <UnknownStoresSection
-              docs={data.unknown_stores}
-              stores={stores.data ?? []}
-            />
+            <UnknownStoresSection docs={data.unknown_stores} stores={stores.data ?? []} />
           )}
 
           {/* Orphans — AI couldn't read merchant. */}
           {data.orphans.length > 0 && (
-            <OrphanSection
-              docs={data.orphans}
-              stores={stores.data ?? []}
-            />
+            <OrphanSection docs={data.orphans} stores={stores.data ?? []} />
           )}
 
           {/* Errors */}
           {data.errors.length > 0 && <ErrorSection docs={data.errors} />}
 
           {/* Non-receipts */}
-          {data.non_receipts.length > 0 && (
-            <NonReceiptSection docs={data.non_receipts} />
-          )}
+          {data.non_receipts.length > 0 && <NonReceiptSection docs={data.non_receipts} />}
 
           {/* Visits */}
-          <VisitsSection
-            visits={data.visits}
-            month={month}
-            counts={data.counts}
-          />
+          <VisitsSection visits={data.visits} month={month} counts={data.counts} />
         </Stack>
       )}
     </div>
@@ -443,10 +442,7 @@ function OrphanSection({
       if (updated.visit_id) {
         toast("success", "ผูกใบเสร็จกับร้านเรียบร้อย");
       } else {
-        toast(
-          "info",
-          "บันทึกชื่อร้านแล้ว — ร้านยังไม่อยู่ในระบบ ใบเสร็จย้ายไปรอเพิ่มร้านใหม่",
-        );
+        toast("info", "บันทึกชื่อร้านแล้ว — ร้านยังไม่อยู่ในระบบ ใบเสร็จย้ายไปรอเพิ่มร้านใหม่");
       }
       setNaming(null);
       setText("");
@@ -478,10 +474,7 @@ function OrphanSection({
                   await discardMut.mutateAsync(d.id);
                   toast("success", "ลบออกจากกล่อง");
                 } catch (e: unknown) {
-                  toast(
-                    "error",
-                    e instanceof Error ? e.message : "ลบไม่สำเร็จ",
-                  );
+                  toast("error", e instanceof Error ? e.message : "ลบไม่สำเร็จ");
                 }
               }}
             />
@@ -531,9 +524,9 @@ function OrphanSection({
                   }}
                 />
                 <Text size="xs" c="dimmed">
-                  ถ้าชื่อตรงกับร้านใน Store master ระบบจะผูกใบเสร็จเข้า visit
-                  ของเดือนนี้ให้ทันที ถ้ายังไม่มีร้านในระบบ ใบเสร็จจะย้ายไปอยู่ที่
-                  "ร้านยังไม่อยู่ในระบบ" ให้คุณเลือกหรือเพิ่มร้านใหม่
+                  ถ้าชื่อตรงกับร้านใน Store master ระบบจะผูกใบเสร็จเข้า visit ของเดือนนี้ให้ทันที
+                  ถ้ายังไม่มีร้านในระบบ ใบเสร็จจะย้ายไปอยู่ที่ "ร้านยังไม่อยู่ในระบบ"
+                  ให้คุณเลือกหรือเพิ่มร้านใหม่
                 </Text>
                 <Group justify="flex-end">
                   <Button variant="default" onClick={() => setNaming(null)}>
@@ -607,10 +600,7 @@ function UnknownStoresSection({
                   await discardMut.mutateAsync(d.id);
                   toast("success", "ลบออกจากกล่อง");
                 } catch (e: unknown) {
-                  toast(
-                    "error",
-                    e instanceof Error ? e.message : "ลบไม่สำเร็จ",
-                  );
+                  toast("error", e instanceof Error ? e.message : "ลบไม่สำเร็จ");
                 }
               }}
             />
@@ -727,114 +717,107 @@ function ResolveStoreModal({
 
             <Tabs value={tab} onChange={(v) => v && setTab(v as "existing" | "new")}>
               <Tabs.List>
-            <Tabs.Tab value="existing" leftSection={<StoreIcon size={14} />}>
-              เลือกจากร้านที่มี
-            </Tabs.Tab>
-            <Tabs.Tab value="new" leftSection={<Plus size={14} />}>
-              เพิ่มร้านใหม่
-            </Tabs.Tab>
-          </Tabs.List>
+                <Tabs.Tab value="existing" leftSection={<StoreIcon size={14} />}>
+                  เลือกจากร้านที่มี
+                </Tabs.Tab>
+                <Tabs.Tab value="new" leftSection={<Plus size={14} />}>
+                  เพิ่มร้านใหม่
+                </Tabs.Tab>
+              </Tabs.List>
 
-          <Tabs.Panel value="existing" pt="md">
-            <Stack gap="xs">
-              <TextInput
-                placeholder="ค้นหาชื่อร้าน / รหัสร้าน..."
-                value={storeSearch}
-                onChange={(e) => setStoreSearch(e.currentTarget.value)}
-                autoFocus
-              />
-              <Paper
-                withBorder
-                radius="sm"
-                style={{ maxHeight: 240, overflowY: "auto" }}
-              >
-                {filteredStores.length === 0 ? (
-                  <Text size="sm" c="dimmed" ta="center" py="md">
-                    ไม่พบร้านที่ตรง — ลองเพิ่มร้านใหม่
-                  </Text>
-                ) : (
-                  filteredStores.map((s) => (
-                    <div
-                      key={s.id}
-                      onClick={() => setSelectedStoreId(s.id)}
-                      className={`px-3 py-2 cursor-pointer border-b border-gray-100 last:border-0 transition-colors ${
-                        selectedStoreId === s.id
-                          ? "bg-indigo-50"
-                          : "hover:bg-gray-50"
-                      }`}
-                    >
-                      <Group justify="space-between" wrap="nowrap">
-                        <div className="min-w-0">
-                          <Text size="sm" fw={500} truncate>
-                            {s.name}
-                          </Text>
-                          {s.code && (
-                            <Text size="xs" c="dimmed">
-                              {s.code}
-                            </Text>
-                          )}
+              <Tabs.Panel value="existing" pt="md">
+                <Stack gap="xs">
+                  <TextInput
+                    placeholder="ค้นหาชื่อร้าน / รหัสร้าน..."
+                    value={storeSearch}
+                    onChange={(e) => setStoreSearch(e.currentTarget.value)}
+                    autoFocus
+                  />
+                  <Paper withBorder radius="sm" style={{ maxHeight: 240, overflowY: "auto" }}>
+                    {filteredStores.length === 0 ? (
+                      <Text size="sm" c="dimmed" ta="center" py="md">
+                        ไม่พบร้านที่ตรง — ลองเพิ่มร้านใหม่
+                      </Text>
+                    ) : (
+                      filteredStores.map((s) => (
+                        <div
+                          key={s.id}
+                          onClick={() => setSelectedStoreId(s.id)}
+                          className={`px-3 py-2 cursor-pointer border-b border-gray-100 last:border-0 transition-colors ${
+                            selectedStoreId === s.id ? "bg-indigo-50" : "hover:bg-gray-50"
+                          }`}
+                        >
+                          <Group justify="space-between" wrap="nowrap">
+                            <div className="min-w-0">
+                              <Text size="sm" fw={500} truncate>
+                                {s.name}
+                              </Text>
+                              {s.code && (
+                                <Text size="xs" c="dimmed">
+                                  {s.code}
+                                </Text>
+                              )}
+                            </div>
+                            <Badge size="xs" variant="light" color="gray">
+                              {s.visit_count} visits
+                            </Badge>
+                          </Group>
                         </div>
-                        <Badge size="xs" variant="light" color="gray">
-                          {s.visit_count} visits
-                        </Badge>
-                      </Group>
-                    </div>
-                  ))
-                )}
-              </Paper>
-              <Group justify="flex-end">
-                <Button variant="default" onClick={onClose}>
-                  ยกเลิก
-                </Button>
-                <Button
-                  disabled={!selectedStoreId}
-                  loading={assignPending}
-                  onClick={() => selectedStoreId && onAssign(selectedStoreId)}
-                >
-                  ผูกกับร้านนี้
-                </Button>
-              </Group>
-            </Stack>
-          </Tabs.Panel>
+                      ))
+                    )}
+                  </Paper>
+                  <Group justify="flex-end">
+                    <Button variant="default" onClick={onClose}>
+                      ยกเลิก
+                    </Button>
+                    <Button
+                      disabled={!selectedStoreId}
+                      loading={assignPending}
+                      onClick={() => selectedStoreId && onAssign(selectedStoreId)}
+                    >
+                      ผูกกับร้านนี้
+                    </Button>
+                  </Group>
+                </Stack>
+              </Tabs.Panel>
 
-          <Tabs.Panel value="new" pt="md">
-            <Stack gap="sm">
-              <TextInput
-                label="ชื่อร้าน"
-                placeholder="เช่น ร้านสมศักดิ์การค้า"
-                value={newName}
-                onChange={(e) => setNewName(e.currentTarget.value)}
-                required
-              />
-              <TextInput
-                label="รหัสร้าน (ไม่บังคับ)"
-                placeholder="เช่น R001"
-                value={newCode}
-                onChange={(e) => setNewCode(e.currentTarget.value)}
-              />
-              <Text size="xs" c="dimmed">
-                จะสร้างร้านใหม่ใน Store master และผูกใบเสร็จนี้เข้า visit
-                ของเดือนรายงานทันที
-              </Text>
-              <Group justify="flex-end">
-                <Button variant="default" onClick={onClose}>
-                  ยกเลิก
-                </Button>
-                <Button
-                  disabled={!newName.trim()}
-                  loading={createPending}
-                  onClick={() =>
-                    onCreate({
-                      name: newName.trim(),
-                      code: newCode.trim() || undefined,
-                    })
-                  }
-                >
-                  เพิ่มร้าน & ผูกใบเสร็จ
-                </Button>
-              </Group>
-            </Stack>
-          </Tabs.Panel>
+              <Tabs.Panel value="new" pt="md">
+                <Stack gap="sm">
+                  <TextInput
+                    label="ชื่อร้าน"
+                    placeholder="เช่น ร้านสมศักดิ์การค้า"
+                    value={newName}
+                    onChange={(e) => setNewName(e.currentTarget.value)}
+                    required
+                  />
+                  <TextInput
+                    label="รหัสร้าน (ไม่บังคับ)"
+                    placeholder="เช่น R001"
+                    value={newCode}
+                    onChange={(e) => setNewCode(e.currentTarget.value)}
+                  />
+                  <Text size="xs" c="dimmed">
+                    จะสร้างร้านใหม่ใน Store master และผูกใบเสร็จนี้เข้า visit ของเดือนรายงานทันที
+                  </Text>
+                  <Group justify="flex-end">
+                    <Button variant="default" onClick={onClose}>
+                      ยกเลิก
+                    </Button>
+                    <Button
+                      disabled={!newName.trim()}
+                      loading={createPending}
+                      onClick={() =>
+                        onCreate({
+                          name: newName.trim(),
+                          code: newCode.trim() || undefined,
+                        })
+                      }
+                    >
+                      เพิ่มร้าน & ผูกใบเสร็จ
+                    </Button>
+                  </Group>
+                </Stack>
+              </Tabs.Panel>
             </Tabs>
           </Stack>
         </div>
@@ -921,10 +904,7 @@ function ErrorSection({ docs }: { docs: DocumentListItem[] }) {
                     await discardMut.mutateAsync(d.id);
                     toast("success", "ลบออกจากกล่อง");
                   } catch (e: unknown) {
-                    toast(
-                      "error",
-                      e instanceof Error ? e.message : "ลบไม่สำเร็จ",
-                    );
+                    toast("error", e instanceof Error ? e.message : "ลบไม่สำเร็จ");
                   }
                 }}
               >
@@ -973,10 +953,7 @@ function NonReceiptSection({ docs }: { docs: DocumentListItem[] }) {
                     await discardMut.mutateAsync(d.id);
                     toast("success", "ลบแล้ว");
                   } catch (e: unknown) {
-                    toast(
-                      "error",
-                      e instanceof Error ? e.message : "ลบไม่สำเร็จ",
-                    );
+                    toast("error", e instanceof Error ? e.message : "ลบไม่สำเร็จ");
                   }
                 }}
                 style={{
@@ -1032,7 +1009,7 @@ function VisitsSection({
           </ThemeIcon>
           <div>
             <Text fw={600}>
-              {isAll ? "Visits ทั้งหมด" : `Visits ของเดือน ${formatMonthLabel(month)}`}
+              {isAll ? "รายการทั้งหมด" : `รายการของเดือน ${formatMonthLabel(month)}`}
             </Text>
             <Text size="xs" c="dimmed">
               {counts.attention > 0
@@ -1055,8 +1032,7 @@ function VisitsSection({
 }
 
 function VisitRow({ visit, showPeriod }: { visit: DashboardVisit; showPeriod: boolean }) {
-  const allReviewed =
-    visit.document_count > 0 && visit.reviewed_count === visit.document_count;
+  const allReviewed = visit.document_count > 0 && visit.reviewed_count === visit.document_count;
   const hasNew = visit.new_doc_count > 0;
   const dateRange =
     visit.earliest_doc_date && visit.latest_doc_date
@@ -1069,9 +1045,7 @@ function VisitRow({ visit, showPeriod }: { visit: DashboardVisit; showPeriod: bo
       to={`/visits/${visit.id}`}
       className="block px-4 py-3 hover:bg-gray-50 transition-colors no-underline text-inherit"
       style={{
-        borderLeft: hasNew
-          ? "3px solid var(--mantine-color-orange-5)"
-          : "3px solid transparent",
+        borderLeft: hasNew ? "3px solid var(--mantine-color-orange-5)" : "3px solid transparent",
       }}
     >
       <Group justify="space-between" wrap="nowrap">
@@ -1102,13 +1076,7 @@ function VisitRow({ visit, showPeriod }: { visit: DashboardVisit; showPeriod: bo
         <Group gap="md" wrap="nowrap">
           <Badge
             variant="light"
-            color={
-              visit.document_count === 0
-                ? "gray"
-                : allReviewed
-                  ? "green"
-                  : "yellow"
-            }
+            color={visit.document_count === 0 ? "gray" : allReviewed ? "green" : "yellow"}
             size="md"
           >
             {visit.reviewed_count}/{visit.document_count}
@@ -1177,11 +1145,7 @@ function OrphanThumb({
             <Menu.Item leftSection={<Sparkles size={14} />} onClick={onName}>
               ตั้งชื่อร้าน
             </Menu.Item>
-            <Menu.Item
-              leftSection={<X size={14} />}
-              color="red"
-              onClick={onDiscard}
-            >
+            <Menu.Item leftSection={<X size={14} />} color="red" onClick={onDiscard}>
               ลบออกจากกล่อง
             </Menu.Item>
           </Menu.Dropdown>
