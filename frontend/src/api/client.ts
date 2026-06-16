@@ -371,6 +371,7 @@ export interface InboxUploadResult {
 
 export interface DashboardVisit extends VisitListItem {
   new_doc_count: number;
+  needs_review_count: number;
   last_reviewed_at: string | null;
 }
 

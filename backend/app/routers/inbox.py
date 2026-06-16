@@ -183,11 +183,14 @@ def upload_inbox(
 
 def _visit_to_list_item(
     visit: Visit, doc_count: int, reviewed_count: int, new_doc_count: int,
-    earliest: str | None, latest: str | None,
+    earliest: str | None, latest: str | None, needs_review_count: int = 0,
 ) -> dict:
     """A Visit row enriched with the ``new_doc_count`` signal — number of docs
     uploaded after the user last marked the visit reviewed. The dashboard uses
-    it to flag visits as "needs attention" without exposing the timestamp."""
+    it to flag visits as "needs attention" without exposing the timestamp.
+    ``needs_review_count`` is how many docs in the visit the AI is unsure about
+    (explicit needs_review or low confidence) — surfaced so the user can tell at
+    a glance which stores still hold receipts worth a look."""
     base = VisitListItem(
         id=visit.id,
         store_id=visit.store_id,
@@ -204,6 +207,7 @@ def _visit_to_list_item(
         latest_doc_date=latest,
     ).model_dump()
     base["new_doc_count"] = new_doc_count
+    base["needs_review_count"] = needs_review_count
     base["last_reviewed_at"] = visit.last_reviewed_at.isoformat() if visit.last_reviewed_at else None
     return base
 
@@ -332,8 +336,23 @@ def get_dashboard(
             )
         else:
             new_count = 0
+        # Docs the AI flagged or read with low confidence — "worth a look".
+        needs_review_count = (
+            db.query(func.count(Document.id))
+            .filter(
+                Document.visit_id == v.id,
+                Document.deleted_at.is_(None),
+                (Document.needs_review.is_(True)) | (Document.confidence < 0.7),
+            )
+            .scalar()
+            or 0
+        )
         earliest, latest = visit_doc_date_range(db, v.id)
-        visit_rows.append(_visit_to_list_item(v, doc_count, reviewed, new_count, earliest, latest))
+        visit_rows.append(
+            _visit_to_list_item(
+                v, doc_count, reviewed, new_count, earliest, latest, needs_review_count
+            )
+        )
 
     # Distinct months available for the picker.
     months = [

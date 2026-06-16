@@ -1,0 +1,1331 @@
+/* ==========================================================================
+   FlowPage — the "wow" demo surface. A standalone, sidebar-less, full-screen
+   flow: drop → sort by store → summarise products → save.
+
+   Aesthetic: clean, calm, Apple-product-page. Lots of whitespace, large type,
+   soft depth, restrained motion. Light-only. Scoped under .flow-root so none
+   of this leaks into the rest of the app.
+   ========================================================================== */
+
+.flow-root {
+  --ink: #1d1d1f;
+  --ink-soft: #6e6e73;
+  --ink-faint: #a1a1a6;
+  --line: rgba(0, 0, 0, 0.08);
+  --bg: #fbfbfd;
+  --accent: #4f46e5;
+  --accent-600: #4338ca;
+  --accent-soft: #eef2ff;
+  --good: #15803d;
+  --warn: #b45309;
+  --bad: #b91c1c;
+
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  overflow-y: auto;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "IBM Plex Sans Thai", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+/* premium fixed backdrop: soft mesh gradient + fine grain (the grain is what
+   keeps it from reading as a flat/cheap gradient) */
+.flow-root::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(760px 520px at 12% 4%, rgba(99, 102, 241, 0.14), transparent 60%),
+    radial-gradient(820px 600px at 90% -4%, rgba(168, 85, 247, 0.13), transparent 58%),
+    radial-gradient(680px 520px at 74% 108%, rgba(56, 189, 248, 0.1), transparent 60%),
+    radial-gradient(640px 520px at -6% 102%, rgba(129, 140, 248, 0.1), transparent 60%);
+}
+.flow-root::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.4;
+  mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.flow-wrap {
+  position: relative;
+  z-index: 1;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 32px 28px 96px;
+}
+
+/* ---------- top bar ---------- */
+.flow-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 40px;
+  margin-bottom: 8px;
+}
+.flow-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.flow-brand-dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--accent) 0%, #7c83ff 100%);
+  box-shadow: 0 6px 16px -6px rgba(79, 70, 229, 0.6);
+  display: grid;
+  place-items: center;
+  color: #fff;
+}
+
+/* ---------- hero / dropzone ---------- */
+.flow-hero {
+  position: relative;
+  min-height: 78vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 10px;
+  isolation: isolate;
+}
+/* soft drifting aurora behind the headline — depth without slop */
+.flow-hero::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 8%;
+  left: 50%;
+  width: 720px;
+  height: 420px;
+  transform: translateX(-50%);
+  background:
+    radial-gradient(closest-side at 35% 40%, rgba(99, 102, 241, 0.22), transparent 70%),
+    radial-gradient(closest-side at 70% 55%, rgba(139, 92, 246, 0.18), transparent 70%),
+    radial-gradient(closest-side at 55% 30%, rgba(56, 189, 248, 0.12), transparent 70%);
+  filter: blur(56px);
+  opacity: 0.9;
+  animation: heroAurora 14s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes heroAurora {
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+  50% {
+    transform: translateX(-50%) translateY(18px) scale(1.06);
+  }
+}
+.flow-eyebrow {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+/* premium pill badge */
+.flow-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 15px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-600);
+  background: rgba(255, 255, 255, 0.66);
+  border: 1px solid rgba(79, 70, 229, 0.18);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 22px -14px rgba(79, 70, 229, 0.55);
+}
+.flow-badge svg {
+  color: var(--accent);
+}
+.flow-title {
+  font-size: clamp(38px, 5.6vw, 66px);
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  margin: 18px 0 4px;
+  max-width: 18ch;
+}
+.flow-title-grad {
+  background: linear-gradient(100deg, #4f46e5 0%, #8b5cf6 45%, #38bdf8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.flow-sub {
+  font-size: clamp(15px, 1.6vw, 19px);
+  color: var(--ink-soft);
+  max-width: 52ch;
+  line-height: 1.55;
+}
+
+.flow-drop {
+  position: relative;
+  margin-top: 34px;
+  width: min(640px, 92vw);
+  border-radius: 28px;
+  border: 1.5px dashed rgba(79, 70, 229, 0.38);
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(16px);
+  padding: 48px 32px;
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    border-color 0.22s ease,
+    background 0.22s ease,
+    transform 0.22s ease,
+    box-shadow 0.22s ease;
+  box-shadow:
+    0 40px 90px -55px rgba(28, 28, 30, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+.flow-drop:hover {
+  border-color: var(--accent);
+  transform: translateY(-3px);
+  box-shadow:
+    0 46px 100px -50px rgba(79, 70, 229, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+.flow-drop[data-active="true"] {
+  border-color: var(--accent);
+  border-style: solid;
+  background: rgba(238, 242, 255, 0.85);
+  transform: scale(1.015);
+}
+/* soft moving glow inside the dropzone */
+.flow-drop-glow {
+  position: absolute;
+  inset: -40%;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(closest-side, rgba(99, 102, 241, 0.16), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.flow-drop:hover .flow-drop-glow,
+.flow-drop[data-active="true"] .flow-drop-glow {
+  opacity: 1;
+}
+.flow-drop > *:not(.flow-drop-glow) {
+  position: relative;
+  z-index: 1;
+}
+
+/* trust row under the dropzone */
+.flow-trust {
+  margin-top: 22px;
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.flow-trust-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+.flow-trust-item svg {
+  color: var(--good);
+}
+.flow-drop-icon {
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 16px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent) 0%, #7c83ff 60%, #38bdf8 130%);
+  box-shadow: 0 16px 30px -14px rgba(79, 70, 229, 0.7);
+  animation: flowFloat 4.5s ease-in-out infinite;
+}
+@keyframes flowFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+/* ---------- processing ---------- */
+.flow-center-col {
+  min-height: 78vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+}
+.flow-ring-num {
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- AI scanner (processing) ---------- */
+.flow-scan {
+  position: relative;
+  width: 234px;
+  height: 234px;
+  display: grid;
+  place-items: center;
+}
+.flow-scan-pulse {
+  position: absolute;
+  inset: 20px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(99, 102, 241, 0.35);
+  animation: scanPulse 3s ease-out infinite;
+}
+@keyframes scanPulse {
+  0% {
+    transform: scale(0.62);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.18);
+    opacity: 0;
+  }
+}
+.flow-scan-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.flow-scan-svg.is-spin {
+  animation: scanSpin 1.3s linear infinite;
+  transform-origin: 50% 50%;
+}
+@keyframes scanSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.flow-scan-track {
+  fill: none;
+  stroke: rgba(0, 0, 0, 0.06);
+  stroke-width: 9;
+}
+.flow-scan-prog {
+  fill: none;
+  stroke: url(#flowScanGrad);
+  stroke-width: 9;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  filter: drop-shadow(0 0 7px rgba(99, 102, 241, 0.5));
+}
+.flow-scan-center {
+  position: relative;
+  text-align: center;
+  z-index: 1;
+}
+.flow-scan-status {
+  margin-top: 14px;
+  min-height: 26px;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+.flow-scan-status > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+.flow-scan-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  animation: scanDot 1.6s ease-in-out infinite;
+}
+@keyframes scanDot {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.55);
+    opacity: 1;
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgba(99, 102, 241, 0);
+    opacity: 0.7;
+  }
+}
+.flow-ticker {
+  margin-top: 26px;
+  width: min(520px, 90vw);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.flow-ticker-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--line);
+  font-size: 14px;
+  animation: flowRise 0.45s ease both;
+}
+
+/* ---------- results ---------- */
+.flow-results-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 8px 0 26px;
+}
+.flow-h2 {
+  font-size: clamp(26px, 3.4vw, 38px);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+}
+.flow-kpis {
+  display: flex;
+  gap: 28px;
+}
+.flow-kpi-num {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  background: linear-gradient(135deg, #4f46e5 0%, #8b5cf6 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.flow-kpi-label {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-top: 4px;
+}
+
+.flow-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(248px, 1fr));
+  gap: 16px;
+}
+
+.flow-card {
+  position: relative;
+  text-align: left;
+  border-radius: 20px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  transition:
+    box-shadow 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease;
+  overflow: hidden;
+  box-shadow:
+    0 1px 2px rgba(16, 24, 40, 0.04),
+    0 10px 26px -22px rgba(16, 24, 40, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+.flow-card:hover {
+  border-color: rgba(79, 70, 229, 0.35);
+  box-shadow:
+    0 26px 60px -38px rgba(79, 70, 229, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+.flow-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.flow-card-store {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 650;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+  min-width: 0;
+  flex: 1;
+}
+.flow-tag {
+  flex: none;
+  margin-top: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.flow-tag-new {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.flow-tag-warn {
+  color: var(--warn);
+  background: rgba(180, 83, 9, 0.12);
+}
+.flow-card-store-ic {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: #fff;
+  color: #333;
+  display: grid;
+  place-items: center;
+  flex: none;
+  box-shadow: 0 6px 14px -8px rgba(79, 70, 229, 0.7);
+}
+.flow-card-count {
+  margin-top: 18px;
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+.flow-card-count b {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.flow-card-foot {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+/* ---------- attention: "stores not in the system" ---------- */
+.flow-attn {
+  position: relative;
+  margin-top: 40px;
+  border-radius: 22px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(12px);
+  padding: 22px 24px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+.flow-attn-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.flow-attn-ic {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  box-shadow: 0 6px 14px -8px rgba(217, 119, 6, 0.7);
+}
+.flow-attn-title {
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+}
+.flow-attn-sub {
+  color: var(--ink-soft);
+  font-size: 13.5px;
+  margin-top: 2px;
+  line-height: 1.5;
+}
+.flow-attn-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+/* resolve cards (unknown store / orphan) */
+.flow-resolve-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 14px;
+}
+.flow-resolve-card {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.85);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow:
+    0 1px 2px rgba(16, 24, 40, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+.flow-resolve-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.flow-resolve-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex: none;
+  cursor: zoom-in;
+  background: #eee;
+  border: 1px solid var(--line);
+  transition: transform 0.15s ease;
+}
+.flow-resolve-thumb:hover {
+  transform: scale(1.06);
+}
+.flow-resolve-info {
+  flex: 1;
+  min-width: 0;
+}
+.flow-resolve-name {
+  font-weight: 650;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.flow-resolve-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  margin-top: 2px;
+}
+.flow-resolve-x {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--ink-faint);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+.flow-resolve-x:hover:not(:disabled) {
+  background: rgba(185, 28, 28, 0.08);
+  color: var(--bad);
+}
+.flow-resolve-btns {
+  display: flex;
+  gap: 8px;
+}
+.flow-resolve-go {
+  flex: 1;
+  justify-content: center;
+  padding: 10px 16px;
+  font-size: 14px;
+  border-radius: 11px;
+  box-shadow: none;
+}
+.flow-resolve-go:disabled {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--ink-faint);
+  opacity: 1;
+  box-shadow: none;
+}
+
+/* non-receipt strip */
+.flow-nonreceipt {
+  margin-top: 14px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.flow-nonreceipt-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--ink-soft);
+  margin-bottom: 10px;
+}
+
+/* ---------- detail overlay ---------- */
+.flow-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(20, 20, 22, 0.32);
+  backdrop-filter: blur(6px);
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+}
+.flow-sheet {
+  width: min(880px, 100%);
+  max-height: 92vh;
+  background: var(--bg);
+  border-radius: 26px 26px 0 0;
+  box-shadow: 0 -30px 90px -40px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+@media (min-width: 720px) {
+  .flow-overlay {
+    align-items: center;
+  }
+  .flow-sheet {
+    border-radius: 24px;
+  }
+}
+.flow-sheet-head {
+  padding: 22px 26px 16px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+.flow-sheet-body {
+  overflow-y: auto;
+  padding: 20px 26px;
+}
+.flow-sheet-foot {
+  padding: 16px 26px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.flow-thumbs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+}
+.flow-thumb {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  object-fit: cover;
+  cursor: pointer;
+  border: 2px solid transparent;
+  box-shadow: 0 2px 8px -3px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s ease;
+  background: #eee;
+}
+.flow-thumb:hover {
+  transform: scale(1.08);
+}
+.flow-thumb[data-flag="true"] {
+  border-color: var(--warn);
+}
+
+.flow-tbl {
+  width: 100%;
+  border-collapse: collapse;
+}
+.flow-tbl th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0 10px 10px;
+}
+.flow-tbl td {
+  padding: 13px 10px;
+  border-top: 1px solid var(--line);
+  vertical-align: middle;
+}
+.flow-tbl tr:hover td {
+  background: rgba(79, 70, 229, 0.03);
+}
+.flow-qty {
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+/* number right-aligns in its column, unit gets a fixed left-aligned column so
+   units line up vertically no matter how wide the number is */
+.flow-qty-cell {
+  display: grid;
+  grid-template-columns: 1fr 44px;
+  align-items: baseline;
+  gap: 8px;
+  justify-content: end;
+  margin-left: auto;
+  width: max-content;
+  min-width: 96px;
+}
+.flow-qty-cell .flow-qty,
+.flow-qty-cell .flow-rcpt-qty {
+  text-align: right;
+}
+.flow-qty-unit {
+  text-align: left;
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+.flow-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.flow-chip-ok {
+  color: var(--good);
+  background: rgba(21, 128, 61, 0.1);
+}
+.flow-chip-q {
+  color: var(--warn);
+  background: rgba(180, 83, 9, 0.1);
+}
+.flow-chip-mute {
+  color: var(--ink-soft);
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.flow-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  background: rgba(0, 0, 0, 0.86);
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  cursor: zoom-out;
+}
+.flow-lightbox img {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 12px;
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.8);
+}
+
+/* ---------- stage transition (motion handles enter/exit) ---------- */
+
+/* ---------- results action bar ---------- */
+.flow-actionbar {
+  position: sticky;
+  bottom: 18px;
+  margin-top: 40px;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--line);
+  box-shadow: 0 18px 50px -30px rgba(28, 28, 30, 0.6);
+}
+.flow-primary-lg {
+  padding: 13px 26px;
+  font-size: 16px;
+}
+.flow-ghost-lg {
+  padding: 12px 20px;
+  font-size: 14px;
+}
+
+/* saved store card */
+.flow-card[data-saved="true"] {
+  background: rgba(240, 253, 244, 0.7);
+  border-color: rgba(21, 128, 61, 0.28);
+}
+/* store still holding receipts the AI is unsure about */
+.flow-card[data-attention="true"] {
+  border-color: rgba(180, 83, 9, 0.35);
+  box-shadow: inset 3px 0 0 0 var(--warn);
+}
+
+/* ---------- sheet extras ---------- */
+.flow-thumb-hint {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12.5px;
+  color: var(--accent);
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+.flow-section-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 22px 0 8px;
+}
+.flow-primary-btn[data-ok="true"] {
+  background: var(--good) !important;
+  box-shadow: 0 14px 30px -14px rgba(21, 128, 61, 0.7);
+  opacity: 1 !important;
+}
+
+/* ---------- per-receipt editable blocks (inside the sheet) ---------- */
+.flow-rblock {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 6px 14px 8px;
+  margin-bottom: 12px;
+  background: rgba(255, 255, 255, 0.6);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+.flow-rblock[data-flag="true"] {
+  border-color: rgba(180, 83, 9, 0.4);
+  box-shadow: inset 3px 0 0 0 var(--warn);
+}
+.flow-rblock-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+}
+.flow-rblock-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 9px;
+  object-fit: cover;
+  cursor: pointer;
+  background: #eee;
+  border: 1px solid var(--line);
+  transition: transform 0.15s ease;
+  flex: none;
+}
+.flow-rblock-thumb:hover {
+  transform: scale(1.06);
+}
+.flow-rblock-items {
+  padding-bottom: 4px;
+}
+
+.flow-eitem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  margin: 0 -10px;
+  border-radius: 10px;
+  border-top: 1px solid var(--line);
+}
+.flow-eitem[data-unknown="true"] {
+  background: rgba(180, 83, 9, 0.06);
+  border-top-color: transparent;
+}
+.flow-eitem-name {
+  flex: 1;
+  min-width: 0;
+}
+.flow-eitem-unknown {
+  color: var(--warn) !important;
+  font-weight: 600;
+}
+.flow-eitem-name .mantine-Autocomplete-input {
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--ink);
+  padding: 2px 0;
+  min-height: unset;
+  height: auto;
+  line-height: 1.3;
+}
+.flow-eitem-name .mantine-Autocomplete-input:focus {
+  border-bottom: 1.5px solid var(--accent);
+}
+.flow-eitem-code {
+  display: inline-block;
+  font-size: 11px;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+  margin-top: 1px;
+}
+
+/* ---------- off-catalog pile (warned, not counted) ---------- */
+.flow-unknown {
+  margin-top: 20px;
+  border-radius: 14px;
+  border: 1px solid rgba(180, 83, 9, 0.2);
+  background: rgba(255, 251, 245, 0.7);
+  padding: 14px 16px;
+}
+.flow-unknown-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-weight: 650;
+  font-size: 14px;
+  color: var(--warn);
+  margin-bottom: 2px;
+}
+.flow-unknown-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+/* ---------- per-receipt detail (legacy split overlay) ---------- */
+.flow-rcpt {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  background: rgba(15, 15, 18, 0.55);
+  backdrop-filter: blur(8px);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+.flow-rcpt-card {
+  width: min(940px, 100%);
+  height: 88vh;
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  grid-template-rows: minmax(0, 1fr);
+  background: var(--bg);
+  border-radius: 22px;
+  overflow: hidden;
+  box-shadow: 0 40px 100px -30px rgba(0, 0, 0, 0.7);
+}
+@media (max-width: 720px) {
+  .flow-rcpt-card {
+    grid-template-columns: 1fr;
+    grid-template-rows: 38vh minmax(0, 1fr);
+    height: 92vh;
+  }
+}
+.flow-rcpt-img {
+  background: #0f0f12;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  cursor: zoom-in;
+}
+.flow-rcpt-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.flow-rcpt-nav button {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.flow-rcpt-nav button:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.04);
+}
+.flow-rcpt-nav button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.flow-rcpt-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  max-height: 88vh;
+}
+.flow-rcpt-side {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.flow-rcpt-side-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 22px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.flow-rcpt-items {
+  overflow-y: auto;
+  padding: 8px 22px 16px;
+  flex: 1;
+}
+.flow-rcpt-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+}
+.flow-rcpt-foot {
+  padding: 14px 22px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.7);
+}
+.flow-qty-input {
+  width: 60px;
+  text-align: right;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  background: #fff;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.flow-qty-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+.flow-rcpt-qty {
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+.flow-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex: none;
+}
+.flow-dot-ok {
+  background: var(--good);
+}
+.flow-dot-warn {
+  background: var(--warn);
+}
+
+/* ---------- success overlay ---------- */
+.flow-success {
+  position: fixed;
+  inset: 0;
+  z-index: 130;
+  display: grid;
+  place-items: center;
+  background: rgba(251, 251, 253, 0.72);
+  backdrop-filter: blur(16px);
+}
+.flow-success-inner {
+  text-align: center;
+}
+.flow-check {
+  width: 96px;
+  height: 96px;
+  display: inline-block;
+}
+.flow-check-ring {
+  fill: none;
+  stroke: var(--good);
+  stroke-width: 3;
+  opacity: 0.25;
+  stroke-dasharray: 151;
+  stroke-dashoffset: 151;
+  animation: flowDraw 0.5s ease forwards;
+}
+.flow-check-mark {
+  fill: none;
+  stroke: var(--good);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 40;
+  stroke-dashoffset: 40;
+  animation: flowDraw 0.4s 0.35s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+}
+@keyframes flowDraw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.flow-success-title {
+  margin-top: 14px;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.flow-success-sub {
+  color: var(--ink-soft);
+  font-size: 15px;
+  margin-top: 4px;
+}
+
+/* ---------- buttons ---------- */
+.flow-primary-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 22px;
+  border-radius: 14px;
+  border: none;
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  color: #fff;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    filter 0.15s ease;
+  box-shadow: 0 14px 30px -14px rgba(79, 70, 229, 0.8);
+}
+.flow-primary-btn:hover:not(:disabled) {
+  filter: brightness(1.07);
+  transform: translateY(-1px);
+  box-shadow: 0 18px 38px -14px rgba(79, 70, 229, 0.9);
+}
+.flow-primary-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.flow-ghost-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--ink-soft);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.flow-ghost-btn:hover {
+  color: var(--ink);
+  border-color: rgba(0, 0, 0, 0.18);
+}
+
+.flow-mini-btn {
+  padding: 6px 13px;
+  border-radius: 9px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    opacity 0.15s ease;
+}
+.flow-mini-btn:hover:not(:disabled) {
+  background: var(--accent-600);
+}
+.flow-mini-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.flow-mini-ghost {
+  background: transparent;
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+}
+.flow-mini-ghost:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--ink);
+}
+
+/* ---------- motion ---------- */
+@keyframes flowRise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes flowFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes flowSheet {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .flow-root * {
+    animation: none !important;
+  }
+}

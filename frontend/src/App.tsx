@@ -1,6 +1,8 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
 import DocumentsPage from "./pages/DocumentsPage";
+import FlowPage from "./pages/FlowPage";
+import "./pages/flow.css";
 import InboxPage from "./pages/InboxPage";
 import StoreDetailPage from "./pages/StoreDetailPage";
 import StoresPage from "./pages/StoresPage";
@@ -13,6 +15,8 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Standalone full-screen demo flow — no sidebar, no chrome. */}
+        <Route path="/flow" element={<FlowPage />} />
         <Route element={<Layout />}>
           <Route path="/" element={<InboxPage />} />
           <Route path="/inbox" element={<InboxPage />} />
