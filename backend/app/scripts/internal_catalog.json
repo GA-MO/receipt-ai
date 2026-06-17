@@ -550,10 +550,19 @@
         "nameEN": "Silver Wolf Whisky Round",
         "brandNameTH": "ซิลเวอร์วูล์ฟ",
         "brandNameEN": "Silver Wolf",
-        "pathCategoryNameTH": ["สินค้า/เครื่องดื่ม/วิสกี้"],
+        "pathCategoryNameTH": [
+          "สินค้า/เครื่องดื่ม/วิสกี้"
+        ],
         "sizeTH": "700ml",
         "unitNameTH": "ขวด",
-        "tags": ["วิสกี้", "ซิลเวอร์วูล์ฟ", "ซิลเวอร์วูลฟ์", "Silver Wolf", "SILVERWOLF", "SW"],
+        "tags": [
+          "วิสกี้",
+          "ซิลเวอร์วูล์ฟ",
+          "ซิลเวอร์วูลฟ์",
+          "Silver Wolf",
+          "SILVERWOLF",
+          "SW"
+        ],
         "price": null,
         "productType": "AL",
         "activate": "Y",
@@ -565,10 +574,18 @@
         "nameEN": "Silver Wolf Whisky Flask",
         "brandNameTH": "ซิลเวอร์วูล์ฟ",
         "brandNameEN": "Silver Wolf",
-        "pathCategoryNameTH": ["สินค้า/เครื่องดื่ม/วิสกี้"],
+        "pathCategoryNameTH": [
+          "สินค้า/เครื่องดื่ม/วิสกี้"
+        ],
         "sizeTH": "350ml",
         "unitNameTH": "ขวด",
-        "tags": ["วิสกี้", "ซิลเวอร์วูล์ฟ", "ซิลเวอร์วูลฟ์", "Silver Wolf 350", "SW 350"],
+        "tags": [
+          "วิสกี้",
+          "ซิลเวอร์วูล์ฟ",
+          "ซิลเวอร์วูลฟ์",
+          "Silver Wolf 350",
+          "SW 350"
+        ],
         "price": null,
         "productType": "AL",
         "activate": "Y",
@@ -580,10 +597,19 @@
         "nameEN": "Silver Knight Whisky Round",
         "brandNameTH": "ซิลเวอร์ไนท์",
         "brandNameEN": "Silver Knight",
-        "pathCategoryNameTH": ["สินค้า/เครื่องดื่ม/วิสกี้"],
+        "pathCategoryNameTH": [
+          "สินค้า/เครื่องดื่ม/วิสกี้"
+        ],
         "sizeTH": "700ml",
         "unitNameTH": "ขวด",
-        "tags": ["วิสกี้", "ซิลเวอร์ไนท์", "ซิลเวอร์ไนต์", "Silver Knight", "SILVERKNIGHT", "SK"],
+        "tags": [
+          "วิสกี้",
+          "ซิลเวอร์ไนท์",
+          "ซิลเวอร์ไนต์",
+          "Silver Knight",
+          "SILVERKNIGHT",
+          "SK"
+        ],
         "price": null,
         "productType": "AL",
         "activate": "Y",
@@ -595,10 +621,18 @@
         "nameEN": "Silver Knight Whisky Flask",
         "brandNameTH": "ซิลเวอร์ไนท์",
         "brandNameEN": "Silver Knight",
-        "pathCategoryNameTH": ["สินค้า/เครื่องดื่ม/วิสกี้"],
+        "pathCategoryNameTH": [
+          "สินค้า/เครื่องดื่ม/วิสกี้"
+        ],
         "sizeTH": "350ml",
         "unitNameTH": "ขวด",
-        "tags": ["วิสกี้", "ซิลเวอร์ไนท์", "ซิลเวอร์ไนต์", "Silver Knight 350", "SK 350"],
+        "tags": [
+          "วิสกี้",
+          "ซิลเวอร์ไนท์",
+          "ซิลเวอร์ไนต์",
+          "Silver Knight 350",
+          "SK 350"
+        ],
         "price": null,
         "productType": "AL",
         "activate": "Y",
@@ -650,6 +684,32 @@
         "productType": "AL",
         "activate": "Y",
         "manufacturer": "Siam Winery"
+      },
+      {
+        "productCode": "INT-WATER-SINGHA-GLASS",
+        "nameTH": "น้ำดื่มสิงห์ขวดแก้ว (เปลี่ยนขวด)",
+        "nameEN": "Singha Drinking Water Returnable Glass Bottle",
+        "brandNameTH": "น้ำดื่มสิงห์",
+        "brandNameEN": "Singha",
+        "pathCategoryNameTH": [
+          "สินค้า/เครื่องดื่ม/น้ำดื่มสิงห์"
+        ],
+        "sizeTH": "615 มล. x 24 ขวด จำนวน 1 ลัง",
+        "unitNameTH": "ขวด",
+        "tags": [
+          "น้ำสิงห์",
+          "น้ำดื่มสิงห์",
+          "น้ำสิงห์ขวดแก้ว",
+          "น้ำสิงห์เปลี่ยนขวด",
+          "น้ำสิงห์คืนขวด",
+          "น้ำดื่มสิงห์ขวดแก้ว",
+          "น้ำสิงห์แก้ว",
+          "SINGHA WATER GLASS"
+        ],
+        "price": null,
+        "productType": "NA",
+        "activate": "Y",
+        "manufacturer": "Boonrawd"
       }
     ]
   }

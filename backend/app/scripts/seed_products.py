@@ -159,8 +159,11 @@ def seed_if_empty(db: Session) -> int:
     """Auto-seed on startup if the table is empty. Returns rows added.
 
     The bundled ``singha_catalog.json`` has already been pruned of pack
-    variants (see ``clean_catalog_json.py``), so a fresh seed gives us the
-    final 207-SKU base set without post-processing.
+    variants, curated to beverages only (หมวดเครื่องดื่ม), and further trimmed
+    to SKUs a โชห่วย actually stocks (merch and premium imports like FIJI water
+    removed, RTD tea/coffee dropped), so a fresh seed merged with
+    ``internal_catalog.json`` yields the ~47-SKU shop-realistic catalog
+    (beer, water, soda, spirits) without post-processing.
     """
     count = db.query(Product).count()
     if count > 0:

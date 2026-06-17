@@ -250,6 +250,10 @@ def _run_processing(doc_id: str, file_path: str) -> None:
         doc.needs_review = (
             result.confidence < settings.review_confidence_threshold
             or len(result.needs_review_fields) > 0
+            # A duplicate-SKU warning signals a likely misread (Gemini reports
+            # high confidence even when it maps a line to the wrong code), so
+            # force review regardless of the confidence score.
+            or any(w.startswith("พบ SKU ซ้ำ") for w in warnings)
         )
         # Gemini sometimes accepts a non-receipt (screenshot, document photo)
         # — those return very low confidence with no items. Mark them so the
