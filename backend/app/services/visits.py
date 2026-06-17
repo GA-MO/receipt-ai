@@ -251,14 +251,32 @@ def check_period_mismatch(doc: Document) -> str | None:
 
 
 def is_store_mismatch(doc: Document) -> bool:
-    """True when the doc's normalized merchant differs from its visit's
-    ``store_key`` — i.e. the receipt is from a different store than the
-    visit was created for. No-op when either side is unset.
+    """True when the doc's merchant is a *genuinely different* store than its
+    visit's ``store_key``. No-op when either side is unset.
+
+    A name variant of the same store (e.g. "ร้านรวยสุรา" vs
+    "รวยสุรา (หจก. รวยสุรา กรุ๊ป)") must NOT count as a mismatch: the system
+    already decided they belong together when it attached the doc to this
+    visit, so warning now just reads as the AI being unsure when it was right.
+    We reuse the same rule-clean + RapidFuzz ``token_set_ratio`` used for
+    merchant clustering and only flag when the names are dissimilar enough to
+    likely be two different stores.
     """
     visit = doc.visit
     if visit is None or not visit.store_key or not doc.merchant_normalized:
         return False
-    return doc.merchant_normalized != visit.store_key
+    a, b = doc.merchant_normalized, visit.store_key
+    if a == b:
+        return False
+    ca = _rule_based_clean(a) or a
+    cb = _rule_based_clean(b) or b
+    if ca == cb:
+        return False
+    try:
+        from rapidfuzz import fuzz
+    except ImportError:  # pragma: no cover - rapidfuzz is a hard dep in prod
+        return True
+    return fuzz.token_set_ratio(ca, cb) < settings.merchant_fuzzy_threshold
 
 
 def check_store_mismatch(doc: Document) -> str | None:

@@ -411,15 +411,12 @@
   gap: 28px;
 }
 .flow-kpi-num {
-  font-size: 32px;
+  font-size: 34px;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
   line-height: 1;
-  background: linear-gradient(135deg, #4f46e5 0%, #8b5cf6 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--ink);
 }
 .flow-kpi-label {
   font-size: 13px;
@@ -436,27 +433,30 @@
 .flow-card {
   position: relative;
   text-align: left;
-  border-radius: 20px;
+  border-radius: 18px;
   padding: 20px;
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(10px);
+  background: #fff;
   border: 1px solid var(--line);
   cursor: pointer;
   transition:
     box-shadow 0.2s ease,
-    border-color 0.2s ease,
-    background 0.2s ease;
+    border-color 0.2s ease;
   overflow: hidden;
   box-shadow:
-    0 1px 2px rgba(16, 24, 40, 0.04),
-    0 10px 26px -22px rgba(16, 24, 40, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    0 1px 2px rgba(16, 24, 40, 0.03),
+    0 6px 20px -16px rgba(16, 24, 40, 0.22);
 }
 .flow-card:hover {
-  border-color: rgba(79, 70, 229, 0.35);
+  border-color: rgba(16, 24, 40, 0.16);
   box-shadow:
-    0 26px 60px -38px rgba(79, 70, 229, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    0 1px 2px rgba(16, 24, 40, 0.04),
+    0 16px 36px -22px rgba(16, 24, 40, 0.28);
+}
+/* refined store tile: a single quiet indigo accent, no coloured glow */
+.flow-card .flow-card-store-ic {
+  background: var(--accent-soft);
+  color: var(--accent);
+  box-shadow: none;
 }
 .flow-card-top {
   display: flex;
@@ -820,6 +820,13 @@
   color: var(--good);
   background: rgba(21, 128, 61, 0.1);
 }
+/* quiet "matches catalog" mark — the summary table is all-catalog, so a small
+   green check per row reads cleaner than repeating a full labelled pill */
+.flow-check-mini {
+  color: var(--good);
+  flex: none;
+  opacity: 0.85;
+}
 .flow-chip-q {
   color: var(--warn);
   background: rgba(180, 83, 9, 0.1);
@@ -859,30 +866,81 @@
   align-items: center;
   padding: 14px;
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(14px);
   border: 1px solid var(--line);
-  box-shadow: 0 18px 50px -30px rgba(28, 28, 30, 0.6);
+  box-shadow:
+    0 1px 2px rgba(16, 24, 40, 0.04),
+    0 12px 32px -22px rgba(16, 24, 40, 0.4);
 }
+/* refined CTA: solid indigo, soft single shadow — no violet, no glow */
+.flow-actionbar .flow-primary-btn {
+  background: var(--accent);
+  box-shadow:
+    0 1px 2px rgba(16, 24, 40, 0.08),
+    0 10px 22px -14px rgba(79, 70, 229, 0.5);
+}
+.flow-actionbar .flow-primary-btn:hover:not(:disabled) {
+  filter: none;
+  background: var(--accent-600);
+  box-shadow:
+    0 1px 2px rgba(16, 24, 40, 0.08),
+    0 14px 28px -14px rgba(79, 70, 229, 0.55);
+}
+/* "AI read N receipts in X.Xs" — a refined metric readout, not a sentence:
+   quiet indigo AI badge + tabular figures + hairline dot separators */
 .flow-actionbar-stat {
   margin-right: auto;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding-left: 6px;
-  font-size: 13.5px;
+  gap: 12px;
+  padding-left: 2px;
+}
+.flow-stat-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+}
+.flow-stat-badge svg {
+  flex: none;
+}
+.flow-stat-metrics {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 13px;
   color: var(--ink-soft);
   font-variant-numeric: tabular-nums;
 }
-.flow-actionbar-stat svg {
-  color: var(--accent);
-  flex: none;
-}
-.flow-actionbar-stat b {
+.flow-stat-metric b {
   color: var(--ink);
   font-weight: 700;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+  margin-right: 1px;
 }
-@media (max-width: 560px) {
+.flow-stat-muted,
+.flow-stat-muted b {
+  color: var(--ink-soft);
+  font-weight: 600;
+  font-size: 13px;
+}
+.flow-stat-dot {
+  align-self: center;
+  width: 3px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--ink-faint);
+  flex: none;
+}
+@media (max-width: 620px) {
   .flow-actionbar-stat {
     display: none;
   }
@@ -898,8 +956,12 @@
 
 /* saved store card */
 .flow-card[data-saved="true"] {
-  background: rgba(240, 253, 244, 0.7);
-  border-color: rgba(21, 128, 61, 0.28);
+  background: #f5faf6;
+  border-color: rgba(21, 128, 61, 0.22);
+}
+.flow-card[data-saved="true"] .flow-card-store-ic {
+  background: rgba(21, 128, 61, 0.1);
+  color: var(--good);
 }
 /* store still holding receipts the AI is unsure about — make it impossible to
    miss: warm fill, solid amber border, a thick left accent bar, soft glow */
@@ -1050,6 +1112,36 @@
   color: var(--ink-soft);
 }
 
+/* "why this needs review" callout at the top of the receipt items panel */
+.flow-review-why {
+  margin-bottom: 14px;
+  border: 1px solid rgba(180, 83, 9, 0.22);
+  background: #fffaf3;
+  border-radius: 12px;
+  padding: 11px 14px;
+}
+.flow-review-why-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--warn);
+  margin-bottom: 6px;
+}
+.flow-review-why ul {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.flow-review-why li {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
 /* ---------- per-receipt detail (legacy split overlay) ---------- */
 .flow-rcpt {
   position: fixed;
@@ -1080,11 +1172,34 @@
   }
 }
 .flow-rcpt-img {
-  background: #0f0f12;
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+}
+/* delete-whole-receipt button — quiet until hovered, then danger */
+.flow-rcpt-del {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--ink-faint);
   display: grid;
   place-items: center;
-  overflow: hidden;
-  cursor: zoom-in;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+.flow-rcpt-del:hover:not(:disabled) {
+  background: rgba(185, 28, 28, 0.08);
+  border-color: rgba(185, 28, 28, 0.3);
+  color: var(--bad);
+}
+.flow-rcpt-del:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 .flow-rcpt-nav {
   display: inline-flex;
@@ -1112,12 +1227,6 @@
 .flow-rcpt-nav button:disabled {
   opacity: 0.4;
   cursor: default;
-}
-.flow-rcpt-img img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  max-height: 88vh;
 }
 .flow-rcpt-side {
   display: flex;

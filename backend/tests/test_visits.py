@@ -631,6 +631,19 @@ class TestReportPeriod:
         assert is_store_mismatch(doc) is False
         assert check_store_mismatch(doc) is None
 
+    def test_is_store_mismatch_name_variant_same_store(self, db_session):
+        # Same store, different surface form — must NOT be flagged.
+        v = Visit(
+            id="v1",
+            store_label="รวยสุรา (หจก. รวยสุรา กรุ๊ป)",
+            store_key="รวยสุรา (หจก. รวยสุรา กรุ๊ป)",
+        )
+        db_session.add(v)
+        db_session.flush()
+        doc = _seed_doc(db_session, merchant_normalized="ร้านรวยสุรา", visit_id=v.id)
+        assert is_store_mismatch(doc) is False
+        assert check_store_mismatch(doc) is None
+
     def test_is_store_mismatch_different_store(self, db_session):
         v = Visit(id="v1", store_label="ร้านA", store_key="ร้านA")
         db_session.add(v)

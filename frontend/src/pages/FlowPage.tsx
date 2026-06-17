@@ -28,6 +28,7 @@ import {
   useMarkVisitReviewed,
   useUpdateItem,
   useDeleteItem,
+  useDeleteDocument,
   useApproveDocument,
   useAutocomplete,
   useStores,
@@ -39,6 +40,7 @@ import {
   qk,
 } from "../api/queries";
 import { getDocumentImageUrl, getVisit, getDocument, deleteItem } from "../api/client";
+import { ImageCanvas } from "@/components/ImageCanvas";
 import type {
   DashboardVisit,
   DocumentListItem,
@@ -86,6 +88,36 @@ function isFlagged(d: {
   status?: string;
 }): boolean {
   return d.needs_review || (d.confidence != null && d.confidence < 0.7) || d.status === "error";
+}
+
+/** Why the AI flagged this receipt — turns the accumulated `notes` (validation
+ *  warnings, period/store mismatch) + off-catalog items + low confidence into
+ *  short, human reasons so "ต้องตรวจ" actually says what to check. */
+function reviewReasons(d: {
+  notes: string | null;
+  confidence: number | null;
+  items: { product_code: string | null }[];
+}): string[] {
+  const reasons: string[] = [];
+  if (d.notes) {
+    // Only ⚠️-prefixed lines are real warnings; the model's free-text note
+    // (e.g. "เอกสารชัดเจน อ่านง่าย") is left out so it can't contradict the box.
+    for (const line of d.notes.split("\n")) {
+      if (!line.includes("⚠️")) continue;
+      const t = line.replace(/^⚠️\s*/, "").trim();
+      if (t) reasons.push(t);
+    }
+  }
+  const offCatalog = d.items.filter((it) => !it.product_code).length;
+  if (offCatalog > 0) {
+    reasons.push(`มีสินค้านอกแคตตาล็อก ${offCatalog} รายการ (จุดส้มด้านล่าง) — ตรวจชื่อ/แก้ให้ตรง`);
+  }
+  if (reasons.length === 0 && d.confidence != null && d.confidence < 0.7) {
+    reasons.push(
+      `ระบบไม่มั่นใจการอ่านใบนี้ (${Math.round(d.confidence * 100)}%) — ตรวจตัวเลขและชื่อสินค้า`,
+    );
+  }
+  return reasons;
 }
 
 function isSaved(v: DashboardVisit, optimistic: Set<string>): boolean {
@@ -520,11 +552,22 @@ function Results({
         <div className="flow-actionbar">
           {runMs != null && runCount > 0 && (
             <div className="flow-actionbar-stat">
-              <IconSparkles size={15} />
-              <span>
-                AI อ่าน <b>{runCount} ใบ</b> ใน <b>{(runMs / 1000).toFixed(1)} วิ</b> · เฉลี่ย{" "}
-                <b>{(runMs / runCount / 1000).toFixed(1)} วิ/ใบ</b>
+              <span className="flow-stat-badge">
+                <IconSparkles size={13} /> AI
               </span>
+              <div className="flow-stat-metrics">
+                <span className="flow-stat-metric">
+                  <b>{runCount}</b> ใบ
+                </span>
+                <span className="flow-stat-dot" />
+                <span className="flow-stat-metric">
+                  <b>{(runMs / 1000).toFixed(1)}</b> วิ
+                </span>
+                <span className="flow-stat-dot" />
+                <span className="flow-stat-metric flow-stat-muted">
+                  เฉลี่ย <b>{(runMs / runCount / 1000).toFixed(1)}</b> วิ/ใบ
+                </span>
+              </div>
             </div>
           )}
           <button className="flow-ghost-btn flow-ghost-lg" onClick={onAddMore}>
@@ -1209,10 +1252,11 @@ function ReceiptDetail({
   const meta = docs[index];
   const doc = useDocument(meta.id);
   const approve = useApproveDocument();
+  const del = useDeleteDocument();
   const qc = useQueryClient();
-  const [zoom, setZoom] = useState(false);
   const d = doc.data;
   const flagged = isFlagged(meta);
+  const reasons = d ? reviewReasons(d) : [];
   const multi = docs.length > 1;
 
   const onConfirm = async () => {
@@ -1225,6 +1269,14 @@ function ReceiptDetail({
     });
     if (index < docs.length - 1) onIndex(index + 1);
     else onClose();
+  };
+
+  const onDelete = async () => {
+    await del.mutateAsync(meta.id);
+    qc.invalidateQueries({ queryKey: ["dashboard"] });
+    notifications.show({ message: "ย้ายใบนี้ไปถังขยะแล้ว" });
+    // The docs prop is now stale; close back to the sheet, which refetches.
+    onClose();
   };
 
   return (
@@ -1244,8 +1296,12 @@ function ReceiptDetail({
         exit={{ opacity: 0, y: 24, scale: 0.98 }}
         transition={{ type: "spring", stiffness: 340, damping: 32 }}
       >
-        <div className="flow-rcpt-img" onClick={() => setZoom(true)} title="แตะเพื่อขยาย">
-          <img src={getDocumentImageUrl(meta.id)} alt={meta.filename} />
+        <div className="flow-rcpt-img">
+          <ImageCanvas
+            src={getDocumentImageUrl(meta.id)}
+            alt={meta.filename}
+            downloadFilename={meta.filename}
+          />
         </div>
         <div className="flow-rcpt-side">
           <div className="flow-rcpt-side-head">
@@ -1288,15 +1344,38 @@ function ReceiptDetail({
                 {meta.document_date ? ` · ${meta.document_date}` : ""}
               </div>
             </div>
-            <button className="flow-ghost-btn" onClick={onClose}>
-              <IconX size={18} />
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flex: "none" }}>
+              <button
+                className="flow-rcpt-del"
+                title="ลบใบนี้ (ย้ายไปถังขยะ)"
+                aria-label="ลบใบนี้"
+                disabled={del.isPending}
+                onClick={onDelete}
+              >
+                <IconTrash size={16} />
+              </button>
+              <button className="flow-ghost-btn" onClick={onClose}>
+                <IconX size={18} />
+              </button>
+            </div>
           </div>
 
           <div className="flow-rcpt-items">
             {doc.isPending && (
               <div style={{ display: "grid", placeItems: "center", padding: 40 }}>
                 <Loader size="sm" />
+              </div>
+            )}
+            {d && flagged && reasons.length > 0 && (
+              <div className="flow-review-why">
+                <div className="flow-review-why-head">
+                  <IconAlertTriangle size={14} /> ทำไมต้องตรวจ
+                </div>
+                <ul>
+                  {reasons.map((r, i) => (
+                    <li key={i}>{r}</li>
+                  ))}
+                </ul>
               </div>
             )}
             {d && d.items.length === 0 && (
@@ -1333,29 +1412,6 @@ function ReceiptDetail({
           </div>
         </div>
       </motion.div>
-
-      <AnimatePresence>
-        {zoom && (
-          <motion.div
-            className="flow-lightbox"
-            onClick={() => setZoom(false)}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <motion.img
-              src={getDocumentImageUrl(meta.id)}
-              alt="receipt"
-              onClick={(e) => e.stopPropagation()}
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ type: "spring", stiffness: 320, damping: 30 }}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
     </motion.div>
   );
 }
@@ -1365,11 +1421,9 @@ function AggregateRow({ row }: { row: VisitAggregateRow }) {
   return (
     <tr>
       <td>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
           {row.is_catalog_match ? (
-            <span className="flow-chip flow-chip-ok">
-              <IconCheck size={11} /> ตรงแคตตาล็อก
-            </span>
+            <IconCheck size={15} className="flow-check-mini" aria-label="ตรงแคตตาล็อก" />
           ) : (
             <span className="flow-chip flow-chip-q">?</span>
           )}
