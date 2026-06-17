@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Technical Flow — Thai Receipt Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#f3f2ef;
+    --text:#1d1d1f;
+    --dim:#6e6e73;
+    --dim2:#a6a6ad;
+    --hair:rgba(0,0,0,.09);
+    --hair-soft:rgba(0,0,0,.05);
+    --glass:rgba(255,255,255,.72);
+
+    --ai-a:#f97316; --ai-b:#ea580c; --ai-tint:rgba(249,115,22,.09); --ai-line:rgba(249,115,22,.32);
+    --gd-a:#0fa371; --gd-b:#059669; --gd-tint:rgba(16,185,129,.09); --gd-line:rgba(16,185,129,.32);
+    --danger:#dc2626;
+
+    --sans:'Inter','Anuphan',-apple-system,system-ui,sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,'SF Mono',monospace;
+  }
+  *{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    margin:0;font-family:var(--sans);color:var(--text);background:var(--bg);
+    line-height:1.55;letter-spacing:-.005em;padding:0 0 100px;
+    -webkit-font-smoothing:antialiased;
+    background-image:
+      radial-gradient(900px 600px at 12% -5%, rgba(249,115,22,.12), transparent 60%),
+      radial-gradient(900px 700px at 92% 8%, rgba(16,185,129,.10), transparent 60%),
+      radial-gradient(1000px 800px at 50% 122%, rgba(120,120,255,.07), transparent 60%);
+    background-attachment:fixed;
+  }
+  .wrap{max-width:1120px;margin:0 auto;padding:0 28px;}
+
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.34em;text-transform:uppercase;color:var(--dim);font-weight:500;}
+
+  .hero{text-align:center;padding:86px 0 26px;}
+  .hero h1{font-size:clamp(32px,5.2vw,56px);font-weight:800;line-height:1.06;letter-spacing:-.025em;margin:20px auto 18px;max-width:18ch;}
+  .hero h1 .grad{background:linear-gradient(110deg,var(--ai-b),var(--ai-a) 40%,var(--gd-a) 95%);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .lede{color:var(--dim);font-size:clamp(15px,1.5vw,18px);max-width:62ch;margin:0 auto;font-weight:400;}
+  .lede b{color:var(--text);font-weight:600;}
+
+  .section{padding:54px 0 0;}
+  .section > .eyebrow{text-align:center;}
+  .section h2{text-align:center;font-size:clamp(24px,3vw,34px);font-weight:700;letter-spacing:-.02em;margin:14px 0 8px;}
+  .section .sub{text-align:center;color:var(--dim);max-width:60ch;margin:0 auto;font-size:15px;}
+
+  .glass{
+    background:var(--glass);border:1px solid var(--hair);border-radius:26px;
+    backdrop-filter:blur(26px) saturate(140%);-webkit-backdrop-filter:blur(26px) saturate(140%);
+    box-shadow:0 22px 60px -28px rgba(40,30,15,.30), inset 0 1px 0 rgba(255,255,255,.9);
+  }
+
+  .controls{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:14px;margin:30px 0 8px;}
+  .btn{font-family:var(--sans);font-size:14px;font-weight:600;cursor:pointer;border-radius:980px;padding:11px 24px;transition:.18s;border:1px solid transparent;}
+  .btn.primary{background:var(--text);color:#fff;}
+  .btn.primary:hover{transform:translateY(-1px);box-shadow:0 12px 28px -12px rgba(0,0,0,.5);}
+  .btn.ghost{background:rgba(255,255,255,.7);color:var(--text);border-color:var(--hair);}
+  .btn.ghost:hover{background:#fff;}
+  .stepind{font-family:var(--mono);font-size:12px;color:var(--dim);}
+  .switch{display:inline-flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gd-b);cursor:pointer;user-select:none;font-weight:600;}
+  .switch .track{width:46px;height:26px;border-radius:13px;background:linear-gradient(180deg,var(--gd-a),var(--gd-b));position:relative;transition:.22s;box-shadow:inset 0 1px 3px rgba(0,0,0,.2);}
+  .switch .track::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.22s;box-shadow:0 1px 4px rgba(0,0,0,.35);}
+  .switch.off{color:var(--danger);}
+  .switch.off .track{background:linear-gradient(180deg,#f87171,var(--danger));}
+  .switch.off .track::after{left:23px;}
+  .switch .lbl-on{display:inline;} .switch .lbl-off{display:none;}
+  .switch.off .lbl-on{display:none;} .switch.off .lbl-off{display:inline;}
+
+  .stage{padding:34px;margin-top:8px;}
+  .master{font-family:var(--mono);font-size:11.5px;line-height:1.5;border-radius:14px;padding:12px 14px;display:flex;gap:10px;align-items:flex-start;transition:.22s;}
+  .master .ico{font-size:15px;} .master b{font-weight:600;}
+  .feed{text-align:center;font-family:var(--mono);font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--dim2);margin:9px 0 3px;}
+  .feed::after{content:"  ↓";}
+
+  .zones{display:grid;grid-template-columns:1fr 64px 1fr;align-items:stretch;gap:0;margin-top:14px;}
+  .zone{border-radius:22px;padding:20px;display:flex;flex-direction:column;position:relative;transition:.28s;border:1px solid;}
+  .zone.ai{background:linear-gradient(180deg,var(--ai-tint),rgba(249,115,22,.02));border-color:var(--ai-line);}
+  .zone.guard{background:linear-gradient(180deg,var(--gd-tint),rgba(16,185,129,.02));border-color:var(--gd-line);}
+
+  .zone-head{display:flex;align-items:center;gap:10px;margin-bottom:4px;}
+  .zone-head .dot{font-size:18px;}
+  .zone-tag{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;font-weight:600;}
+  .ai .zone-tag{color:var(--ai-b);} .guard .zone-tag{color:var(--gd-b);}
+  .zone-sub{font-size:12.5px;color:var(--dim);margin:0 0 14px;}
+  .master.cat{background:var(--ai-tint);border:1px dashed var(--ai-line);color:#9a4a12;} .master.cat b{color:var(--ai-b);}
+  .master.store{background:var(--gd-tint);border:1px dashed var(--gd-line);color:#0a6b4a;} .master.store b{color:var(--gd-b);}
+  .zone .master{margin-bottom:0;}
+
+  .step{background:rgba(255,255,255,.62);border:1px solid var(--hair);border-radius:14px;padding:11px 13px;font-size:13.5px;margin-bottom:9px;transition:.2s;box-shadow:0 1px 2px rgba(0,0,0,.03);}
+  .step:last-child{margin-bottom:0;}
+  .step .k{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim2);display:block;margin-bottom:3px;}
+  .step .note{font-size:12px;color:var(--dim);}
+  .step .mono{font-family:var(--mono);}
+
+  .handoff{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;}
+  .handoff .arrow{font-size:30px;line-height:1;transition:.2s;background:linear-gradient(180deg,var(--ai-a),var(--gd-a));-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .handoff .lbl{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim2);writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;}
+
+  .outbar{margin-top:18px;display:flex;align-items:center;justify-content:center;gap:14px;background:rgba(255,255,255,.7);border:1px solid var(--hair);border-radius:18px;padding:16px 22px;transition:.26s;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+  .outbar .chk{font-size:20px;} .outbar b{font-size:16px;} .outbar .mono{font-family:var(--mono);font-size:12.5px;color:var(--dim);}
+
+  .broken-note{display:none;margin-top:16px;border:1px dashed rgba(220,38,38,.45);border-radius:18px;background:rgba(220,38,38,.06);padding:14px 18px;}
+  .broken-note .bh{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--danger);font-weight:600;margin-bottom:9px;}
+  .broken-note ul{margin:0;padding-left:20px;} .broken-note li{font-size:13.5px;color:#a32320;margin-bottom:5px;}
+  .broken-note li:last-child{margin-bottom:0;} .broken-note li b{color:var(--danger);}
+
+  body.guards-off .zone.guard{filter:grayscale(.7) opacity(.4);}
+  body.guards-off .outbar{border-color:rgba(220,38,38,.45);border-style:dashed;opacity:.5;}
+  body.guards-off .broken-note{display:block;}
+  body.guards-off .handoff .arrow{background:none;color:var(--danger);-webkit-text-fill-color:var(--danger);}
+
+  body.playing [data-phase]{filter:grayscale(.45) opacity(.4);transition:.25s;}
+  body.playing [data-phase].lit{filter:none;opacity:1;box-shadow:0 0 0 1.5px var(--ai-a),0 8px 28px -6px rgba(249,115,22,.5);}
+  body.playing .zone.guard [data-phase].lit{box-shadow:0 0 0 1.5px var(--gd-a),0 8px 28px -6px rgba(16,185,129,.5);}
+
+  .pull{text-align:center;margin:34px auto 0;font-size:clamp(17px,2vw,22px);font-weight:600;letter-spacing:-.02em;max-width:30ch;line-height:1.4;}
+  .pull .grad{background:linear-gradient(110deg,var(--ai-b),var(--gd-a));-webkit-background-clip:text;background-clip:text;color:transparent;}
+
+  .zone.ai.hl{box-shadow:0 0 36px -10px var(--ai-a);}
+  .zone.guard.hl{box-shadow:0 0 36px -10px var(--gd-a);}
+
+  .tablecard{padding:8px 8px 4px;margin-top:24px;overflow:hidden;}
+  table{width:100%;border-collapse:collapse;font-size:14px;}
+  th,td{text-align:left;padding:15px 18px;border-bottom:1px solid var(--hair-soft);vertical-align:top;}
+  thead th{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);font-weight:500;}
+  tbody tr:last-child td{border-bottom:0;}
+  tbody td:first-child{font-weight:600;}
+  .mono{font-family:var(--mono);}
+  .tag-cat{color:var(--ai-b);} .tag-store{color:var(--gd-b);}
+
+  .pipe{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-top:24px;}
+  .pcard{padding:20px 16px;text-align:center;position:relative;}
+  .pcard:not(:last-child)::after{content:"→";position:absolute;right:-13px;top:50%;transform:translateY(-50%);color:var(--dim2);font-size:18px;z-index:2;}
+  .pcard .n{font-family:var(--mono);font-size:10px;color:var(--dim2);letter-spacing:.14em;}
+  .pcard .ico{font-size:26px;display:block;margin:8px 0 8px;}
+  .pcard h3{font-size:14px;margin:0 0 4px;font-weight:600;}
+  .pcard p{font-size:11.5px;color:var(--dim);margin:0;line-height:1.4;}
+
+  .qa{border-radius:18px;margin-bottom:14px;overflow:hidden;}
+  .qa .q{display:flex;gap:14px;align-items:center;padding:18px 22px;cursor:pointer;user-select:none;transition:.18s;}
+  .qa .q:hover{background:rgba(0,0,0,.02);}
+  .qa .q .badge{font-family:var(--mono);font-size:11px;font-weight:600;color:#fff;background:linear-gradient(180deg,var(--ai-a),var(--ai-b));border-radius:8px;padding:3px 9px;white-space:nowrap;}
+  .qa .q h3{font-size:16.5px;margin:0;font-weight:600;flex:1;letter-spacing:-.01em;}
+  .qa .q .chev{font-family:var(--mono);color:var(--dim);transition:.25s;}
+  .qa.open .q .chev{transform:rotate(90deg);}
+  .qa .a{max-height:0;overflow:hidden;transition:max-height .35s ease;}
+  .qa.open .a{max-height:620px;}
+  .qa .a-in{padding:4px 22px 22px;}
+  .qa .sound{color:var(--gd-b);font-size:14.5px;margin:0 0 12px;font-weight:600;}
+  .qa ul{margin:0;padding-left:20px;} .qa li{font-size:13.5px;margin-bottom:8px;color:#3a3a3f;} .qa li b{color:var(--text);font-weight:600;} .qa li:last-child{margin-bottom:0;}
+  .limit{margin-top:12px;font-size:12.5px;color:var(--dim);border-top:1px dashed var(--hair);padding-top:11px;} .limit b{color:var(--ai-b);}
+
+  .nums{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-top:24px;}
+  .num{text-align:center;padding:24px 10px;}
+  .num .v{font-family:var(--mono);font-size:34px;font-weight:600;line-height:1;background:linear-gradient(180deg,#1d1d1f,#86868b);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .num .l{font-size:11.5px;color:var(--dim);margin-top:10px;line-height:1.4;}
+  .footnote{font-family:var(--mono);font-size:11px;color:var(--dim2);text-align:center;margin-top:20px;letter-spacing:.04em;}
+
+  .hint{text-align:center;font-family:var(--mono);font-size:11px;color:var(--dim2);margin-top:14px;letter-spacing:.06em;}
+
+  /* ---- worked example + provenance ---- */
+  .inputstrip{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;justify-content:center;background:rgba(255,255,255,.62);border:1px solid var(--hair);border-radius:16px;padding:13px 18px;margin-bottom:14px;font-size:13.5px;box-shadow:0 1px 2px rgba(0,0,0,.03);}
+  .inputstrip .ico{font-size:20px;}
+  .inputstrip .lab{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim2);}
+  .scrawl{font-style:italic;font-weight:600;background:var(--ai-tint);border:1px dashed var(--ai-line);border-radius:8px;padding:3px 11px;color:#9a4a12;}
+  .payload{font-family:var(--mono);font-size:11.5px;background:var(--ai-tint);border:1px solid var(--ai-line);border-radius:9px;padding:8px 11px;margin-top:8px;color:#9a4a12;line-height:1.7;word-break:break-word;}
+  .payload .key{color:var(--ai-b);}
+  .res{display:inline-block;font-family:var(--mono);font-size:11.5px;background:var(--gd-tint);border:1px solid var(--gd-line);border-radius:7px;padding:1px 8px;color:#0a6b4a;margin-top:5px;font-weight:500;}
+
+  .prov{font-family:var(--mono);font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;padding:3px 8px;border-radius:6px;font-weight:600;white-space:nowrap;}
+  .prov.ai{background:var(--ai-tint);color:var(--ai-b);border:1px solid var(--ai-line);}
+  .prov.grd{background:var(--gd-tint);color:var(--gd-b);border:1px solid var(--gd-line);}
+
+  .record{margin-top:18px;border:1px solid var(--hair);border-radius:18px;overflow:hidden;background:rgba(255,255,255,.72);box-shadow:0 1px 3px rgba(0,0,0,.04);transition:.26s;}
+  .record .rhead{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 18px;border-bottom:1px solid var(--hair-soft);}
+  .record .ttl{font-weight:700;font-size:15px;display:flex;gap:9px;align-items:center;}
+  .record .legend{display:flex;gap:8px;align-items:center;}
+  .record .legend .ll{font-family:var(--mono);font-size:9.5px;color:var(--dim);letter-spacing:.06em;}
+  .row{display:grid;grid-template-columns:96px 1fr auto;gap:14px;align-items:center;padding:10px 18px;border-bottom:1px solid var(--hair-soft);font-size:14px;}
+  .row:last-of-type{border-bottom:0;}
+  .row .f{font-family:var(--mono);font-size:10.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;}
+  .row .v{font-weight:600;}
+  .row .v .sub{font-family:var(--mono);font-weight:400;color:var(--dim2);font-size:12px;}
+  .rfoot{padding:12px 18px;font-family:var(--mono);font-size:12px;color:var(--dim);border-top:1px solid var(--hair-soft);background:rgba(0,0,0,.015);text-align:center;}
+  body.guards-off .record{filter:grayscale(.6) opacity(.45);}
+
+  @media (max-width:780px){
+    .row{grid-template-columns:80px 1fr;}
+    .row .prov{grid-column:2;justify-self:start;}
+    .zones{grid-template-columns:1fr;gap:14px;}
+    .handoff{flex-direction:row;padding:4px 0;}
+    .handoff .arrow{transform:rotate(90deg);}
+    .handoff .lbl{writing-mode:horizontal-tb;transform:none;}
+    .pipe{grid-template-columns:1fr 1fr;}
+    .pcard:not(:last-child)::after{display:none;}
+    .nums{grid-template-columns:1fr 1fr;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <div class="eyebrow">Technical Architecture · Trust Zone</div>
+    <h1>AI เดาเก่ง — แต่เรา<span class="grad">ไม่ปล่อยให้เดาคนเดียว</span></h1>
+    <p class="lede">output ที่เป็น probabilistic ทุกตัวถูก <b>re-ground</b> ด้วย logic ฝั่ง server ที่ deterministic ก่อนเข้าสู่ aggregate — ทั้ง <b>สินค้า</b> และ <b>ร้าน</b> AI อ่าน raw, server ตัดสินจาก master list</p>
+
+    <div class="controls">
+      <button class="btn primary" id="play">▶ เล่นลำดับ</button>
+      <button class="btn ghost" id="reset">Reset</button>
+      <span class="stepind" id="stepind">— กดเล่นเพื่อไล่ทีละขั้น —</span>
+      <span class="switch" id="guardSwitch" title="ลองปิด guardrails ดูว่าระบบพังยังไง">
+        <span class="track"></span>
+        <span class="lbl-on">Guardrails · ON</span>
+        <span class="lbl-off">Guardrails · OFF</span>
+      </span>
+    </div>
+  </div>
+
+  <section class="glass stage" id="trust-zone">
+    <div class="inputstrip">
+      <span class="ico">📸</span><span class="lab">ใบเสร็จลายมือ</span>
+      <span class="scrawl">“สิงห์ x2”</span>
+      <span class="scrawl">ร้าน “ป้าแดง มินิมาร์ท”</span>
+      <span class="lab" style="margin-left:4px">— ตัวอย่างจริง 1 บรรทัด</span>
+    </div>
+    <div class="zones">
+      <div class="zone ai" id="zoneAI">
+        <div class="zone-head"><span class="dot">🤖</span><span class="zone-tag">Probabilistic — AI zone</span></div>
+        <p class="zone-sub">OpenRouter vision · Gemini 3 Flash · vision-only</p>
+        <div class="master cat" data-phase="1" data-link="ai"><span class="ico">🗄</span><span><b>PRODUCT_CATALOG</b> — live จาก <span class="mono">products</span> (DB) · code · ชื่อทางการ · คำย่อ/ลายมือ · ฉีดเข้า system prompt ทุก call (cached)</span></div>
+        <div class="feed">injected</div>
+        <div class="step" data-phase="1"><span class="k">read</span>อ่านรูป + จับคู่ลายมือ → <span class="mono">code</span> <span class="note">· เลือกจากชุดปิด ไม่แต่ง code เอง</span></div>
+        <div class="step" data-phase="2"><span class="k">return</span><span class="mono">product_code · raw · quantity</span> + <span class="mono">merchant_name</span> <span class="note">· นอก catalog → code = null</span>
+          <div class="payload"><span class="key">code</span>:"10089790100" · <span class="key">raw</span>:"สิงห์" · <span class="key">qty</span>:2 · <span class="key">merchant</span>:"ป้าแดง มินิมาร์ท"</div>
+        </div>
+      </div>
+
+      <div class="handoff" data-phase="2">
+        <span class="lbl">handoff</span>
+        <span class="arrow">→</span>
+        <span class="lbl">code · raw · qty · merchant</span>
+      </div>
+
+      <div class="zone guard" id="zoneGuard">
+        <div class="zone-head"><span class="dot">🛡</span><span class="zone-tag">Deterministic — Guardrails</span></div>
+        <p class="zone-sub">server logic · พิสูจน์ได้ · reproducible</p>
+        <div class="master store" data-phase="3" data-link="guard"><span class="ico">🏪</span><span><b>Store master</b> — live จาก <span class="mono">stores</span> (DB) · admin-curated · single source of truth ของร้าน</span></div>
+        <div class="feed">matched against</div>
+        <div class="step" data-phase="3"><span class="k">derive</span>code → name <span class="note">· ชื่อ-รหัส desync ไม่ได้</span><br/><span class="res">→ เบียร์สิงห์ ลาเกอร์ 620ml</span></div>
+        <div class="step" data-phase="3"><span class="k">override</span>catalog-driven unit <span class="note">· ลัง/ถาด ไม่ใช่ ขวด</span><br/><span class="res">→ ลัง</span></div>
+        <div class="step" data-phase="3"><span class="k">match</span>store: normalize + RapidFuzz → Visit / Unknown-store<br/><span class="res">"ป้าแดง มินิมาร์ท" → ร้านป้าแดง #42</span></div>
+        <div class="step" data-phase="3"><span class="k">guard</span>period / store mismatch<br/><span class="res">2026-06 ✓</span></div>
+      </div>
+    </div>
+
+    <div class="record" data-phase="4">
+      <div class="rhead">
+        <span class="ttl">✅ Trusted record</span>
+        <span class="legend"><span class="prov ai">AI</span><span class="ll">ตัดสิน</span><span class="prov grd">grounded</span><span class="ll">server</span></span>
+      </div>
+      <div class="row"><span class="f">ร้าน</span><span class="v">ร้านป้าแดง <span class="sub">· store #42</span></span><span class="prov grd">store master</span></div>
+      <div class="row"><span class="f">เดือน</span><span class="v">2026-06</span><span class="prov grd">server derived</span></div>
+      <div class="row"><span class="f">สินค้า</span><span class="v">เบียร์สิงห์ ลาเกอร์ 620ml</span><span class="prov grd">catalog ← code</span></div>
+      <div class="row"><span class="f">code</span><span class="v">10089790100</span><span class="prov ai">AI · เลือกจาก catalog</span></div>
+      <div class="row"><span class="f">จำนวน</span><span class="v">2</span><span class="prov ai">AI</span></div>
+      <div class="row"><span class="f">หน่วย</span><span class="v">ลัง</span><span class="prov grd">catalog override</span></div>
+      <div class="rfoot">→ aggregate · (store, month) → [(product, qty)] &nbsp;·&nbsp; AI แตะ 3 จาก 6 field — ที่เหลือ server ground</div>
+    </div>
+
+    <div class="broken-note">
+      <div class="bh">⚠ ถ้าไม่มี guardrails — ปล่อยให้ AI ตัดสินเองทั้งหมด</div>
+      <ul>
+        <li><b>ชื่อ ≠ code</b> — model อาจคืน “เบียร์สิงห์ใหญ่” ≠ ชื่อทางการ → (code, name) desync</li>
+        <li><b>หน่วยมั่ว</b> — model เดา <b>ขวด ×2</b> แทน <b>ลัง ×2</b> → aggregate รวมหน่วยผิด</li>
+        <li><b>ร้านแตก</b> — “ป้าแดง มินิมาร์ท” / “ร้านป้าแดง” กลายเป็น 2 บัคเก็ต → ยอดรายเดือนผิด</li>
+      </ul>
+    </div>
+  </section>
+
+  <p class="pull">“เราใช้ AI ทำสิ่งที่มีแต่ AI ทำได้ — อ่านลายมือบนรูป — แต่ <span class="grad">identity และ business rule อยู่ในโค้ดที่พิสูจน์ได้</span>”</p>
+
+  <section class="section" id="symmetry">
+    <div class="eyebrow">Same Pattern · Twice</div>
+    <h2>master list 2 ชุด ทำงานแบบเดียวกัน</h2>
+    <p class="sub">AI ไม่เคยเป็นคนสร้างสินค้าหรือร้าน — มันอ่าน raw แล้ว server ground กับรายการที่ควบคุมได้</p>
+    <div class="glass tablecard">
+      <table>
+        <thead><tr><th>master list</th><th>AI คืน</th><th>server match กับ</th><th>กลไก</th></tr></thead>
+        <tbody>
+          <tr><td class="tag-cat">🗄 PRODUCT_CATALOG</td><td class="mono">product_code / raw</td><td class="mono">products (DB)</td><td>closed-set ใน prompt → ลด hallucination</td></tr>
+          <tr><td class="tag-store">🏪 Store master</td><td class="mono">merchant_name (raw)</td><td class="mono">stores (DB)</td><td>exact บน normalized_name → RapidFuzz fallback</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="section" id="pipeline">
+    <div class="eyebrow">Life of One Receipt</div>
+    <h2>ชีวิตของรูปใบเสร็จ 1 ใบ</h2>
+    <div class="pipe">
+      <div class="glass pcard"><span class="n">01</span><span class="ico">📸</span><h3>อัปโหลด</h3><p>รูปใบเสร็จ N รูปในครั้งเดียว</p></div>
+      <div class="glass pcard"><span class="n">02</span><span class="ico">🤖</span><h3>Vision call</h3><p>OpenRouter · retry ×3 + defensive parse</p></div>
+      <div class="glass pcard"><span class="n">03</span><span class="ico">🧠</span><h3>Enrichment</h3><p>catalog-driven · server re-ground</p></div>
+      <div class="glass pcard"><span class="n">04</span><span class="ico">🗂</span><h3>Routing</h3><p>Visit · Unknown · Orphan · Non-receipt</p></div>
+      <div class="glass pcard"><span class="n">05</span><span class="ico">📊</span><h3>Aggregate</h3><p>(store, month) → [(product, qty)]</p></div>
+    </div>
+  </section>
+
+  <section class="section" id="qa">
+    <div class="eyebrow">Anticipated Questions</div>
+    <h2>คำถามกรรมการ + คำตอบ</h2>
+    <p class="hint">กดที่คำถามเพื่อเปิด/ปิดคำตอบ</p>
+    <div style="margin-top:24px">
+
+      <div class="glass qa">
+        <div class="q"><span class="badge">Q1</span><h3>แยกร้านทำงานยังไง — ทำไมไม่ให้ AI ทำ?</h3><span class="chev">▸</span></div>
+        <div class="a"><div class="a-in">
+          <p class="sound">“AI อ่านชื่อร้านดิบ — server ตัดสิน identity แบบ deterministic (พิสูจน์ได้ ไม่ใช่เดา)”</p>
+          <ul>
+            <li><b>กลไก</b> — AI คืน <span class="mono">merchant (raw)</span> → server normalize → match Store master (exact → RapidFuzz) → เจอ = <b>Visit</b> · ไม่เจอ = <b>Unknown-store</b> ให้คนยืนยัน</li>
+            <li><b>ทำไม deterministic</b> — <span class="mono">store_id</span> คือ key ของ aggregate ผิดทีเดียวยอดทั้งเดือนเพี้ยน → ต้องนิ่ง</li>
+            <li><b>ตรวจสอบได้</b> — ตอบได้ว่า “ไปร้าน #42 เพราะ fuzzy 0.91 ≥ 0.85” · Unknown-store = human gate กัน store ผี</li>
+          </ul>
+        </div></div>
+      </div>
+
+      <div class="glass qa">
+        <div class="q"><span class="badge">Q2</span><h3>ทำไมไม่ให้ AI ส่ง unit หรือฉีด Store master ให้จับเอง?</h3><span class="chev">▸</span></div>
+        <div class="a"><div class="a-in">
+          <p class="sound">“AI ทำแค่ perception (อ่าน) — ค่าที่ derive/match ได้ ให้ server (หลักเดียวกับ Q1)”</p>
+          <ul>
+            <li><b>unit</b> — เป็นคุณสมบัติของ SKU (ขายเป็น <span class="mono">ลัง/ถาด</span>) ไม่ใช่สิ่งที่เขียน → รู้ <span class="mono">code</span> ก็รู้ unit (override) · นอก catalog ใช้ที่ AI อ่าน · ส่วน <span class="mono">qty</span> เชื่อ AI เพราะคือสิ่งที่เขียนจริง</li>
+            <li><b>ฉีด catalog แต่ไม่ฉีด Store master</b> — catalog เซตเล็ก/นิ่ง cache ได้ · Store master พันร้านโตเรื่อยๆ ฉีดทุกใบเปลือง + ถ้า AI เลือกจาก list จะเลือกตัวใกล้สุดเสมอ เสีย threshold gate</li>
+            <li><b>หลักรวม</b> — เชื่อ AI น้อย field = ผิดน้อย · server lookup ฟรี/เร็ว</li>
+          </ul>
+        </div></div>
+      </div>
+
+      <div class="glass qa">
+        <div class="q"><span class="badge">Q3</span><h3>เรื่อง scale ล่ะ?</h3><span class="chev">▸</span></div>
+        <div class="a"><div class="a-in">
+          <p class="sound">“workload เป็น batch รายเดือน (ไม่ใช่ high-QPS) — scale lever อยู่ใน stack แล้ว”</p>
+          <ul>
+            <li><b>Workload</b> — ~30k ใบ/เดือน ≈ 1k/วัน · พีค = burst ปลายเดือน · คอขวดคือ LLM call → scale = process ขนานมากขึ้น</li>
+            <li><b>Lever พร้อม</b> — <span class="mono">arq + Redis</span> เพิ่ม worker แนวนอน · FastAPI stateless → scale หลัง LB</li>
+            <li><b>DB</b> — SQLite พอ · SQLAlchemy → ย้าย Postgres แค่เปลี่ยน connection string</li>
+          </ul>
+          <p class="limit">เพดานจริง = <b>rate limit OpenRouter</b> (backoff + queue) · <b>SSE</b> in-process — multi-instance ย้ายไป Redis pub/sub</p>
+        </div></div>
+      </div>
+
+      <div class="glass qa">
+        <div class="q"><span class="badge">Q4</span><h3>ทำไมไม่ใช้ OCR?</h3><span class="chev">▸</span></div>
+        <div class="a"><div class="a-in">
+          <p class="sound">“เทสต์จริงแล้ว OCR ไม่เพิ่ม accuracy แต่ช้ากว่า ~4× บนใบเสร็จไทย”</p>
+          <ul>
+            <li><b>ปัญหาเราไม่ใช่ “ถอดตัวอักษร” แต่คือ “เข้าใจว่าตัวย่อ = SKU ไหน”</b> — OCR ให้แค่ข้อความดิบ สุดท้ายยังต้องมี LLM มาแปลความอยู่ดี</li>
+            <li><b>OCR ลายมือ/ตัวย่อไทยพัง</b> (สิงห์, ส., x2) → กลายเป็น 2 จุดที่ error สะสม</li>
+            <li><b>Vision LLM อ่าน + จับคู่ catalog ในคอลเดียว</b> = perception + understanding พร้อมกัน · 1 จุดพัง · เร็วกว่า</li>
+          </ul>
+          <p class="limit">Benchmark จริง: <b>PaddleOCR + Gemini</b> vs <b>Gemini อย่างเดียว</b> → accuracy เท่ากัน แต่ OCR ช้ากว่า <b>~4×</b> → ตัด OCR ทิ้ง</p>
+        </div></div>
+      </div>
+
+      <div class="glass qa">
+        <div class="q"><span class="badge">Q5</span><h3>ฉีด catalog ทุก call ไม่แพง/ไม่ช้าเหรอ?</h3><span class="chev">▸</span></div>
+        <div class="a"><div class="a-in">
+          <p class="sound">“catalog เป็น prefix นิ่ง → prompt cache ลดราคา ไม่ได้จ่ายเต็มซ้ำทุกใบ”</p>
+          <ul>
+            <li><b>จัด prompt มาเพื่อ cache</b> — <span class="mono">[system]</span> catalog+schema (นิ่ง → cache prefix) · <span class="mono">[user]</span> รูป+task (เปลี่ยนทุกใบ อยู่ท้าย)</li>
+            <li><b>ลดราคา ไม่ใช่ฟรี</b> — call แรกเขียน cache (จ่ายเต็ม) · ถัดไปใน <b>~5 นาที</b> hit → prefix เหลือ ~10% · คุ้มสุดตอน batch</li>
+            <li><b>วัดจริง</b> — ~<span class="mono">$0.002</span>/ใบ ตอน batch (cold ~<span class="mono">$0.005</span>)</li>
+          </ul>
+          <p class="limit">บนเวทีอย่าพูด “ฟรี” — พูดว่า <b>“prefix ถูก cache ลดราคา”</b></p>
+        </div></div>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="section" id="numbers">
+    <div class="eyebrow">Technical Credibility</div>
+    <h2>ตัวเลข</h2>
+    <div class="nums">
+      <div class="glass num"><div class="v">1</div><div class="l">vision call / ใบ<br/>(one-shot, ไม่มี loop)</div></div>
+      <div class="glass num"><div class="v">6</div><div class="l">ฟิลด์ / ใบเสร็จ</div></div>
+      <div class="glass num"><div class="v">113</div><div class="l">tests (pytest)</div></div>
+      <div class="glass num"><div class="v">×3</div><div class="l">retry + backoff</div></div>
+      <div class="glass num"><div class="v">2</div><div class="l">master lists<br/>(catalog + store)</div></div>
+    </div>
+    <p class="footnote">ไม่โชว์: fraud · price · VAT · discount · totals — ถอดออกหมดแล้ว (pivot พ.ค. 2026)</p>
+  </section>
+
+</div>
+
+<script>
+(function(){
+  var body = document.body;
+  document.querySelectorAll('.qa .q').forEach(function(q){
+    q.addEventListener('click', function(){ q.parentElement.classList.toggle('open'); });
+  });
+  document.querySelectorAll('[data-link]').forEach(function(el){
+    var zone = el.getAttribute('data-link') === 'ai' ? document.getElementById('zoneAI') : document.getElementById('zoneGuard');
+    el.addEventListener('mouseenter', function(){ zone.classList.add('hl'); });
+    el.addEventListener('mouseleave', function(){ zone.classList.remove('hl'); });
+  });
+  var sw = document.getElementById('guardSwitch');
+  sw.addEventListener('click', function(){
+    sw.classList.toggle('off');
+    body.classList.toggle('guards-off', sw.classList.contains('off'));
+  });
+  var phases = [
+    {n:1, label:'1/4 · ฉีด catalog → AI อ่าน + จับคู่ code'},
+    {n:2, label:'2/4 · AI คืน code · raw · qty · merchant (handoff)'},
+    {n:3, label:'3/4 · server ground กับ Store master + guardrails'},
+    {n:4, label:'4/4 · Trusted record → aggregate'}
+  ];
+  var idx = -1, timer = null;
+  var ind = document.getElementById('stepind');
+  function clearLit(){ document.querySelectorAll('[data-phase].lit').forEach(function(e){ e.classList.remove('lit'); }); }
+  function showPhase(i){
+    clearLit();
+    document.querySelectorAll('[data-phase="'+phases[i].n+'"]').forEach(function(e){ e.classList.add('lit'); });
+    ind.textContent = phases[i].label;
+  }
+  function stop(){ if(timer){clearInterval(timer);timer=null;} body.classList.remove('playing'); clearLit(); }
+  document.getElementById('play').addEventListener('click', function(){
+    stop(); body.classList.add('playing'); idx = 0; showPhase(idx);
+    timer = setInterval(function(){
+      idx++;
+      if(idx >= phases.length){ clearInterval(timer); timer=null; ind.textContent = '✓ ครบลำดับ — กด Reset เพื่อดูทั้งหมด'; return; }
+      showPhase(idx);
+    }, 1400);
+  });
+  document.getElementById('reset').addEventListener('click', function(){
+    stop(); ind.textContent = '— กดเล่นเพื่อไล่ทีละขั้น —';
+  });
+})();
+</script>
+</body>
+</html>

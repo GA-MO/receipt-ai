@@ -1,0 +1,576 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>How it works — Build-up Slide</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Sriracha&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #fff;
+        --text: #1d1d1f;
+        --dim: #6e6e73;
+        --dim2: #a6a6ad;
+        --hair: rgba(0, 0, 0, 0.09);
+        --hair-soft: rgba(0, 0, 0, 0.05);
+        --ai-a: #f97316;
+        --ai-b: #ea580c;
+        --ai-tint: rgba(249, 115, 22, 0.1);
+        --ai-line: rgba(249, 115, 22, 0.32);
+        --gd-a: #0fa371;
+        --gd-b: #059669;
+        --gd-tint: rgba(16, 185, 129, 0.1);
+        --gd-line: rgba(16, 185, 129, 0.32);
+        --sans: "Inter", "Anuphan", -apple-system, system-ui, sans-serif;
+        --mono: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        font-family: var(--sans);
+        color: var(--text);
+        background: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        -webkit-font-smoothing: antialiased;
+        letter-spacing: -0.01em;
+        cursor: pointer;
+      }
+      #scaler {
+        width: 1600px;
+        height: 900px;
+        transform-origin: center center;
+      }
+      .slide {
+        width: 1600px;
+        height: 900px;
+        background: var(--bg);
+        padding: 64px 72px;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .eyebrow {
+        font-family: var(--mono);
+        font-size: 14px;
+        letter-spacing: 0.32em;
+        text-transform: uppercase;
+        color: var(--dim);
+        font-weight: 500;
+      }
+      h1 {
+        font-size: 56px;
+        font-weight: 800;
+        line-height: 1.04;
+        letter-spacing: -0.03em;
+        margin-top: 12px;
+      }
+      h1 .grad {
+        background: linear-gradient(110deg, var(--gd-b), var(--gd-a));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .subtitle {
+        font-size: 22px;
+        color: var(--dim);
+        margin-top: 16px;
+        height: 30px;
+        transition: 0.4s;
+        font-weight: 500;
+      }
+      .subtitle b {
+        color: var(--text);
+        font-weight: 700;
+      }
+
+      /* flow */
+      .flow {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0;
+        margin: 6px 0;
+      }
+      .panel {
+        flex: 0 0 318px;
+        height: 438px;
+        border-radius: 24px;
+        border: 1.5px solid var(--hair);
+        background: rgba(255, 255, 255, 0.66);
+        box-shadow: 0 18px 50px -26px rgba(40, 30, 15, 0.4);
+        padding: 22px 22px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        opacity: 0;
+        transform: translateY(22px) scale(0.97);
+        transition: 0.55s cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+      .panel.show {
+        opacity: 1;
+        transform: none;
+      }
+      .panel.dim {
+        opacity: 0.4;
+        filter: grayscale(0.4);
+      }
+      .panel .ico {
+        font-size: 44px;
+        line-height: 1;
+        margin-bottom: 4px;
+      }
+      .panel .tag {
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        font-weight: 600;
+        color: var(--dim2);
+      }
+      .panel h2 {
+        font-size: 25px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        margin: 7px 0 4px;
+      }
+      .panel .cap {
+        font-size: 13px;
+        color: var(--dim);
+        margin-bottom: 13px;
+        mask-type: auto;
+      }
+      .chips {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        width: 100%;
+        margin-top: 14px;
+      }
+      .chip {
+        font-family: var(--mono);
+        font-size: 15px;
+        border-radius: 11px;
+        padding: 9px 12px;
+        font-weight: 500;
+      }
+      .chip.neutral {
+        background: rgba(0, 0, 0, 0.04);
+        border: 1px solid var(--hair);
+        color: var(--text);
+      }
+      .chip.ai {
+        background: var(--ai-tint);
+        border: 1px solid var(--ai-line);
+        color: #9a4a12;
+      }
+      .chip.grd {
+        background: var(--gd-tint);
+        border: 1px solid var(--gd-line);
+        color: #0a6b4a;
+      }
+      .chip.big {
+        font-family: var(--sans);
+        font-size: 18px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+      }
+      .chip.dashed {
+        border-style: dashed;
+      }
+      .chip .sm {
+        font-size: 12px;
+        opacity: 0.7;
+      }
+      .chip b {
+        font-weight: 700;
+      }
+
+      /* receipt slip (card 1) */
+      .receipt {
+        width: 212px;
+        margin: 6px auto 14px;
+        background: #fffdf5;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        border-radius: 5px 5px 0 0;
+        padding: 15px 17px 14px;
+        box-shadow: 0 12px 26px -16px rgba(0, 0, 0, 0.45);
+        position: relative;
+        text-align: center;
+        transform: rotate(-1.2deg);
+      }
+      .receipt::after {
+        content: "";
+        position: absolute;
+        left: -1px;
+        right: -1px;
+        bottom: -9px;
+        height: 10px;
+        background:
+          linear-gradient(-45deg, #fffdf5 50%, transparent 50%) 0 0/11px 11px repeat-x,
+          linear-gradient(45deg, #fffdf5 50%, transparent 50%) 0 0/11px 11px repeat-x;
+        filter: drop-shadow(0 5px 4px rgba(0, 0, 0, 0.1));
+      }
+      .r-shop {
+        font-family: "Sriracha", cursive;
+        font-size: 18px;
+        color: #2b2417;
+        line-height: 1.15;
+      }
+      .r-meta {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--dim2);
+        letter-spacing: 0.08em;
+        margin-top: 3px;
+      }
+      .r-line {
+        border-top: 1.5px dashed rgba(0, 0, 0, 0.22);
+        margin: 11px 0 9px;
+      }
+      .r-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        font-family: "Sriracha", cursive;
+        font-size: 21px;
+        color: #1d1d1f;
+      }
+      .r-item .q {
+        font-size: 20px;
+      }
+
+      /* injected catalog table (card 2) */
+      .cat-cap {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--ai-b);
+        font-weight: 600;
+        letter-spacing: 0.03em;
+        margin: 2px 0 6px;
+        text-align: left;
+      }
+      .cat-table {
+        border: 1px solid var(--ai-line);
+        border-radius: 9px;
+        overflow: hidden;
+        font-family: var(--mono);
+        font-size: 9.5px;
+        background: rgba(255, 255, 255, 0.7);
+        text-align: left;
+      }
+      .cat-r {
+        display: grid;
+        grid-template-columns: 74px 1fr 50px;
+        gap: 5px;
+        padding: 4px 8px;
+        border-bottom: 1px solid rgba(249, 115, 22, 0.16);
+        color: #8a5a2a;
+        white-space: nowrap;
+      }
+      .cat-r:last-child {
+        border-bottom: 0;
+      }
+      .cat-r .nm {
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .cat-r.h {
+        background: rgba(249, 115, 22, 0.1);
+        color: var(--ai-b);
+        font-weight: 600;
+      }
+      .cat-r.m {
+        background: var(--ai-tint);
+        color: #9a4a12;
+        font-weight: 600;
+        position: relative;
+      }
+      .cat-r.m .mk {
+        color: var(--ai-b);
+      }
+
+      .panel.ai {
+        border-color: var(--ai-line);
+        background: linear-gradient(180deg, var(--ai-tint), rgba(249, 115, 22, 0.02));
+      }
+      .panel.ai .tag {
+        color: var(--ai-b);
+      }
+      .panel.guard {
+        border-color: var(--gd-line);
+        background: linear-gradient(180deg, var(--gd-tint), rgba(16, 185, 129, 0.02));
+      }
+      .panel.guard .tag {
+        color: var(--gd-b);
+      }
+      .panel.result {
+        border-color: var(--gd-line);
+        border-width: 2px;
+        background: #fff;
+        box-shadow: 0 22px 60px -24px rgba(16, 185, 129, 0.5);
+      }
+      .panel.result .tag {
+        color: var(--gd-b);
+      }
+
+      .arrow {
+        flex: 0 0 56px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 34px;
+        color: var(--dim2);
+        opacity: 0;
+        transition: 0.5s;
+      }
+      .arrow.show {
+        opacity: 1;
+      }
+      .arrow.toGrd {
+        background: linear-gradient(180deg, var(--ai-a), var(--gd-a));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+
+      /* footer controls */
+      .footer {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        margin-top: 8px;
+      }
+      .dots {
+        display: flex;
+        gap: 9px;
+      }
+      .dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--hair);
+        transition: 0.3s;
+      }
+      .dot.on {
+        background: var(--text);
+        transform: scale(1.25);
+      }
+      .hint {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--dim2);
+        letter-spacing: 0.08em;
+      }
+      .restart {
+        font-family: var(--mono);
+        font-size: 12px;
+        letter-spacing: 0.06em;
+        color: var(--dim);
+        border: 1px solid var(--hair);
+        background: rgba(255, 255, 255, 0.6);
+        border-radius: 980px;
+        padding: 7px 16px;
+        cursor: pointer;
+        text-transform: uppercase;
+      }
+      .restart:hover {
+        background: #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="scaler">
+      <div class="slide">
+        <div>
+          <div class="eyebrow">วิธีทำงาน · How it works</div>
+          <h1>AI อ่าน — <span class="grad">server ยืนยัน</span></h1>
+          <div class="subtitle" id="subtitle">เริ่มจากใบเสร็จลายมือ 1 ใบ</div>
+        </div>
+
+        <div class="flow" id="flow">
+          <!-- 1: receipt -->
+          <div class="panel" data-step="1">
+            <div class="ico">📸</div>
+            <h2>รูปลายมือ</h2>
+            <div class="cap">ใบเสร็จจริง 1 ใบ</div>
+            <div class="chips">
+              <div class="receipt">
+                <div class="r-shop">ป้าแดง มินิมาร์ท</div>
+                <div class="r-meta">16/06/26 · #0428</div>
+                <div class="r-line"></div>
+                <div class="r-item"><span>สิงห์</span><span class="q">x2</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="arrow" data-arrow="2">→</div>
+
+          <!-- 2: AI -->
+          <div class="panel ai" data-step="2">
+            <div class="ico">🤖</div>
+            <h2>AI อ่าน + จับคู่ code</h2>
+            <div class="cap">เลือกจาก catalog — ไม่แต่ง code เอง</div>
+            <div class="chips">
+              <div class="cat-cap">🗄 PRODUCT_CATALOG → ฉีดเข้า prompt</div>
+              <div class="cat-table">
+                <div class="cat-r h">
+                  <span>code</span><span class="nm">ชื่อทางการ</span><span>คำย่อ</span>
+                </div>
+                <div class="cat-r">
+                  <span>10089790030</span><span class="nm">น้ำสิงห์เพ็ท 600ml</span
+                  ><span>น้ำสิงห์</span>
+                </div>
+                <div class="cat-r m">
+                  <span>10089790100</span><span class="nm">เบียร์สิงห์ ลาเกอร์</span
+                  ><span class="mk">สิงห์ ◄</span>
+                </div>
+                <div class="cat-r">
+                  <span>10089710020</span><span class="nm">ลีโอ</span><span>ลีโอ</span>
+                </div>
+              </div>
+              <div class="chip ai" style="text-align: left; line-height: 1.7">
+                “สิงห์” จับคู่ → <b>code 10089790100</b><br />🏪 merchant
+                <span class="sm">(raw)</span>: “ป้าแดง มินิมาร์ท”
+              </div>
+            </div>
+          </div>
+
+          <div class="arrow toGrd" data-arrow="3">→</div>
+
+          <!-- 3: server -->
+          <div class="panel guard" data-step="3">
+            <div class="ico">🛡</div>
+            <h2>Server ยืนยัน</h2>
+            <div class="cap">ground ทุก field กับสิ่งที่คุมได้</div>
+            <div class="chips">
+              <div class="chip grd">code → ชื่อ + หน่วย <b>(ลัง)</b></div>
+              <div class="chip grd">🏪 Store master → <b>ร้านป้าแดง #42</b></div>
+            </div>
+          </div>
+
+          <div class="arrow" data-arrow="4">→</div>
+
+          <!-- 4: result -->
+          <div class="panel result" data-step="4">
+            <div class="ico">✅</div>
+            <h2>เชื่อถือได้</h2>
+            <div class="cap">(store, month) × qty</div>
+            <div class="chips">
+              <div class="chip grd big">ร้านป้าแดง</div>
+              <div class="chip grd big">เบียร์สิงห์ ลาเกอร์</div>
+              <div class="chip grd big">2 ลัง</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer">
+          <div class="dots" id="dots"></div>
+          <span class="hint">คลิก / Space / → เพื่อเผยทีละขั้น · ← ย้อน</span>
+          <button class="restart" id="restart">↺ เริ่มใหม่</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        var scaler = document.getElementById("scaler");
+        function fit() {
+          var s = Math.min(window.innerWidth / 1600, window.innerHeight / 900);
+          scaler.style.transform = "scale(" + s + ")";
+        }
+        window.addEventListener("resize", fit);
+        fit();
+
+        var subtitles = [
+          "เริ่มจากใบเสร็จลายมือ 1 ใบ",
+          "catalog ถูก <b>ฉีดเข้า prompt</b> ทุก call → AI จับคู่ลายมือกับ code (เลือกจากชุดปิด ไม่แต่งเอง)",
+          "server <b>ยืนยันทุก field</b> กับ master list ที่คุมได้ (deterministic)",
+          "ได้ record ที่ <b>เชื่อถือได้</b> → รวมเป็นยอดรายเดือน",
+        ];
+        var MAX = 4,
+          step = 1;
+        var panels = [].slice.call(document.querySelectorAll("[data-step]"));
+        var arrows = [].slice.call(document.querySelectorAll("[data-arrow]"));
+        var sub = document.getElementById("subtitle");
+        var dotsWrap = document.getElementById("dots");
+        for (var i = 1; i <= MAX; i++) {
+          var d = document.createElement("div");
+          d.className = "dot";
+          dotsWrap.appendChild(d);
+        }
+        var dots = [].slice.call(dotsWrap.children);
+
+        function render() {
+          panels.forEach(function (p) {
+            var n = +p.getAttribute("data-step");
+            p.classList.toggle("show", n <= step);
+          });
+          arrows.forEach(function (a) {
+            a.classList.toggle("show", +a.getAttribute("data-arrow") <= step);
+          });
+          sub.innerHTML = subtitles[step - 1];
+          dots.forEach(function (d, idx) {
+            d.classList.toggle("on", idx === step - 1);
+          });
+        }
+        function next() {
+          if (step < MAX) {
+            step++;
+            render();
+          }
+        }
+        function prev() {
+          if (step > 1) {
+            step--;
+            render();
+          }
+        }
+        function reset() {
+          step = 1;
+          render();
+        }
+
+        document.body.addEventListener("click", function (e) {
+          if (e.target.id === "restart") return;
+          next();
+        });
+        document.getElementById("restart").addEventListener("click", function (e) {
+          e.stopPropagation();
+          reset();
+        });
+        document.addEventListener("keydown", function (e) {
+          if (e.key === " " || e.key === "ArrowRight" || e.key === "ArrowDown") {
+            e.preventDefault();
+            next();
+          } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+            e.preventDefault();
+            prev();
+          } else if (e.key === "r" || e.key === "R") {
+            reset();
+          }
+        });
+        render();
+      })();
+    </script>
+  </body>
+</html>
