@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ใบเสร็จ Demo — 20 ใบ / 5 ร้าน</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+  :root{
+    --ink:#1a1a1a; --muted:#6b6b6b; --line:#e3ddd2; --paper:#fdfbf6;
+    --pass:#2f8f4e; --passbg:#eaf6ee; --review:#c98a16; --reviewbg:#fdf4e1;
+    --orphan:#c0392b; --orphanbg:#fbece8; --star:#b5651d;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#f0ece3;color:var(--ink);font-family:'Sarabun',sans-serif;line-height:1.5}
+  .wrap{max-width:1180px;margin:0 auto;padding:24px 20px 90px}
+  h1{font-size:25px;margin:0 0 4px}
+  .lead{color:var(--muted);margin:0 0 16px;font-size:13.5px}
+
+  .legend{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 16px;align-items:center}
+  .pill{font-size:13px;padding:4px 12px;border-radius:999px;font-weight:600}
+  .pill.pass{background:var(--passbg);color:var(--pass)}
+  .pill.review{background:var(--reviewbg);color:var(--review)}
+  .pill.orphan{background:var(--orphanbg);color:var(--orphan)}
+
+  .callout{background:#fff;border:1px solid var(--line);border-left:4px solid var(--review);
+    border-radius:8px;padding:12px 16px;margin:0 0 20px;font-size:13.5px}
+  .callout b{color:var(--review)}
+
+  /* sticky progress bar */
+  .progress{position:sticky;top:0;z-index:10;background:rgba(253,251,246,.96);
+    backdrop-filter:blur(4px);border:1px solid var(--line);border-radius:10px;
+    padding:10px 16px;margin:0 0 22px;display:flex;align-items:center;gap:14px;
+    box-shadow:0 2px 8px rgba(0,0,0,.06)}
+  .progress .bar{flex:1;height:10px;background:#e7e0d3;border-radius:6px;overflow:hidden}
+  .progress .fill{height:100%;width:0;background:var(--pass);transition:width .25s}
+  .progress .txt{font-weight:700;font-size:14px;white-space:nowrap}
+  .progress button{font-family:inherit;font-size:12.5px;border:1px solid var(--line);
+    background:#fff;border-radius:7px;padding:5px 10px;cursor:pointer;color:var(--muted)}
+  .progress button:hover{background:#f3eee3}
+
+  .storehead{display:flex;align-items:baseline;gap:10px;margin:28px 0 12px;
+    padding-bottom:6px;border-bottom:2px solid var(--ink);flex-wrap:wrap}
+  .storehead h2{font-size:18px;margin:0}
+  .storehead .norm{font-size:13px;color:var(--muted)}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(390px,1fr));gap:16px}
+
+  .slip{background:var(--paper);border:1px solid var(--line);border-radius:10px;
+    box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden;display:flex;flex-direction:column;
+    transition:opacity .2s}
+  .slip.pass{border-top:3px solid var(--pass)}
+  .slip.review{border-top:3px solid var(--review)}
+  .slip.orphan{border-top:3px solid var(--orphan)}
+  .slip.hero{grid-column:1/-1;border-top:3px solid var(--review)}
+  .slip.done{opacity:.45}
+  .slip.done .top{background:var(--passbg)}
+
+  .slip .top{padding:10px 14px 8px;border-bottom:1px dashed var(--line);position:relative}
+  .slip .rid{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted)}
+  .slip .date{font-weight:700;font-size:15px;margin-top:2px}
+  .slip .billnote{font-size:12px;color:var(--muted);margin-top:1px}
+  .slip .datebadge{display:inline-block;background:#efe8d8;color:#7a5a16;font-size:11px;
+    padding:1px 7px;border-radius:5px;font-weight:600}
+
+  .chk{position:absolute;top:10px;right:12px;display:flex;align-items:center;gap:6px;
+    font-size:12.5px;font-weight:600;color:var(--muted);cursor:pointer;user-select:none}
+  .chk input{width:17px;height:17px;cursor:pointer;accent-color:var(--pass)}
+  .slip.done .chk{color:var(--pass)}
+
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  thead td{font-size:11px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--line);
+    background:#f7f2e8;padding:4px 10px}
+  td{padding:5px 10px;border-bottom:1px solid #efeae0;vertical-align:top}
+  tbody tr:last-child td{border-bottom:none}
+  .write{font-weight:600}
+  .num{text-align:right;font-family:'IBM Plex Mono',monospace;white-space:nowrap;width:1%}
+  .unit{color:var(--muted);width:1%;white-space:nowrap}
+  .arrow{font-size:11px;color:var(--muted);line-height:1.35}
+  .arrow .star{color:var(--star);font-weight:700}
+  .typo{color:var(--orphan);font-weight:700}
+
+  tfoot td{border-top:2px solid var(--line);font-weight:700;padding:7px 10px;font-size:13.5px}
+  tfoot .num{font-family:'IBM Plex Mono',monospace}
+
+  .slip .foot{font-size:12px;color:var(--muted);padding:8px 14px;background:#f7f2e8;
+    border-top:1px dashed var(--line)}
+
+  @media print{
+    body{background:#fff}
+    .progress{position:static}
+    .progress button{display:none}
+    .slip{box-shadow:none;break-inside:avoid}
+    .chk{display:none}
+    .storehead,.callout{break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🧾 ใบเสร็จ Demo — 20 ใบ / 5 ร้าน (+1 orphan)</h1>
+  <p class="lead">คู่มือเขียนมือ · "เขียนบนใบ" = ข้อความที่เขียนจริง (ย่อ/ลายมือ/พิมพ์ผิดตามนั้น) · → = ผลที่ AI ควรได้ · ⭐ เคสสำคัญ · <span class="typo">สีแดง</span> = typo ที่ตั้งใจ · <b>ราคาคิดให้แล้ว เขียนตามได้เลย</b></p>
+
+  <div class="legend">
+    <span class="pill pass">🟢 4 ร้านผ่าน</span>
+    <span class="pill review">🟡 1 ร้านตรวจ (ป้าแดง)</span>
+    <span class="pill orphan">🔴 1 orphan</span>
+  </div>
+
+  <div class="callout">
+    <b>⚠️ เซ็ตก่อน demo:</b> สร้าง 5 ร้านใน Store master แล้ว (<code>seed_demo_stores.py</code>) ·
+    <b>หน่วย/ราคา:</b> เขียนตามตารางได้เลย — ระบบไม่ใช้ราคา (ใส่เพื่อให้ใบดูจริง) และ override หน่วยขายตาม SKU เอง
+  </div>
+
+  <div class="progress">
+    <span class="txt" id="ptxt">เขียนแล้ว 0 / 0</span>
+    <div class="bar"><div class="fill" id="pfill"></div></div>
+    <button id="reset">ล้างเครื่องหมายทั้งหมด</button>
+  </div>
+
+  <div id="app"></div>
+</div>
+
+<script>
+const R = (id,date,bill,items,opts={}) => ({id,date,bill,items,...opts});
+// I(write, qty, unit, price, arrow, star, typo)  — price = บาท/หน่วย
+const I = (write,qty,unit,price,arrow,star=false,typo=false) => ({write,qty,unit,price,arrow,star,typo});
+const baht = n => n.toLocaleString('th-TH');
+
+const DATA = [
+  { store:"⭐ ใบ DEMO-ALL — ครบเคสในใบเดียว (อยู่ในร้านป้าแดง)", norm:"ใบเดียวโชว์ได้เกือบหมด — เปิดร้านป้าแดงตอน demo", status:"review", hero:true,
+    receipts:[
+      R("DEMO-001","30/12/2568 ⟶ 2025","ร้านป้าแดง มินิมาร์ท สาขาบางนา",[
+        I("เบียร์สิงห์ขวดใหญ่",50,"ลัง",688,"เบียร์สิงห์ขวดใหญ่ · ชื่อตรง+ยอดเยอะ"),
+        I("ลีโอใหญ่",8,"ลัง",644,"เบียร์ลีโอขวดใหญ่ · ชื่อย่อ"),
+        I("ลิโอกป",5,"ดัง",580,"เบียร์ลีโอกระป๋อง · typo คู่",false,true),
+        I("มาย",4,"ลัง",480,"มายเบียร์ขวดเล็ก · alias สั้น"),
+        I("ช้าง",12,"ลัง",620,"เบียร์ช้าง · คู่แข่ง"),
+        I("ซาฮี",3,"ลัง",720,"เบียร์อาซาฮีขวดใหญ่ · alias ตัดหน้า"),
+        I("น้ำสิงห์",6,"ลัง",75,"น้ำดื่มสิงห์ขวดแก้ว · bare→default",true),
+        I("น้ำสิงห์ 600",4,"แพ็ค",50,"น้ำสิงห์เพ็ท 600ml"),
+        I("น้ำสิงห์ 1.5",2,"แพ็ค",60,"น้ำสิงห์เพ็ท 1.5L"),
+        I("โซคาสิงห์",5,"ถาด",155,"โซดาสิงห์ · typo โซคา→โซดา",false,true),
+        I("สิงห์เลมอนโซดา เรด",2,"ถาด",330,"variant สี"),
+        I("สิงห์เลมอนโซดา พิงก์",1,"ถาด",330,"variant สี"),
+        I("หงส์ทอง",6,"ลัง",3300,"สุราหงส์ทอง"),
+        I("ชีวาส",2,"ลัง",12000,"ชีวาส รีกัล 12 · นำเข้า"),
+        I("ซิลเวอร์ไนท์ ขวดแบน",3,"ลัง",1680,"วิสกี้ซิลเวอร์ไนท์ ขวดแบน · variant ขนาด"),
+        I("เป๊ปซี่",3,"ลัง",180,"นอกแคทาล็อก → null",true),
+        I("เลย์",4,"ห่อ",25,"นอกแคทาล็อก + ขนม(อาหาร)",true),
+        I("M-150",2,"ลัง",200,"นอกแคทาล็อก (ชูกำลัง) → null",true),
+      ],{foot:"หัวใบ → normalize: ป้าแดง มินิมาร์ท · มีของนอกระบบ → ร้านนี้ flag ให้ตรวจ"})
+    ]},
+
+  { store:"🏪 ร้านที่ต้องตรวจ — ร้านป้าแดง มินิมาร์ท สาขาบางนา  🟡", norm:"→ ป้าแดง มินิมาร์ท · ของนอกแคทาล็อก → catalog gap (+ ใบ DEMO-ALL อยู่ที่นี่)", status:"review",
+    receipts:[
+      R("R12","02/12/2025","บิล PD-55",[
+        I("เบียร์สิงห์ขวดเล็ก",3,"ลัง",540,"เบียร์สิงห์ขวดเล็ก"),
+        I("เบียร์ลีโอกระป๋อง",4,"ลัง",580,"เบียร์ลีโอกระป๋อง"),
+        I("น้ำสิงห์ 600",6,"แพ็ค",50,"น้ำสิงห์เพ็ท 600ml"),
+        I("โค้ก",3,"ลัง",180,"นอกแคทาล็อก → null",true),
+        I("เอ็ม150",2,"ลัง",200,"นอกแคทาล็อก (ชูกำลัง) → null",true),
+      ]),
+      R("R13","16/12/2025","บิล PD-60",[
+        I("น้ำสิงห์",4,"ลัง",75,"น้ำดื่มสิงห์ขวดแก้ว · bare→default",true),
+        I("สิงห์เลมอนโซดา ครีม",2,"ถาด",330,"variant ครีม"),
+        I("สิงห์เลมอนโซดา รสแตงโม",1,"ถาด",330,"variant แตงโม"),
+        I("มันฝรั่งเลย์",5,"ห่อ",25,"นอกแคทาล็อก + หมวดอาหาร",true),
+      ]),
+      R("R14","28/12/2025","บิล PD-66",[
+        I("Singha Sparkling",2,"ถาด",240,"Singha Sparkling Water กลิ่นมะนาว"),
+        I("น้ำสิงห์ 1.5",3,"แพ็ค",60,"น้ำสิงห์เพ็ท 1.5L"),
+        I("เบียร์อาซาฮีกระป๋อง",2,"ลัง",680,"เบียร์อาซาฮีกระป๋อง"),
+      ]),
+      R("R15","20/01/2026","บิล PD-80 · (เดือนใหม่ → visit 2)",[
+        I("เบียร์สิงห์ขวดใหญ่",5,"ลัง",688,"เบียร์สิงห์ขวดใหญ่"),
+        I("น้ำคริสตัล",4,"แพ็ค",45,"นอกแคทาล็อก (น้ำคู่แข่ง) → null",true),
+        I("เบียร์ไฮเนเก้น",2,"ลัง",780,"นอกแคทาล็อก (เบียร์คู่แข่ง) → null",true),
+      ]),
+    ]},
+
+  { store:"🏪 ร้าน 1 — ร้านสุดาพาณิชย์", norm:"→ สุดาพาณิชย์ · prefix \"ร้าน\", รวมยอดเดือนเดียวกัน, ข้ามเดือน", status:"pass",
+    receipts:[
+      R("R1","05/12/2025","บิล S5512-01",[
+        I("เบียร์สิงห์ขวดใหญ่",10,"ลัง",688,"เบียร์สิงห์ขวดใหญ่"),
+        I("ลีโอใหญ่",8,"ลัง",644,"เบียร์ลีโอขวดใหญ่ · alias"),
+        I("น้ำสิงห์",5,"ลัง",75,"น้ำดื่มสิงห์ขวดแก้ว · bare→default",true),
+        I("โซดาสิงห์",4,"ถาด",155,"โซดาสิงห์"),
+      ]),
+      R("R2","20/12/2025","บิล S5512-02 · (รวมยอดกับ R1)",[
+        I("สห์ใหญ่",6,"ลัง",688,"เบียร์สิงห์ขวดใหญ่ · ชื่อย่อลายมือ",true),
+        I("น้ำสิงห์ 600",3,"แพ็ค",50,"น้ำสิงห์เพ็ท 600ml",true),
+        I("สิงห์เลมอนโซดา เรด",2,"ถาด",330,"variant เรด"),
+      ]),
+      R("R3","15/01/2026","บิล S6601-01 · (เดือนใหม่ → visit 2)",[
+        I("เบียร์สิงห์กระป๋อง",12,"ลัง",600,"เบียร์สิงห์กระป๋อง"),
+        I("น้ำสิงห์ 1.5",4,"แพ็ค",60,"น้ำสิงห์เพ็ท 1.5L"),
+        I("โซคาลีโอ",3,"ถาด",150,"โซดาลีโอ ขวดเล็ก · typo โซคา→โซดา",false,true),
+      ]),
+    ]},
+
+  { store:"🏪 ร้าน 2 — บริษัท ก.เจริญพาณิชย์ จำกัด", norm:"→ ก.เจริญพาณิชย์ · \"บริษัท…จำกัด\", สุรา/วิสกี้, ยอดส่ง", status:"pass",
+    receipts:[
+      R("R4","08/12/2025","บิล 1-105 · ยอดส่งจำนวนมาก",[
+        I("เบียร์สิงห์ขวดใหญ่",120,"ลัง",688,"เบียร์สิงห์ขวดใหญ่ · จำนวนเยอะ",true),
+        I("เบียร์ลีโอขวดใหญ่",60,"ลัง",644,"เบียร์ลีโอขวดใหญ่"),
+        I("หงส์ทอง",10,"ลัง",3300,"สุราหงส์ทอง"),
+        I("แสงโสม",8,"ลัง",3360,"สุราแสงโสม"),
+      ]),
+      R("R5","08/12/2025","บิล 1-106 · (บิล 2 วันเดียวกัน)",[
+        I("จอห์นนี่ แบล็ค",5,"ลัง",9600,"จอห์นนี่ วอล์คเกอร์ แบล็ค · alias"),
+        I("ชีวาส",3,"ลัง",12000,"ชีวาส รีกัล 12 · alias",true),
+        I("ซิลเวอร์วูล์ฟ ขวดใหญ่",6,"ลัง",3000,"วิสกี้ซิลเวอร์วูล์ฟ ขวดใหญ่"),
+        I("ซิลเวอร์ไนท์ ขวดแบน",4,"ลัง",1680,"วิสกี้ซิลเวอร์ไนท์ ขวดแบน · variant ขนาด",true),
+      ]),
+      R("R6","12/12/2025","บิล 1-110",[
+        I("เบลนด์ 285",6,"ลัง",3000,"สุราเบลนด์ 285"),
+        I("แม่โขง",4,"ลัง",3180,"สุราแม่โขง"),
+        I("มิสเตอร์ซี",3,"ลัง",2760,"สุรามิสเตอร์ซี"),
+        I("สปาย",5,"ลัง",600,"สปายไวน์คูลเลอร์"),
+      ]),
+      R("R7","10/01/2026","บิล 1-130 · (เดือนใหม่ → visit 2)",[
+        I("100 ไพเพอร์ส",4,"ลัง",6000,"100 ไพเพอร์ส"),
+        I("บัลลันไทน์",3,"ลัง",7200,"บัลลันไทน์"),
+        I("บรั่นดีรีเจนซี่",5,"ลัง",3600,"บรั่นดีรีเจนซี่"),
+      ]),
+    ]},
+
+  { store:"🏪 ร้าน 3 — หจก. รวยทรัพย์เจริญ (สำนักงานใหญ่)", norm:"→ รวยทรัพย์เจริญ · หจก.+สนญ., typo เยอะ, วันที่ พ.ศ.", status:"pass",
+    receipts:[
+      R("R8","03/12/2568 ⟶ 2025","บิล RT-201 · วันที่ พ.ศ.",[
+        I("สห์ใหญ่",15,"ดัง",688,"เบียร์สิงห์ขวดใหญ่ · typo ดัง→ลัง, สห์→สิงห์",false,true),
+        I("ลิโอใหญ่",12,"ลัง",644,"เบียร์ลีโอขวดใหญ่ · typo ลิโอ→ลีโอ",false,true),
+        I("มาย",6,"ลัง",480,"มายเบียร์ขวดเล็ก · alias สั้น"),
+        I("ยู",5,"ลัง",460,"เบียร์ยูเบียร์ · alias สั้น"),
+      ]),
+      R("R9","18/12/2568 ⟶ 2025","บิล RT-210 · (รวมยอด)",[
+        I("ช้าง",20,"ลัง",620,"เบียร์ช้าง · คู่แข่ง"),
+        I("ช้างเอส",4,"ลัง",650,"เบียร์ช้างเอสเปรสโซ่ · alias"),
+        I("อาซาฮี",6,"ลัง",720,"เบียร์อาซาฮีขวดใหญ่"),
+        I("ซาฮี",2,"ลัง",720,"อาซาฮี · alias ตัดหน้า"),
+      ]),
+      R("R10","22/12/2568 ⟶ 2025","บิล RT-215",[
+        I("น้ำสิงห์เปลี่ยนขวด",10,"ลัง",75,"น้ำดื่มสิงห์ขวดแก้ว · เปลี่ยนขวด→glass",true),
+        I("น้ำสิงห์ 600",5,"แพ็ค",50,"น้ำสิงห์เพ็ท 600ml"),
+        I("สิงห์เลมอนโซดา พิงก์",2,"ถาด",330,"variant พิงก์"),
+        I("สิงห์เลมอนโซดา บ๊วย",2,"ถาด",330,"variant บ๊วย"),
+      ]),
+      R("R11","05/02/2569 ⟶ 2026","บิล RT-301 · (เดือนใหม่ → visit 2)",[
+        I("โซดาสิงห์",8,"ถาด",155,"โซดาสิงห์"),
+        I("โซดาลีโอ",6,"ถาด",150,"โซดาลีโอ ขวดเล็ก"),
+        I("น้ำสิงห์",4,"ลัง",75,"น้ำดื่มสิงห์ขวดแก้ว · bare→default",true),
+      ]),
+    ]},
+
+  { store:"🏪 ร้าน 5 — โชห่วยลุงสมชาย", norm:"→ โชห่วยลุงสมชาย · ไม่มี prefix, ขอบเขตเดือน (พ.ย./ธ.ค./ม.ค.)", status:"pass",
+    receipts:[
+      R("R16","06/12/2025","",[
+        I("ลีโอใหญ่",10,"ลัง",644,"เบียร์ลีโอขวดใหญ่"),
+        I("สิงห์ใหญ่",8,"ลัง",688,"เบียร์สิงห์ขวดใหญ่"),
+        I("น้ำสิงห์",6,"ลัง",75,"น้ำดื่มสิงห์ขวดแก้ว · bare→default",true),
+      ]),
+      R("R17","25/12/2025","(เดือนเดียวกับ R16 → รวมยอด)",[
+        I("หงส์ทอง",4,"ลัง",3300,"สุราหงส์ทอง"),
+        I("แสงโสม",3,"ลัง",3360,"สุราแสงโสม"),
+        I("มิสเตอร์ซี",2,"ลัง",2760,"สุรามิสเตอร์ซี"),
+        I("สปาย",3,"ลัง",600,"สปายไวน์คูลเลอร์"),
+      ]),
+      R("R18","14/01/2026","(เดือนใหม่ → visit 2)",[
+        I("โซดาสิงห์",5,"ถาด",155,"โซดาสิงห์"),
+        I("โซดาลีโอ",4,"ถาด",150,"โซดาลีโอ ขวดเล็ก"),
+        I("สิงห์เลมอนโซดา",3,"ถาด",330,"สิงห์เลมอนโซดา (plain)"),
+      ]),
+      R("R19","30/11/2025","⭐ เดือน พ.ย. → visit แยกเดือน",[
+        I("เบียร์สิงห์ขวดใหญ่",6,"ลัง",688,"เบียร์สิงห์ขวดใหญ่"),
+        I("น้ำสิงห์ 600",4,"แพ็ค",50,"น้ำสิงห์เพ็ท 600ml"),
+      ]),
+    ]},
+
+  { store:"📭 ใบ R20 — ORPHAN (ร้านอ่านไม่ออก)", norm:"เขียนหัวให้เลอะ/ใส่แค่ \"เงินสด\" ไม่ใส่ชื่อร้าน → ตกใน Orphan section", status:"orphan",
+    receipts:[
+      R("R20","10/12/2025","หัวใบเลอะ / ไม่มีชื่อร้าน",[
+        I("ลีโอใหญ่",5,"ลัง",644,"เบียร์ลีโอขวดใหญ่"),
+        I("โซดาสิงห์",3,"ถาด",155,"โซดาสิงห์"),
+      ],{foot:"⭐ AI จับ merchant ไม่ได้ → Orphan section ให้ admin ตั้งชื่อร้านเอง"})
+    ]},
+];
+
+// ---- render ----
+const app = document.getElementById('app');
+const allIds = [];
+DATA.forEach(g => {
+  const head = document.createElement('div');
+  head.className = 'storehead';
+  head.innerHTML = `<h2>${g.store}</h2><span class="norm">${g.norm}</span>`;
+  app.appendChild(head);
+
+  const grid = document.createElement('div');
+  grid.className = 'grid';
+  g.receipts.forEach(r => {
+    allIds.push(r.id);
+    let total = 0;
+    const rows = r.items.map(it => {
+      const line = it.qty * it.price;
+      total += line;
+      return `
+      <tr>
+        <td class="write ${it.typo?'typo':''}">${it.write}</td>
+        <td class="num">${it.qty}</td>
+        <td class="unit">${it.unit}</td>
+        <td class="num">${baht(it.price)}</td>
+        <td class="num">${baht(line)}</td>
+        <td class="arrow">→ ${it.star?'<span class="star">⭐</span> ':''}${it.arrow}</td>
+      </tr>`;
+    }).join('');
+    const card = document.createElement('div');
+    card.className = `slip ${g.status}${g.hero?' hero':''}`;
+    card.dataset.id = r.id;
+    card.innerHTML = `
+      <div class="top">
+        <label class="chk"><input type="checkbox" data-id="${r.id}"> เขียนเสร็จ</label>
+        <span class="rid">${r.id}</span>
+        <div class="date">📅 ${r.date}</div>
+        <div class="billnote">${r.bill?r.bill+' · ':''}<span class="datebadge">${r.items.length} รายการ</span></div>
+      </div>
+      <table>
+        <thead><tr><td>เขียนบนใบ</td><td class="num">จำนวน</td><td>หน่วย</td><td class="num">ราคา/หน่วย</td><td class="num">รวม</td><td>→ AI ควรได้</td></tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr><td colspan="4">ยอดสุทธิ (บาท)</td><td class="num">${baht(total)}</td><td></td></tr></tfoot>
+      </table>
+      ${r.foot?`<div class="foot">${r.foot}</div>`:''}`;
+    grid.appendChild(card);
+  });
+  app.appendChild(grid);
+});
+
+// ---- done-checkbox state (localStorage) ----
+const KEY = 'demo-receipts-done';
+const load = () => { try{ return new Set(JSON.parse(localStorage.getItem(KEY)||'[]')); }catch{ return new Set(); } };
+const save = s => localStorage.setItem(KEY, JSON.stringify([...s]));
+let done = load();
+
+const ptxt = document.getElementById('ptxt');
+const pfill = document.getElementById('pfill');
+function refresh(){
+  document.querySelectorAll('.slip').forEach(c => {
+    const id = c.dataset.id, on = done.has(id);
+    c.classList.toggle('done', on);
+    const box = c.querySelector('input[type=checkbox]'); if(box) box.checked = on;
+  });
+  const n = [...done].filter(id => allIds.includes(id)).length;
+  ptxt.textContent = `เขียนแล้ว ${n} / ${allIds.length} ใบ`;
+  pfill.style.width = (allIds.length ? n/allIds.length*100 : 0) + '%';
+}
+document.addEventListener('change', e => {
+  if(e.target.matches('input[type=checkbox][data-id]')){
+    const id = e.target.dataset.id;
+    e.target.checked ? done.add(id) : done.delete(id);
+    save(done); refresh();
+  }
+});
+document.getElementById('reset').addEventListener('click', () => {
+  if(confirm('ล้างเครื่องหมาย "เขียนเสร็จ" ทั้งหมด?')){ done = new Set(); save(done); refresh(); }
+});
+refresh();
+</script>
+</body>
+</html>
