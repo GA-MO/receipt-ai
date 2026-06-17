@@ -491,8 +491,9 @@
   background: var(--accent-soft);
 }
 .flow-tag-warn {
-  color: var(--warn);
-  background: rgba(180, 83, 9, 0.12);
+  color: #fff;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  box-shadow: 0 4px 10px -4px rgba(217, 119, 6, 0.6);
 }
 .flow-card-store-ic {
   width: 34px;
@@ -863,6 +864,29 @@
   border: 1px solid var(--line);
   box-shadow: 0 18px 50px -30px rgba(28, 28, 30, 0.6);
 }
+.flow-actionbar-stat {
+  margin-right: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 6px;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.flow-actionbar-stat svg {
+  color: var(--accent);
+  flex: none;
+}
+.flow-actionbar-stat b {
+  color: var(--ink);
+  font-weight: 700;
+}
+@media (max-width: 560px) {
+  .flow-actionbar-stat {
+    display: none;
+  }
+}
 .flow-primary-lg {
   padding: 13px 26px;
   font-size: 16px;
@@ -877,10 +901,20 @@
   background: rgba(240, 253, 244, 0.7);
   border-color: rgba(21, 128, 61, 0.28);
 }
-/* store still holding receipts the AI is unsure about */
+/* store still holding receipts the AI is unsure about — make it impossible to
+   miss: warm fill, solid amber border, a thick left accent bar, soft glow */
 .flow-card[data-attention="true"] {
-  border-color: rgba(180, 83, 9, 0.35);
-  box-shadow: inset 3px 0 0 0 var(--warn);
+  background: linear-gradient(180deg, rgba(255, 247, 237, 0.95) 0%, rgba(255, 251, 245, 0.92) 100%);
+  border-color: var(--warn);
+}
+.flow-card[data-attention="true"]:hover {
+  border-color: var(--warn);
+}
+/* the store icon picks up the warning tint so the whole card reads "check me" */
+.flow-card[data-attention="true"] .flow-card-store-ic {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #fff;
+  box-shadow: 0 6px 14px -8px rgba(217, 119, 6, 0.8);
 }
 
 /* ---------- sheet extras ---------- */

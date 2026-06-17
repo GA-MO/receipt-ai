@@ -113,7 +113,9 @@ export default function FlowPage() {
   const [openGroup, setOpenGroup] = useState<string[] | null>(null);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [success, setSuccess] = useState<number | null>(null);
+  const [runMs, setRunMs] = useState<number | null>(null);
   const uploadDoneAt = useRef<number>(0);
+  const runStartAt = useRef<number>(0);
 
   const upload = useUploadInbox();
   const bulkSave = useMarkVisitReviewed();
@@ -127,6 +129,8 @@ export default function FlowPage() {
         return;
       }
       setRunStartedAt(new Date().toISOString());
+      runStartAt.current = Date.now();
+      setRunMs(null);
       setSavedIds(new Set());
       setStage("processing");
       setUploadedIds([]);
@@ -169,6 +173,7 @@ export default function FlowPage() {
     if (stage !== "processing" || total === 0) return;
     const polledAfterUpload = dashboard.dataUpdatedAt > uploadDoneAt.current;
     if (polledAfterUpload && ourProcessing === 0) {
+      setRunMs((m) => m ?? Date.now() - runStartAt.current);
       const t = setTimeout(() => setStage("results"), 450);
       return () => clearTimeout(t);
     }
@@ -180,6 +185,7 @@ export default function FlowPage() {
     setOpenGroup(null);
     setSavedIds(new Set());
     setSuccess(null);
+    setRunMs(null);
   };
 
   const markSaved = (ids: string[]) => setSavedIds((prev) => new Set([...prev, ...ids]));
@@ -214,6 +220,8 @@ export default function FlowPage() {
               <Results
                 data={data}
                 runStartedAt={runStartedAt}
+                runMs={runMs}
+                runCount={uploadedIds.length}
                 savedIds={savedIds}
                 saving={bulkSave.isPending}
                 onOpenGroup={setOpenGroup}
@@ -388,6 +396,8 @@ function Processing({ total, done, pending }: { total: number; done: number; pen
 function Results({
   data,
   runStartedAt,
+  runMs,
+  runCount,
   savedIds,
   saving,
   onOpenGroup,
@@ -396,6 +406,8 @@ function Results({
 }: {
   data: NonNullable<ReturnType<typeof useDashboard>["data"]>;
   runStartedAt: string;
+  runMs: number | null;
+  runCount: number;
   savedIds: Set<string>;
   saving: boolean;
   onOpenGroup: (ids: string[]) => void;
@@ -506,6 +518,15 @@ function Results({
 
       {storeCount > 0 && (
         <div className="flow-actionbar">
+          {runMs != null && runCount > 0 && (
+            <div className="flow-actionbar-stat">
+              <IconSparkles size={15} />
+              <span>
+                AI อ่าน <b>{runCount} ใบ</b> ใน <b>{(runMs / 1000).toFixed(1)} วิ</b> · เฉลี่ย{" "}
+                <b>{(runMs / runCount / 1000).toFixed(1)} วิ/ใบ</b>
+              </span>
+            </div>
+          )}
           <button className="flow-ghost-btn flow-ghost-lg" onClick={onAddMore}>
             <IconUpload size={17} /> โยนใบเสร็จเพิ่ม
           </button>
