@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useDropzone } from "react-dropzone";
 import { motion, AnimatePresence } from "motion/react";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
-import { Select, TextInput, Autocomplete, Loader, ActionIcon } from "@mantine/core";
+import { Select, Autocomplete, Loader, ActionIcon } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
   IconUpload,
@@ -33,8 +34,6 @@ import {
   useAutocomplete,
   useStores,
   useAssignStoreToDoc,
-  useCreateStoreFromDoc,
-  useNameOrphan,
   useDiscardInboxDoc,
   visitsKey,
   qk,
@@ -611,7 +610,17 @@ function StoreCard({
   delay: number;
   onClick: () => void;
 }) {
+  const qc = useQueryClient();
   const needsReview = !group.saved && group.needsReviewCount > 0;
+
+  // Warm the visit-detail cache on hover so the sheet has data ready when it
+  // opens — avoids the Loader→content reflow stuttering mid open-animation.
+  const prefetch = () => {
+    for (const id of group.visitIds) {
+      qc.prefetchQuery({ queryKey: visitsKey.detail(id), queryFn: () => getVisit(id) });
+    }
+  };
+
   return (
     <motion.button
       className="flow-card"
@@ -621,6 +630,8 @@ function StoreCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: "spring", stiffness: 280, damping: 26, delay }}
       whileHover={{ y: -4 }}
+      onMouseEnter={prefetch}
+      onFocus={prefetch}
       onClick={onClick}
     >
       <div className="flow-card-top">
@@ -716,28 +727,39 @@ function AttentionPanel({ data }: { data: NonNullable<ReturnType<typeof useDashb
         </div>
       )}
 
-      <AnimatePresence>
-        {lightbox && (
-          <motion.div
-            className="flow-lightbox"
-            onClick={() => setLightbox(null)}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <motion.img
-              src={lightbox}
-              alt=""
-              onClick={(e) => e.stopPropagation()}
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ type: "spring", stiffness: 320, damping: 30 }}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {createPortal(
+        <AnimatePresence>
+          {lightbox && (
+            <motion.div
+              className="flow-lightbox"
+              onClick={() => setLightbox(null)}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <motion.div
+                className="flow-lightbox-stage"
+                onClick={(e) => e.stopPropagation()}
+                initial={{ scale: 0.94, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.94, opacity: 0 }}
+                transition={{ type: "spring", stiffness: 320, damping: 30 }}
+              >
+                <button
+                  className="flow-lightbox-x"
+                  onClick={() => setLightbox(null)}
+                  aria-label="ปิด"
+                >
+                  <IconX size={18} />
+                </button>
+                <ImageCanvas src={lightbox} />
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
     </section>
   );
 }
@@ -752,7 +774,6 @@ function UnknownStoreCard({
   const [storeId, setStoreId] = useState<string | null>(null);
   const stores = useStores();
   const assign = useAssignStoreToDoc();
-  const createStore = useCreateStoreFromDoc();
   const discard = useDiscardInboxDoc();
 
   const options = useMemo(
@@ -764,12 +785,6 @@ function UnknownStoreCard({
     if (!storeId) return;
     await assign.mutateAsync({ docId: doc.id, storeId });
     notifications.show({ color: "green", message: "ผูกร้านเรียบร้อย" });
-  };
-  const onCreate = async () => {
-    const name = doc.merchant_name?.trim();
-    if (!name) return;
-    await createStore.mutateAsync({ docId: doc.id, name });
-    notifications.show({ color: "green", message: `สร้างร้าน "${name}" แล้ว` });
   };
 
   return (
@@ -798,7 +813,7 @@ function UnknownStoreCard({
         </button>
       </div>
       <Select
-        placeholder="ผูกกับร้านที่มีอยู่…"
+        placeholder="เลือกร้านที่มีอยู่…"
         data={options}
         value={storeId}
         onChange={setStoreId}
@@ -815,25 +830,26 @@ function UnknownStoreCard({
         >
           <IconCheck size={15} /> ผูกร้านนี้
         </button>
-        {doc.merchant_name && (
-          <button className="flow-ghost-btn" disabled={createStore.isPending} onClick={onCreate}>
-            + สร้างร้านใหม่
-          </button>
-        )}
       </div>
     </div>
   );
 }
 
 function OrphanCard({ doc, onView }: { doc: DocumentListItem; onView: (url: string) => void }) {
-  const [name, setName] = useState("");
-  const nameOrphan = useNameOrphan();
+  const [storeId, setStoreId] = useState<string | null>(null);
+  const stores = useStores();
+  const assign = useAssignStoreToDoc();
   const discard = useDiscardInboxDoc();
 
-  const onSave = async () => {
-    if (!name.trim()) return;
-    await nameOrphan.mutateAsync({ docId: doc.id, merchantName: name.trim() });
-    notifications.show({ color: "green", message: "ตั้งชื่อร้านแล้ว" });
+  const options = useMemo(
+    () => (stores.data ?? []).map((s) => ({ value: s.id, label: s.name })),
+    [stores.data],
+  );
+
+  const onAssign = async () => {
+    if (!storeId) return;
+    await assign.mutateAsync({ docId: doc.id, storeId });
+    notifications.show({ color: "green", message: "ผูกร้านเรียบร้อย" });
   };
 
   return (
@@ -863,22 +879,23 @@ function OrphanCard({ doc, onView }: { doc: DocumentListItem; onView: (url: stri
           <IconTrash size={15} />
         </button>
       </div>
-      <TextInput
-        placeholder="พิมพ์ชื่อร้านเอง"
-        value={name}
-        onChange={(e) => setName(e.currentTarget.value)}
+      <Select
+        placeholder="เลือกร้านที่มีอยู่…"
+        data={options}
+        value={storeId}
+        onChange={setStoreId}
+        searchable
         size="sm"
-        onKeyDown={(e) => {
-          if (e.key === "Enter") onSave();
-        }}
+        nothingFoundMessage="ไม่พบร้าน"
+        comboboxProps={{ withinPortal: true }}
       />
       <div className="flow-resolve-btns">
         <button
           className="flow-primary-btn flow-resolve-go"
-          disabled={!name.trim() || nameOrphan.isPending}
-          onClick={onSave}
+          disabled={!storeId || assign.isPending}
+          onClick={onAssign}
         >
-          <IconCheck size={15} /> ตั้งชื่อร้าน
+          <IconCheck size={15} /> ผูกร้านนี้
         </button>
       </div>
     </div>
@@ -895,20 +912,44 @@ function NonReceiptStrip({
   return (
     <div className="flow-nonreceipt">
       <div className="flow-nonreceipt-head">
-        <IconPhotoOff size={16} /> ไม่ใช่ใบเสร็จ {docs.length} รูป · ระบบข้ามให้แล้ว (ลบอัตโนมัติใน 7 วัน)
+        <IconPhotoOff size={16} /> ไม่ใช่ใบเสร็จ {docs.length} รูป · ระบบข้ามให้แล้ว (ลบอัตโนมัติใน 7 วัน) — กด ✕
+        เพื่อลบเลยก็ได้
       </div>
       <div className="flow-thumbs" style={{ marginBottom: 0 }}>
         {docs.map((d) => (
-          <img
-            key={d.id}
-            className="flow-thumb"
-            src={getDocumentImageUrl(d.id)}
-            alt={d.filename}
-            loading="lazy"
-            onClick={() => onView(getDocumentImageUrl(d.id))}
-          />
+          <NonReceiptThumb key={d.id} doc={d} onView={onView} />
         ))}
       </div>
+    </div>
+  );
+}
+
+function NonReceiptThumb({
+  doc,
+  onView,
+}: {
+  doc: DocumentListItem;
+  onView: (url: string) => void;
+}) {
+  const discard = useDiscardInboxDoc();
+  return (
+    <div className="flow-nr-thumb">
+      <img
+        className="flow-thumb"
+        src={getDocumentImageUrl(doc.id)}
+        alt={doc.filename}
+        loading="lazy"
+        onClick={() => onView(getDocumentImageUrl(doc.id))}
+      />
+      <button
+        className="flow-nr-del"
+        title="ลบรูปนี้"
+        aria-label="ลบรูปนี้"
+        disabled={discard.isPending}
+        onClick={() => discard.mutate(doc.id)}
+      >
+        <IconX size={12} />
+      </button>
     </div>
   );
 }

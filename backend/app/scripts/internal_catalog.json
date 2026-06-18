@@ -318,6 +318,76 @@
         "manufacturer": "Asahi Breweries"
       },
       {
+        "productCode": "INT-BEER-HEINEKEN-L",
+        "nameTH": "เบียร์ไฮเนเก้นขวดใหญ่",
+        "nameEN": "Heineken Large",
+        "brandNameTH": "เบียร์ไฮเนเก้น",
+        "brandNameEN": "Heineken",
+        "pathCategoryNameTH": [
+          "สินค้า/เครื่องดื่ม/เบียร์ไฮเนเก้น"
+        ],
+        "sizeTH": "620ml",
+        "unitNameTH": "ขวด",
+        "tags": [
+          "เบียร์",
+          "ไฮเนเก้น",
+          "ไฮเนเกน",
+          "ไฮเน็ค",
+          "ไฮ",
+          "Heineken",
+          "HEINEKEN"
+        ],
+        "price": null,
+        "productType": "AL",
+        "activate": "Y",
+        "manufacturer": "Heineken"
+      },
+      {
+        "productCode": "INT-BEER-HEINEKEN-S",
+        "nameTH": "เบียร์ไฮเนเก้นขวดเล็ก",
+        "nameEN": "Heineken Small",
+        "brandNameTH": "เบียร์ไฮเนเก้น",
+        "brandNameEN": "Heineken",
+        "pathCategoryNameTH": [
+          "สินค้า/เครื่องดื่ม/เบียร์ไฮเนเก้น"
+        ],
+        "sizeTH": "330ml",
+        "unitNameTH": "ขวด",
+        "tags": [
+          "เบียร์",
+          "ไฮเนเก้น",
+          "ไฮเนเกน",
+          "Heineken S"
+        ],
+        "price": null,
+        "productType": "AL",
+        "activate": "Y",
+        "manufacturer": "Heineken"
+      },
+      {
+        "productCode": "INT-BEER-HEINEKEN-CAN",
+        "nameTH": "เบียร์ไฮเนเก้นกระป๋อง",
+        "nameEN": "Heineken Can",
+        "brandNameTH": "เบียร์ไฮเนเก้น",
+        "brandNameEN": "Heineken",
+        "pathCategoryNameTH": [
+          "สินค้า/เครื่องดื่ม/เบียร์ไฮเนเก้น"
+        ],
+        "sizeTH": "320ml",
+        "unitNameTH": "กระป๋อง",
+        "tags": [
+          "เบียร์",
+          "ไฮเนเก้น",
+          "ไฮเนเกน",
+          "Heineken Can",
+          "HEINEKEN CAN"
+        ],
+        "price": null,
+        "productType": "AL",
+        "activate": "Y",
+        "manufacturer": "Heineken"
+      },
+      {
         "productCode": "INT-SPIRIT-SAENGSOM",
         "nameTH": "สุราแสงโสม",
         "nameEN": "Saeng Som",

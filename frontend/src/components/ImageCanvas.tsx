@@ -20,8 +20,8 @@ const MOMENTUM_STOP_THRESHOLD = 0.5;
 const DOUBLE_TAP_DELAY = 300;
 const DOUBLE_TAP_ZOOM = 2;
 
-function clampZoom(value: number) {
-  return Math.min(Math.max(value, ZOOM_MIN), ZOOM_MAX);
+function clampZoom(value: number, min: number = ZOOM_MIN) {
+  return Math.min(Math.max(value, min), ZOOM_MAX);
 }
 
 function calcMaxPan(
@@ -91,6 +91,7 @@ export function ImageCanvas({ src, alt = "", downloadFilename }: ImageCanvasProp
   const [containerSize, setContainerSize] = useState({ w: 0, h: 0 });
   const fitZoomRef = useRef(1);
   const containerRef = useRef<HTMLDivElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
   const momentumRaf = useRef(0);
   const lastTapTime = useRef(0);
 
@@ -327,7 +328,7 @@ export function ImageCanvas({ src, alt = "", downloadFilename }: ImageCanvasProp
 
       onPinch: ({ offset: [scale], origin: [ox, oy], active }) => {
         setIsPinching(active);
-        const nextZoom = clampZoom(scale);
+        const nextZoom = clampZoom(scale, fitZoomRef.current);
 
         // Use React state setter to get latest prev values (no stale ref issues)
         setZoom((prevZoom) => {
@@ -344,7 +345,7 @@ export function ImageCanvas({ src, alt = "", downloadFilename }: ImageCanvasProp
         const point = getPointFromClient(wheelEvent.clientX, wheelEvent.clientY);
 
         setZoom((prevZoom) => {
-          const nextZoom = clampZoom(prevZoom * (1 - dy * 0.001));
+          const nextZoom = clampZoom(prevZoom * (1 - dy * 0.001), fitZoomRef.current);
           setPan((prevPan) => zoomTowardPoint(prevZoom, nextZoom, prevPan, point.x, point.y));
           return nextZoom;
         });
@@ -358,8 +359,7 @@ export function ImageCanvas({ src, alt = "", downloadFilename }: ImageCanvasProp
     },
   );
 
-  const handleImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
-    const img = e.currentTarget;
+  const applyLoaded = useCallback((img: HTMLImageElement) => {
     const w = img.naturalWidth;
     const h = img.naturalHeight;
     setImgSize({ w, h });
@@ -373,9 +373,27 @@ export function ImageCanvas({ src, alt = "", downloadFilename }: ImageCanvasProp
     }
   }, []);
 
+  const handleImageLoad = useCallback(
+    (e: React.SyntheticEvent<HTMLImageElement>) => applyLoaded(e.currentTarget),
+    [applyLoaded],
+  );
+
   const handleImageError = useCallback(() => {
     setImgStatus("error");
   }, []);
+
+  // When the source image changes (e.g. switching receipts while zoomed in),
+  // reset view state so the new image starts fitted, not at the old zoom/pan.
+  // The image stays hidden (opacity 0) until it loads, so there's no flash.
+  useEffect(() => {
+    stopMomentum();
+    setRotation(0);
+    setPan({ x: 0, y: 0 });
+    setImgStatus("loading");
+    const img = imgRef.current;
+    // Cached images may already be complete and never fire onLoad again.
+    if (img && img.complete && img.naturalWidth > 0) applyLoaded(img);
+  }, [src, applyLoaded, stopMomentum]);
 
   const clampWithParams = useCallback(
     (x: number, y: number, z: number, r: number) => {
@@ -394,7 +412,7 @@ export function ImageCanvas({ src, alt = "", downloadFilename }: ImageCanvasProp
 
   const handleZoomIn = useCallback(() => {
     setZoom((prev) => {
-      const next = clampZoom(prev + ZOOM_STEP);
+      const next = clampZoom(prev + ZOOM_STEP, fitZoomRef.current);
       setPan((p) => clampWithParams(p.x, p.y, next, rotation));
       return next;
     });
@@ -402,7 +420,8 @@ export function ImageCanvas({ src, alt = "", downloadFilename }: ImageCanvasProp
 
   const handleZoomOut = useCallback(() => {
     setZoom((prev) => {
-      const next = clampZoom(prev - ZOOM_STEP);
+      // Floor at the fitted zoom so "ย่อ" returns to the initial fit, never smaller.
+      const next = clampZoom(prev - ZOOM_STEP, fitZoomRef.current);
       setPan((p) => clampWithParams(p.x, p.y, next, rotation));
       return next;
     });
@@ -463,7 +482,7 @@ export function ImageCanvas({ src, alt = "", downloadFilename }: ImageCanvasProp
               variant="subtle"
               color="gray"
               onClick={handleZoomOut}
-              disabled={zoom <= ZOOM_MIN}
+              disabled={zoom <= fitZoomRef.current + 0.001}
             >
               <IconZoomOut size={18} />
             </ActionIcon>
@@ -538,6 +557,7 @@ export function ImageCanvas({ src, alt = "", downloadFilename }: ImageCanvasProp
         }}
       >
         <img
+          ref={imgRef}
           src={src}
           alt={alt}
           draggable={false}
