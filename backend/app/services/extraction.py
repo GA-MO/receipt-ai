@@ -66,17 +66,21 @@ _SYSTEM_INSTRUCTION_TAIL_TEMPLATE = """
       "product_code": "SKU code ของสินค้า (string | null) — ดูจากคอลัมน์ product_code ของตาราง PRODUCT_CATALOG; ใส่เฉพาะเมื่อมั่นใจว่า match จริง ไม่ใช่ทุกบรรทัดต้องมี",
       "category": "หมวดหมู่ของรายการนี้ (string จาก allowed categories)",
       "quantity": 0,
-      "unit": "หน่วย เช่น ขวด ลัง แพ็ค กระป๋อง"
+      "unit": "หน่วย เช่น ขวด ลัง แพ็ค กระป๋อง",
+      "amount": "ยอดเงินรวมของบรรทัดนี้ (number | null) — อ่านเพื่อ **ตรวจทานเท่านั้น** ถ้าเห็นชัด ไม่เห็นใส่ null"
     }
   ],
   "confidence": 0.85,
   "notes": "หมายเหตุเพิ่มเติม",
-  "needs_review_fields": ["field ที่ไม่มั่นใจ"]
+  "needs_review_fields": ["field ที่ไม่มั่นใจ"],
+  "validation_total": "ยอดรวมสุทธิท้ายบิล (number | null) — อ่านเพื่อ **ตรวจทานเท่านั้น** ถ้าเห็นชัด"
 }
 
-## โจทย์: ดึง **ชื่อสินค้า + จำนวน + หน่วย** เท่านั้น
-ระบบไม่ใช้ข้อมูลราคา (subtotal, discount, vat, grand_total, unit_price, line_total) — ห้าม emit
-หรือลงทุนเวลาอ่านมัน. โฟกัสกับการ map สินค้าเข้า catalog และนับจำนวนให้ถูก.
+## โจทย์: ดึง **ชื่อสินค้า + จำนวน + หน่วย** เป็นหลัก
+ระบบไม่เก็บข้อมูลราคา — **ห้าม emit** `unit_price`, `subtotal`, `discount`, `vat`.
+ข้อยกเว้นเดียว: ใส่ `amount` (ยอดรวมบรรทัด) และ `validation_total` (ยอดท้ายบิล) **ถ้าเห็นชัด**
+เพื่อให้ระบบ **ตรวจทานว่าอ่านครบ/ถูก** เท่านั้น — ถ้าอ่านยากให้ใส่ null อย่าเดา และอย่าเสียเวลากับมัน.
+โฟกัสหลักยังอยู่ที่ map สินค้าเข้า catalog และนับจำนวนให้ถูก.
 
 ## กฎสำคัญ
 - **ภาษาที่ใช้ตอบ** : ข้อความทุก field ที่เป็นคำอธิบาย/หมายเหตุ (`notes`, `needs_review_fields` ถ้าต้องอธิบาย)
@@ -307,9 +311,24 @@ def _parse_items(raw_items: object, default_category: str | None) -> list[Docume
                 category=cat,
                 quantity=it.get("quantity"),
                 unit=unit,
+                amount=_coerce_number(it.get("amount")),
             )
         )
     return items
+
+
+def _coerce_number(v: object) -> float | None:
+    """Lenient numeric parse for validation-only amount fields (handles
+    "1,250.00", "฿660", stray text). Returns None on anything unparseable."""
+    if isinstance(v, (int, float)):
+        return float(v)
+    if isinstance(v, str):
+        cleaned = "".join(c for c in v if c.isdigit() or c == ".")
+        try:
+            return float(cleaned) if cleaned else None
+        except ValueError:
+            return None
+    return None
 
 
 def _sanitize_document_date(raw_date: object) -> object:
@@ -373,6 +392,7 @@ def parse_extraction_payload(data: object) -> ExtractionResult:
         confidence=data.get("confidence", 0.0),
         notes=data.get("notes"),
         needs_review_fields=data.get("needs_review_fields", []),
+        validation_total=_coerce_number(data.get("validation_total")),
     )
 
 

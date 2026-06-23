@@ -204,6 +204,7 @@ def upsert_alias(
     source_text: str,
     canonical_name: str,
     category: str | None = None,
+    confirmed: bool = False,
 ) -> UpsertResult:
     """Persist an alias from ``source_text`` → ``canonical_name``, with guards.
 
@@ -237,9 +238,13 @@ def upsert_alias(
 
     # Guard 2: if the correction is semantically far from the source, the
     # user is almost certainly fixing a mis-normalization specific to this
-    # document. Do not generalize.
+    # document. Do not generalize. EXCEPTION: ``confirmed`` means a human
+    # explicitly approved this exact (raw → SKU) mapping on a reviewed receipt
+    # — a far stronger signal than auto-mining — so the shop's heavy shorthand
+    # ("บส.ญ" → เบียร์สิงห์ขวดใหญ่) is allowed through. Corroboration via
+    # ``hit_count`` (see build_known_forms) protects against a single mis-confirm.
     score = _fuzzy_score(source_text, canonical)
-    if score < _SEMANTIC_JUMP_THRESHOLD:
+    if not confirmed and score < _SEMANTIC_JUMP_THRESHOLD:
         logger.warning(
             "Refused product alias: %r → %r is too different (fuzzy=%.1f)",
             source_text,
@@ -278,6 +283,44 @@ def upsert_alias(
     logger.info("Learned new product alias: %r → %r (cat=%s)", key, canonical, category)
     _maybe_trigger_background_refresh()
     return UpsertResult(alias=alias)
+
+
+def learn_confirmed_aliases(db: Session, items) -> int:
+    """Register confirmed (raw → SKU name) shorthand when a human approves a doc.
+
+    Called from the approve / mark-reviewed paths. Each catalog-matched line on
+    a receipt the reviewer signed off on is a verified mapping, so we learn it
+    with ``confirmed=True`` (heavy shorthand allowed through the semantic-jump
+    guard). Ambiguous raws (same text on >1 line of the same doc) are skipped —
+    that is per-document disambiguation, not a global rule.
+
+    Returns the number of aliases learned/bumped. Caller commits.
+    """
+    raw_counts: dict[str, int] = {}
+    for it in items:
+        rk = normalize_key(it.product_name_raw or "")
+        if rk:
+            raw_counts[rk] = raw_counts.get(rk, 0) + 1
+
+    learned = 0
+    for it in items:
+        raw = (it.product_name_raw or "").strip()
+        name = (it.product_name_normalized or "").strip()
+        if not raw or not name or not it.product_code:
+            continue
+        rk = normalize_key(raw)
+        if rk == normalize_key(name) or raw_counts.get(rk, 0) > 1:
+            continue
+        res = upsert_alias(
+            db,
+            source_text=raw,
+            canonical_name=name,
+            category=it.category,
+            confirmed=True,
+        )
+        if res.ok and res.alias is not None:
+            learned += 1
+    return learned
 
 
 def apply_alias_to_item(db: Session, item: DocumentItemBase) -> ProductAlias | None:

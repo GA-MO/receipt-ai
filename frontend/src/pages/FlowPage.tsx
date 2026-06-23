@@ -40,6 +40,7 @@ import {
 } from "../api/queries";
 import { getDocumentImageUrl, getVisit, getDocument, deleteItem } from "../api/client";
 import { ImageCanvas } from "@/components/ImageCanvas";
+import { ConfidenceBadge, lineConfidenceMeta } from "@/components/ConfidenceBadge";
 import type {
   DashboardVisit,
   DocumentListItem,
@@ -973,7 +974,9 @@ function mergeVisits(details: VisitDetail[]): MergedStore {
     if (v.report_period && !periods.includes(v.report_period)) periods.push(v.report_period);
     documents.push(...v.documents);
     for (const r of v.aggregate) {
-      const key = r.product_code || `~${r.display_name}`;
+      // Include unit in the key so the backend's unit-split (never sum across
+      // ลัง/ขวด) is preserved when merging the same product across visits.
+      const key = `${r.product_code || `~${r.display_name}`}|${r.unit || ""}`;
       const ex = rows.get(key);
       if (ex) {
         ex.total_quantity += r.total_quantity;
@@ -1531,9 +1534,17 @@ function EditableItem({ docId, item }: { docId: string; item: DocumentItemData }
   };
 
   const isCatalog = !!item.product_code;
+  const conf = lineConfidenceMeta(item);
 
   return (
-    <div className="flow-eitem" data-unknown={!isCatalog}>
+    <div
+      className="flow-eitem"
+      data-unknown={!isCatalog}
+      style={{
+        background: conf.tint || undefined,
+        boxShadow: conf.flag ? `inset 3px 0 0 ${conf.color}` : undefined,
+      }}
+    >
       <span className={`flow-dot ${isCatalog ? "flow-dot-ok" : "flow-dot-warn"}`} />
       <div className="flow-eitem-name">
         <Autocomplete
@@ -1547,13 +1558,19 @@ function EditableItem({ docId, item }: { docId: string; item: DocumentItemData }
           aria-label="ชื่อสินค้า"
           comboboxProps={{ withinPortal: true }}
         />
-        {isCatalog ? (
-          <span className="flow-eitem-code">{item.product_code}</span>
-        ) : (
-          <span className="flow-eitem-code flow-eitem-unknown">
-            <IconAlertTriangle size={11} style={{ verticalAlign: "-1px" }} /> นอกแคตตาล็อก · ไม่นับ
-          </span>
-        )}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <ConfidenceBadge item={item} />
+          {/* Show what the AI READ from the paper (raw) — lets the rep compare
+              line-by-line with the image — instead of the internal SKU code. */}
+          {item.product_name_raw && item.product_name_raw !== name && (
+            <span className="flow-eitem-code">อ่านได้: {item.product_name_raw}</span>
+          )}
+          {!isCatalog && (
+            <span className="flow-eitem-code flow-eitem-unknown">
+              <IconAlertTriangle size={11} style={{ verticalAlign: "-1px" }} /> นอกแคตตาล็อก · ไม่นับ
+            </span>
+          )}
+        </div>
       </div>
       <input
         className="flow-qty-input"

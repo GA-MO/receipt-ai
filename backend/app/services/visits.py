@@ -18,6 +18,54 @@ from .merchants import _rule_based_clean
 logger = logging.getLogger(__name__)
 
 
+# A fuzzy store match at/above this score is treated as confident; between the
+# accept threshold (merchant_fuzzy_threshold, ~88) and this, we link it but flag
+# for a human to confirm — a wrong store silently routes the rollup elsewhere.
+# Kept comfortably above the accept threshold so typo-level matches (~90-95)
+# still get a confirm rather than passing silently.
+_STORE_CONFIDENT = 96
+
+
+def _best_store_match(
+    db: Session, merchant_normalized: str | None
+) -> tuple[Store | None, float, bool]:
+    """Return ``(store, score, exact)`` for the closest active store.
+
+    ``exact`` is True when the cleaned merchant equals a cleaned store name
+    (score 100). Shared by :func:`find_matching_store` (accept/reject) and
+    :func:`check_store_match_confidence` (flag fuzzy-but-accepted matches).
+    """
+    if not merchant_normalized:
+        return (None, 0.0, False)
+    candidate = _rule_based_clean(merchant_normalized)
+    if not candidate:
+        return (None, 0.0, False)
+
+    active_stores = db.query(Store).filter(Store.active.is_(True)).all()
+    cleaned_map: dict[str, Store] = {}
+    for s in active_stores:
+        for raw in (s.normalized_name, s.name):
+            cleaned = _rule_based_clean(raw or "")
+            if cleaned and cleaned not in cleaned_map:
+                cleaned_map[cleaned] = s
+
+    if candidate in cleaned_map:
+        return (cleaned_map[candidate], 100.0, True)
+
+    try:
+        from rapidfuzz import fuzz, process
+    except ImportError:
+        return (None, 0.0, False)
+
+    keys = list(cleaned_map.keys())
+    if not keys:
+        return (None, 0.0, False)
+    match = process.extractOne(candidate, keys, scorer=fuzz.token_set_ratio)
+    if match:
+        return (cleaned_map[match[0]], float(match[1]), False)
+    return (None, 0.0, False)
+
+
 def find_matching_store(
     db: Session,
     merchant_normalized: str | None,
@@ -31,42 +79,63 @@ def find_matching_store(
     Returns ``None`` if nothing crosses the threshold — caller treats that as
     "store not in system yet, hold for manual resolution".
     """
-    if not merchant_normalized:
+    store, score, exact = _best_store_match(db, merchant_normalized)
+    if store is None:
         return None
-    candidate = _rule_based_clean(merchant_normalized)
-    if not candidate:
-        return None
-
-    active_stores = (
-        db.query(Store)
-        .filter(Store.active.is_(True))
-        .all()
-    )
-    if not active_stores:
-        return None
-
-    cleaned_map: dict[str, Store] = {}
-    for s in active_stores:
-        for raw in (s.normalized_name, s.name):
-            cleaned = _rule_based_clean(raw or "")
-            if cleaned and cleaned not in cleaned_map:
-                cleaned_map[cleaned] = s
-
-    if candidate in cleaned_map:
-        return cleaned_map[candidate]
-
-    try:
-        from rapidfuzz import fuzz, process
-    except ImportError:
-        return None
-
-    keys = list(cleaned_map.keys())
-    if not keys:
-        return None
-    match = process.extractOne(candidate, keys, scorer=fuzz.token_set_ratio)
+    if exact:
+        return store
     cutoff = threshold if threshold is not None else settings.merchant_fuzzy_threshold
-    if match and match[1] >= cutoff:
-        return cleaned_map[match[0]]
+    return store if score >= cutoff else None
+
+
+def check_store_match_confidence(db: Session, doc: Document) -> str | None:
+    """Flag a doc whose store was linked only by *fuzzy* merchant similarity.
+
+    Exact matches pass silently. A match accepted by the fuzzy threshold but
+    below :data:`_STORE_CONFIDENT` is plausibly the wrong store — surface it so
+    a human confirms before the quantities roll into that store's report.
+    """
+    store, score, exact = _best_store_match(db, doc.merchant_normalized)
+    if store is None or exact:
+        return None
+    cutoff = settings.merchant_fuzzy_threshold
+    if cutoff <= score < _STORE_CONFIDENT:
+        return (
+            f"จับคู่ร้าน “{store.name}” ด้วยความคล้าย {int(score)}% — "
+            "ยืนยันว่าถูกร้านก่อนนับรวม"
+        )
+    return None
+
+
+def check_duplicate_receipt(db: Session, doc: Document) -> str | None:
+    """Flag a likely re-photographed receipt (same physical bill, new file).
+
+    ``file_hash`` dedup at upload only catches byte-identical re-uploads. The
+    same bill shot from another angle is a new hash but the same
+    ``(merchant, document_number)`` — counting it twice silently inflates the
+    rollup. We only flag (never auto-drop): a human decides. Needs a printed
+    document number to be safe.
+    """
+    num = (doc.document_number or "").strip()
+    merchant = (doc.merchant_normalized or "").strip()
+    if not num or not merchant:
+        return None
+    dup = (
+        db.query(Document)
+        .filter(
+            Document.id != doc.id,
+            Document.deleted_at.is_(None),
+            Document.status != "not_receipt",
+            Document.document_number == num,
+            Document.merchant_normalized == merchant,
+        )
+        .first()
+    )
+    if dup:
+        return (
+            f"อาจเป็นใบซ้ำ — เลขที่เอกสาร {num} ของร้านนี้มีอยู่แล้ว "
+            "(ตรวจก่อนนับรวม ไม่งั้นยอดอาจเบิ้ล)"
+        )
     return None
 
 

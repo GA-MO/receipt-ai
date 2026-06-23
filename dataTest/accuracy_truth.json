@@ -1,0 +1,210 @@
+{
+  "summary": {
+    "receipts": 22,
+    "truth_lines": 85,
+    "product": 0.9764705882352941,
+    "quantity": 1.0,
+    "line": 0.9764705882352941,
+    "false_lines": 7
+  },
+  "rows": [
+    {
+      "file": "IMG_9321.jpg",
+      "truth": 4,
+      "pred": 4,
+      "product_ok": 4,
+      "qty_counts_ok": 4,
+      "line_ok": 4,
+      "false_lines": 0
+    },
+    {
+      "file": "IMG_9322.jpg",
+      "truth": 4,
+      "pred": 4,
+      "product_ok": 4,
+      "qty_counts_ok": 4,
+      "line_ok": 4,
+      "false_lines": 0
+    },
+    {
+      "file": "IMG_9323.jpg",
+      "truth": 3,
+      "pred": 3,
+      "product_ok": 3,
+      "qty_counts_ok": 3,
+      "line_ok": 3,
+      "false_lines": 0
+    },
+    {
+      "file": "IMG_9324.jpg",
+      "truth": 4,
+      "pred": 4,
+      "product_ok": 4,
+      "qty_counts_ok": 4,
+      "line_ok": 4,
+      "false_lines": 0
+    },
+    {
+      "file": "IMG_9325.jpg",
+      "truth": 3,
+      "pred": 3,
+      "product_ok": 3,
+      "qty_counts_ok": 3,
+      "line_ok": 3,
+      "false_lines": 0
+    },
+    {
+      "file": "IMG_9326.jpg",
+      "truth": 3,
+      "pred": 3,
+      "product_ok": 3,
+      "qty_counts_ok": 3,
+      "line_ok": 3,
+      "false_lines": 0
+    },
+    {
+      "file": "IMG_9327.jpg",
+      "truth": 3,
+      "pred": 3,
+      "product_ok": 2,
+      "qty_counts_ok": 3,
+      "line_ok": 2,
+      "false_lines": 1
+    },
+    {
+      "file": "IMG_9328.jpg",
+      "truth": 3,
+      "pred": 4,
+      "product_ok": 3,
+      "qty_counts_ok": 3,
+      "line_ok": 3,
+      "false_lines": 1
+    },
+    {
+      "file": "IMG_9329.jpg",
+      "truth": 3,
+      "pred": 5,
+      "product_ok": 3,
+      "qty_counts_ok": 3,
+      "line_ok": 3,
+      "false_lines": 2
+    },
+    {
+      "file": "IMG_9330.jpg",
+      "truth": 2,
+      "pred": 3,
+      "product_ok": 2,
+      "qty_counts_ok": 2,
+      "line_ok": 2,
+      "false_lines": 1
+    },
+    {
+      "file": "IMG_9331.jpg",
+      "truth": 4,
+      "pred": 4,
+      "product_ok": 4,
+      "qty_counts_ok": 4,
+      "line_ok": 4,
+      "false_lines": 0
+    },
+    {
+      "file": "IMG_9332.jpg",
+      "truth": 4,
+      "pred": 4,
+      "product_ok": 4,
+      "qty_counts_ok": 4,
+      "line_ok": 4,
+      "false_lines": 0
+    },
+    {
+      "file": "IMG_9333.jpg",
+      "truth": 4,
+      "pred": 4,
+      "product_ok": 4,
+      "qty_counts_ok": 4,
+      "line_ok": 4,
+      "false_lines": 0
+    },
+    {
+      "file": "IMG_9334.jpg",
+      "truth": 3,
+      "pred": 3,
+      "product_ok": 3,
+      "qty_counts_ok": 3,
+      "line_ok": 3,
+      "false_lines": 0
+    },
+    {
+      "file": "IMG_9335.jpg",
+      "truth": 2,
+      "pred": 2,
+      "product_ok": 2,
+      "qty_counts_ok": 2,
+      "line_ok": 2,
+      "false_lines": 0
+    },
+    {
+      "file": "IMG_9336.jpg",
+      "truth": 3,
+      "pred": 3,
+      "product_ok": 3,
+      "qty_counts_ok": 3,
+      "line_ok": 3,
+      "false_lines": 0
+    },
+    {
+      "file": "IMG_9337.jpg",
+      "truth": 4,
+      "pred": 4,
+      "product_ok": 4,
+      "qty_counts_ok": 4,
+      "line_ok": 4,
+      "false_lines": 0
+    },
+    {
+      "file": "IMG_9338.jpg",
+      "truth": 3,
+      "pred": 3,
+      "product_ok": 3,
+      "qty_counts_ok": 3,
+      "line_ok": 3,
+      "false_lines": 0
+    },
+    {
+      "file": "IMG_9339.jpg",
+      "truth": 2,
+      "pred": 2,
+      "product_ok": 2,
+      "qty_counts_ok": 2,
+      "line_ok": 2,
+      "false_lines": 0
+    },
+    {
+      "file": "IMG_9340.jpg",
+      "truth": 13,
+      "pred": 14,
+      "product_ok": 13,
+      "qty_counts_ok": 13,
+      "line_ok": 13,
+      "false_lines": 1
+    },
+    {
+      "file": "IMG_9341.jpg",
+      "truth": 4,
+      "pred": 4,
+      "product_ok": 4,
+      "qty_counts_ok": 4,
+      "line_ok": 4,
+      "false_lines": 0
+    },
+    {
+      "file": "Image.jpeg",
+      "truth": 7,
+      "pred": 7,
+      "product_ok": 6,
+      "qty_counts_ok": 7,
+      "line_ok": 6,
+      "false_lines": 1
+    }
+  ]
+}

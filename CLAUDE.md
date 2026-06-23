@@ -68,8 +68,11 @@ make docker-up     # docker compose
 - The pipeline extracts: `merchant_name/_normalized`, `document_number`,
   `document_date` (ค.ศ.), `category`, `items[]` with
   `product_name_raw`, `product_code`, `quantity`, `unit`.
-  **Prices, VAT, discount, totals are not extracted** — they were removed
-  from the schema, the prompt, and the DB.
+  **Price features (VAT, discount, unit_price) are not extracted** — removed
+  from schema/prompt/DB. *Exception:* per-line `amount` + bill `validation_total`
+  are read transiently in the same call (no extra cost) **for a completeness
+  cross-check only** — never stored, never returned by the API (excluded from
+  `DocumentItemResponse`), never shown. See `services/validation.py`.
 - **Unit is catalog-driven, not model-driven.** The shop sells by
   ลัง/ถาด/แพ็ค (never a single ขวด), so for a catalog match the parser
   overrides the model's per-document `unit` guess with the SKU's selling
@@ -182,8 +185,9 @@ If a doc/comment references any of these, it's stale:
   pivot doesn't aggregate revenue.
 - **Fraud detection** (`services/fraud.py`, `extraction_combined.py`,
   `fraud_flags` column) — removed.
-- **Price fields** (`subtotal`, `discount`, `vat`, `grand_total`,
-  `unit_price`, `line_total`) — dropped from DB, schema, and prompt.
+- **Price fields** (`subtotal`, `discount`, `vat`, `unit_price`) — dropped from
+  DB, schema, and prompt. (`amount`/`grand_total` are read back transiently for
+  a validation-only completeness cross-check — not stored, not in the API.)
 - **`extraction_combined`** mode and `use_combined_extraction` setting —
   removed.
 - **8-category taxonomy** (เบียร์/น้ำดื่ม/โซดา/…) — replaced with 4

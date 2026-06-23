@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 # ---------- Items ----------
 
@@ -12,6 +12,10 @@ class DocumentItemBase(BaseModel):
     category: str | None = None
     quantity: float | None = None
     unit: str | None = None
+    # Transient, validation-ONLY: the line's printed amount. Read in the same
+    # vision call (no extra cost), used to cross-check completeness, then
+    # discarded — NOT a restored price feature, never persisted or shown.
+    amount: float | None = None
 
 
 class DocumentItemResponse(DocumentItemBase):
@@ -19,6 +23,9 @@ class DocumentItemResponse(DocumentItemBase):
     document_id: str
     confidence: float | None = None
     needs_review: bool = False
+    # ``amount`` is a transient validation-only input on the base model; never
+    # expose it on the API (no price fields leave the server post-pivot).
+    amount: float | None = Field(default=None, exclude=True)
 
     model_config = {"from_attributes": True}
 
@@ -229,3 +236,7 @@ class ExtractionResult(BaseModel):
     confidence: float = 0.0
     notes: str | None = None
     needs_review_fields: list[str] = []
+    # Transient, validation-ONLY: the bill's printed grand total. Compared to
+    # the sum of line amounts to catch missed / extra / duplicated lines. Not
+    # persisted — see DocumentItemBase.amount.
+    validation_total: float | None = None

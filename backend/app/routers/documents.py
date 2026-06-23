@@ -38,15 +38,19 @@ from ..services.extraction import extract_receipt
 from ..services.aliases import apply_alias_to_extraction
 from ..services.product_aliases import (
     apply_aliases_to_items as apply_product_aliases,
+    learn_confirmed_aliases,
     normalize_key as product_normalize_key,
     upsert_alias as upsert_product_alias,
 )
 from ..services.audit import record as record_event
 from ..models import CatalogGapEvent, Product, TypoRecoveryEvent
 from ..services.catalog import find_code_by_name, is_canonical_name, selling_unit_by_code
+from ..services.line_confidence import build_known_forms, score_line
 from ..services.merchants import assign_normalized_merchant
 from ..services.visits import (
+    check_duplicate_receipt,
     check_period_mismatch,
+    check_store_match_confidence,
     check_store_mismatch,
     cleanup_empty_visits,
     ensure_visit_for_doc,
@@ -250,10 +254,10 @@ def _run_processing(doc_id: str, file_path: str) -> None:
         doc.needs_review = (
             result.confidence < settings.review_confidence_threshold
             or len(result.needs_review_fields) > 0
-            # A duplicate-SKU warning signals a likely misread (Gemini reports
-            # high confidence even when it maps a line to the wrong code), so
-            # force review regardless of the confidence score.
-            or any(w.startswith("พบ SKU ซ้ำ") for w in warnings)
+            # Validation warnings that signal a likely misread/silent error
+            # (duplicate SKU, total mismatch, implausible quantity) force review
+            # regardless of the model's self-reported confidence.
+            or any("ตรวจสอบ" in w for w in warnings)
         )
         # Gemini sometimes accepts a non-receipt (screenshot, document photo)
         # — those return very low confidence with no items. Mark them so the
@@ -271,6 +275,10 @@ def _run_processing(doc_id: str, file_path: str) -> None:
             doc.notes = existing + separator + "\n".join(f"⚠️ {w}" for w in warnings)
 
         has_catalog_gap = False
+        # Verifiable per-line confidence: built once per doc from the live
+        # alias dictionary (catalog names + confirmed shorthand). NOT the
+        # model's self-grade — see services/line_confidence.py.
+        known_forms = build_known_forms(db)
         for item_data in result.items:
             # Raw snapshot of what Gemini read — fall back to normalized when
             # the model didn't emit raw (older extraction paths or legacy
@@ -285,6 +293,7 @@ def _run_processing(doc_id: str, file_path: str) -> None:
             # whether to add the SKU.
             if code is None and _is_primary_product_category(item_data.category):
                 has_catalog_gap = True
+            line = score_line(raw_name, code, known_forms)
             item = DocumentItem(
                 id=str(uuid.uuid4()),
                 document_id=doc_id,
@@ -294,9 +303,13 @@ def _run_processing(doc_id: str, file_path: str) -> None:
                 quantity=item_data.quantity,
                 unit=item_data.unit,
                 category=item_data.category,
-                confidence=result.confidence,
+                confidence=line.confidence,
+                needs_review=line.needs_review,
             )
             db.add(item)
+            if line.needs_review:
+                # Any unproven line should pull the whole doc into the queue.
+                doc.needs_review = True
 
         # Surface docs with at least one catalog gap so the admin sees them
         # — without this, Gemini's uniformly-high confidence (≥0.95) would
@@ -326,6 +339,17 @@ def _run_processing(doc_id: str, file_path: str) -> None:
             sep = "\n" if existing else ""
             doc.notes = existing + sep + store_warning
             doc.needs_review = True
+
+        # Silent-error guards (zero extra LLM cost): a fuzzy store link or a
+        # re-photographed duplicate both corrupt the rollup without anyone
+        # seeing it — flag for human confirmation, never auto-act.
+        for guard in (check_store_match_confidence, check_duplicate_receipt):
+            msg = guard(db, doc)
+            if msg:
+                existing = doc.notes or ""
+                sep = "\n" if existing else ""
+                doc.notes = existing + sep + "⚠️ " + msg
+                doc.needs_review = True
 
         db.commit()
         logger.info("Document %s processed successfully", doc_id)
@@ -941,6 +965,7 @@ def bulk_approve(payload: BulkIds, db: Session = Depends(get_db)):
         doc.status = "reviewed"
         doc.needs_review = False
         doc.reviewed_at = now
+        learn_confirmed_aliases(db, doc.items)
         succeeded += 1
     db.commit()
     failed_ids = [i for i in payload.ids if i not in {d.id for d in docs}]
@@ -1020,10 +1045,13 @@ def approve_document(doc_id: str, db: Session = Depends(get_db)):
     doc.status = "reviewed"
     doc.needs_review = False
     doc.reviewed_at = datetime.now(UTC)
+    # Confirmed lines teach the system: register each matched (raw → SKU) as a
+    # human-verified shorthand so the next receipt reads it confidently.
+    learned = learn_confirmed_aliases(db, doc.items)
     db.commit()
     db.refresh(doc)
-    logger.info("Document %s approved", doc_id)
-    record_event(db, doc_id, "approved", actor="user")
+    logger.info("Document %s approved (%d aliases confirmed)", doc_id, learned)
+    record_event(db, doc_id, "approved", actor="user", payload={"aliases_confirmed": learned})
     return doc
 
 

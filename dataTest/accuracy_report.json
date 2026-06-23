@@ -1,0 +1,865 @@
+{
+  "summary": {
+    "all": {
+      "receipts": 10,
+      "gt_lines": 55,
+      "product_acc": 0.8909090909090909,
+      "quantity_acc": 0.9636363636363636,
+      "line_acc": 0.8545454545454545,
+      "merchant_acc": 0.9
+    },
+    "printed": {
+      "receipts": 5,
+      "gt_lines": 32,
+      "product_acc": 0.96875,
+      "quantity_acc": 0.96875,
+      "line_acc": 0.9375,
+      "merchant_acc": 0.8
+    },
+    "handwritten": {
+      "receipts": 5,
+      "gt_lines": 23,
+      "product_acc": 0.782608695652174,
+      "quantity_acc": 0.9565217391304348,
+      "line_acc": 0.7391304347826086,
+      "merchant_acc": 1.0
+    }
+  },
+  "results": [
+    {
+      "name": "05.jpeg",
+      "kind": "handwritten",
+      "gt_lines": 6,
+      "pred_lines": 6,
+      "product_correct": 5,
+      "quantity_correct": 6,
+      "line_correct": 5,
+      "merchant_ok": true,
+      "per_line": [
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์ลีโอ ขวดใหญ่",
+            "quantity": 60
+          },
+          "pred": {
+            "product": "เบียร์ลีโอขวดใหญ่",
+            "quantity": 60.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์สิงห์ ขวดใหญ่",
+            "quantity": 120
+          },
+          "pred": {
+            "product": "เบียร์สิงห์ขวดใหญ่",
+            "quantity": 120.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "โซดาสิงห์",
+            "quantity": 37
+          },
+          "pred": {
+            "product": "โซดาสิงห์",
+            "quantity": 37.0
+          }
+        },
+        {
+          "status": "wrong",
+          "product_ok": false,
+          "quantity_ok": true,
+          "gt": {
+            "product": "น้ำสิงห์ เพ็ท 600ml",
+            "quantity": 28
+          },
+          "pred": {
+            "product": "น้ำดื่มสิงห์ขวดแก้ว",
+            "quantity": 28.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "สิงห์เลมอนโซดา",
+            "quantity": 2
+          },
+          "pred": {
+            "product": "สิงห์เลมอนโซดา",
+            "quantity": 2.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "สิงห์เลมอนโซดา เรด",
+            "quantity": 1
+          },
+          "pred": {
+            "product": "สิงห์เลมอนโซดา เรด",
+            "quantity": 1.0
+          }
+        }
+      ]
+    },
+    {
+      "name": "07.jpeg",
+      "kind": "handwritten",
+      "gt_lines": 5,
+      "pred_lines": 5,
+      "product_correct": 2,
+      "quantity_correct": 5,
+      "line_correct": 2,
+      "merchant_ok": true,
+      "per_line": [
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์สิงห์",
+            "quantity": 150
+          },
+          "pred": {
+            "product": "เบียร์สิงห์ขวดใหญ่",
+            "quantity": 150.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์ลีโอ",
+            "quantity": 80
+          },
+          "pred": {
+            "product": "เบียร์ลีโอขวดใหญ่",
+            "quantity": 80.0
+          }
+        },
+        {
+          "status": "wrong",
+          "product_ok": false,
+          "quantity_ok": true,
+          "gt": {
+            "product": "ไฮเนเก้น",
+            "quantity": 120
+          },
+          "pred": {
+            "product": "โซดาสิงห์",
+            "quantity": 120.0
+          }
+        },
+        {
+          "status": "wrong",
+          "product_ok": false,
+          "quantity_ok": true,
+          "gt": {
+            "product": "น้ำดื่ม",
+            "quantity": 80
+          },
+          "pred": {
+            "product": "น้ำดื่มสิงห์ขวดแก้ว",
+            "quantity": 80.0
+          }
+        },
+        {
+          "status": "wrong",
+          "product_ok": false,
+          "quantity_ok": true,
+          "gt": {
+            "product": "สุรา",
+            "quantity": 6
+          },
+          "pred": {
+            "product": "สิงห์เลมอนโซดา",
+            "quantity": 6.0
+          }
+        }
+      ]
+    },
+    {
+      "name": "08.jpeg",
+      "kind": "handwritten",
+      "gt_lines": 4,
+      "pred_lines": 4,
+      "product_correct": 3,
+      "quantity_correct": 4,
+      "line_correct": 3,
+      "merchant_ok": true,
+      "per_line": [
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์สิงห์ 320ml",
+            "quantity": 15
+          },
+          "pred": {
+            "product": "เบียร์สิงห์ขวดเล็ก",
+            "quantity": 15.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์อาซาฮี 320ml",
+            "quantity": 2
+          },
+          "pred": {
+            "product": "เบียร์อาซาฮีขวดเล็ก",
+            "quantity": 2.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "โซดาสิงห์",
+            "quantity": 1
+          },
+          "pred": {
+            "product": "โซดาสิงห์",
+            "quantity": 1.0
+          }
+        },
+        {
+          "status": "wrong",
+          "product_ok": false,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เหล้า สิงห์",
+            "quantity": 3
+          },
+          "pred": {
+            "product": "เหล้า KULOV",
+            "quantity": 3.0
+          }
+        }
+      ]
+    },
+    {
+      "name": "09.jpeg",
+      "kind": "handwritten",
+      "gt_lines": 2,
+      "pred_lines": 2,
+      "product_correct": 2,
+      "quantity_correct": 1,
+      "line_correct": 1,
+      "merchant_ok": true,
+      "per_line": [
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์สิงห์ ขวดใหญ่",
+            "quantity": 40
+          },
+          "pred": {
+            "product": "เบียร์สิงห์ขวดใหญ่",
+            "quantity": 40.0
+          }
+        },
+        {
+          "status": "wrong",
+          "product_ok": true,
+          "quantity_ok": false,
+          "gt": {
+            "product": "เบียร์ลีโอ ขวดใหญ่",
+            "quantity": 3
+          },
+          "pred": {
+            "product": "เบียร์ลีโอขวดใหญ่",
+            "quantity": 30.0
+          }
+        }
+      ]
+    },
+    {
+      "name": "11.jpeg",
+      "kind": "printed",
+      "gt_lines": 7,
+      "pred_lines": 7,
+      "product_correct": 6,
+      "quantity_correct": 7,
+      "line_correct": 6,
+      "merchant_ok": false,
+      "per_line": [
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "โซดาสิงห์",
+            "quantity": 18
+          },
+          "pred": {
+            "product": "โซดาสิงห์",
+            "quantity": 18.0
+          }
+        },
+        {
+          "status": "wrong",
+          "product_ok": false,
+          "quantity_ok": true,
+          "gt": {
+            "product": "น้ำสิงห์",
+            "quantity": 36
+          },
+          "pred": {
+            "product": "น้ำดื่มสิงห์ขวดแก้ว",
+            "quantity": 36.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์สิงห์ ขวดใหญ่",
+            "quantity": 184
+          },
+          "pred": {
+            "product": "เบียร์สิงห์ขวดใหญ่",
+            "quantity": 184.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "สิงห์เลมอนโซดา",
+            "quantity": 4
+          },
+          "pred": {
+            "product": "สิงห์เลมอนโซดา",
+            "quantity": 4.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "มายเบียร์ ขวดใหญ่",
+            "quantity": 2
+          },
+          "pred": {
+            "product": "มายเบียร์ขวดเล็ก",
+            "quantity": 2.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์ลีโอ ขวดใหญ่",
+            "quantity": 68
+          },
+          "pred": {
+            "product": "เบียร์ลีโอขวดใหญ่",
+            "quantity": 68.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "วิสกี้ซิลเวอร์วูล์ฟ 350ml",
+            "quantity": 2
+          },
+          "pred": {
+            "product": "วิสกี้ซิลเวอร์วูล์ฟ ขวดแบน",
+            "quantity": 2.0
+          }
+        }
+      ]
+    },
+    {
+      "name": "17_multi_category_large.jpeg",
+      "kind": "printed",
+      "gt_lines": 12,
+      "pred_lines": 12,
+      "product_correct": 12,
+      "quantity_correct": 12,
+      "line_correct": 12,
+      "merchant_ok": true,
+      "per_line": [
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์ลีโอ ขวดใหญ่",
+            "quantity": 150
+          },
+          "pred": {
+            "product": "เบียร์ลีโอขวดใหญ่",
+            "quantity": 150.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "สุราหงส์ทอง 350ml",
+            "quantity": 80
+          },
+          "pred": {
+            "product": "สุราหงส์ทอง",
+            "quantity": 80.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "น้ำดื่มสิงห์ 1.5L",
+            "quantity": 300
+          },
+          "pred": {
+            "product": "น้ำสิงห์เพ็ท 1.5L",
+            "quantity": 300.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "โซดาสิงห์",
+            "quantity": 200
+          },
+          "pred": {
+            "product": "โซดาสิงห์",
+            "quantity": 200.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "บรั่นดีรีเจนซี่ แบน",
+            "quantity": 30
+          },
+          "pred": {
+            "product": "บรั่นดีรีเจนซี่",
+            "quantity": 30.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "สุราเบลนด์ 285",
+            "quantity": 25
+          },
+          "pred": {
+            "product": "สุราเบลนด์ 285",
+            "quantity": 25.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "จอห์นนี่ วอล์คเกอร์ เรด",
+            "quantity": 10
+          },
+          "pred": {
+            "product": "จอห์นนี่ วอล์คเกอร์ เรด",
+            "quantity": 10.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "วิสกี้ซิลเวอร์วูล์ฟ",
+            "quantity": 18
+          },
+          "pred": {
+            "product": "วิสกี้ซิลเวอร์วูล์ฟ ขวดใหญ่",
+            "quantity": 18.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "สิงห์เลมอนโซดา",
+            "quantity": 40
+          },
+          "pred": {
+            "product": "สิงห์เลมอนโซดา",
+            "quantity": 40.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์อาซาฮี กระป๋อง",
+            "quantity": 20
+          },
+          "pred": {
+            "product": "เบียร์อาซาฮีกระป๋อง",
+            "quantity": 20.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "น้ำแร่ฟีฟ่า 500ml",
+            "quantity": 5
+          },
+          "pred": {
+            "product": "น้ำแร่ฟิจิ 500ml",
+            "quantity": 5.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "น้ำดื่มสิงห์ 600ml",
+            "quantity": 100
+          },
+          "pred": {
+            "product": "น้ำสิงห์เพ็ท 600ml",
+            "quantity": 100.0
+          }
+        }
+      ]
+    },
+    {
+      "name": "22_items_total_mismatch.jpeg",
+      "kind": "printed",
+      "gt_lines": 9,
+      "pred_lines": 9,
+      "product_correct": 9,
+      "quantity_correct": 8,
+      "line_correct": 8,
+      "merchant_ok": true,
+      "per_line": [
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์ลีโอ ขวดใหญ่",
+            "quantity": 2
+          },
+          "pred": {
+            "product": "เบียร์ลีโอขวดใหญ่",
+            "quantity": 2.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "สุราหงส์ทอง",
+            "quantity": 3
+          },
+          "pred": {
+            "product": "สุราหงส์ทอง",
+            "quantity": 3.0
+          }
+        },
+        {
+          "status": "wrong",
+          "product_ok": true,
+          "quantity_ok": false,
+          "gt": {
+            "product": "บรั่นดีรีเจนซี่",
+            "quantity": 4
+          },
+          "pred": {
+            "product": "บรั่นดีรีเจนซี่",
+            "quantity": 2.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "น้ำสิงห์ เพ็ท 1.5L",
+            "quantity": 40
+          },
+          "pred": {
+            "product": "น้ำสิงห์เพ็ท 1.5L",
+            "quantity": 40.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "โซดาสิงห์",
+            "quantity": 20
+          },
+          "pred": {
+            "product": "โซดาสิงห์",
+            "quantity": 20.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "จอห์นนี่ วอล์คเกอร์ เรด",
+            "quantity": 1
+          },
+          "pred": {
+            "product": "จอห์นนี่ วอล์คเกอร์ เรด",
+            "quantity": 1.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เสื้อยืดลีโอสุพรีม",
+            "quantity": 10
+          },
+          "pred": {
+            "product": "เสื้อยืดลีโอสุพรีม (Leo Supreme L)",
+            "quantity": 10.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "สิงห์เลมอนโซดา",
+            "quantity": 2
+          },
+          "pred": {
+            "product": "สิงห์เลมอนโซดา",
+            "quantity": 2.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "แก้วเก็บความเย็น Snowy Journey",
+            "quantity": 5
+          },
+          "pred": {
+            "product": "แก้วเก็บความเย็น Snowy Journey",
+            "quantity": 5.0
+          }
+        }
+      ]
+    },
+    {
+      "name": "25a_sudaphanij_baseline_1.jpeg",
+      "kind": "printed",
+      "gt_lines": 2,
+      "pred_lines": 2,
+      "product_correct": 2,
+      "quantity_correct": 2,
+      "line_correct": 2,
+      "merchant_ok": true,
+      "per_line": [
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์สิงห์ ขวดใหญ่",
+            "quantity": 5
+          },
+          "pred": {
+            "product": "เบียร์สิงห์ขวดใหญ่",
+            "quantity": 5.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "โซดาสิงห์",
+            "quantity": 3
+          },
+          "pred": {
+            "product": "โซดาสิงห์",
+            "quantity": 3.0
+          }
+        }
+      ]
+    },
+    {
+      "name": "25b_sudaphanij_baseline_2.jpeg",
+      "kind": "printed",
+      "gt_lines": 2,
+      "pred_lines": 2,
+      "product_correct": 2,
+      "quantity_correct": 2,
+      "line_correct": 2,
+      "merchant_ok": true,
+      "per_line": [
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์ลีโอ ขวดใหญ่",
+            "quantity": 8
+          },
+          "pred": {
+            "product": "เบียร์ลีโอขวดใหญ่",
+            "quantity": 8.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "น้ำสิงห์ เพ็ท 600ml",
+            "quantity": 6
+          },
+          "pred": {
+            "product": "น้ำสิงห์เพ็ท 600ml",
+            "quantity": 6.0
+          }
+        }
+      ]
+    },
+    {
+      "name": "31_ai_reads_shorthand.jpeg",
+      "kind": "handwritten",
+      "gt_lines": 6,
+      "pred_lines": 6,
+      "product_correct": 6,
+      "quantity_correct": 6,
+      "line_correct": 6,
+      "merchant_ok": true,
+      "per_line": [
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์ลีโอ ขวดใหญ่",
+            "quantity": 2
+          },
+          "pred": {
+            "product": "เบียร์ลีโอขวดใหญ่",
+            "quantity": 2.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์สิงห์ ขวดใหญ่",
+            "quantity": 3
+          },
+          "pred": {
+            "product": "เบียร์สิงห์ขวดใหญ่",
+            "quantity": 3.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์ช้าง",
+            "quantity": 1
+          },
+          "pred": {
+            "product": "เบียร์ช้าง",
+            "quantity": 1.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์ลีโอ ขวดใหญ่",
+            "quantity": 2
+          },
+          "pred": {
+            "product": "เบียร์ลีโอขวดใหญ่",
+            "quantity": 2.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์สิงห์ ขวดใหญ่",
+            "quantity": 1
+          },
+          "pred": {
+            "product": "เบียร์สิงห์ขวดใหญ่",
+            "quantity": 1.0
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์อาซาฮี กระป๋อง",
+            "quantity": 4
+          },
+          "pred": {
+            "product": "เบียร์อาซาฮีกระป๋อง",
+            "quantity": 4.0
+          }
+        }
+      ]
+    }
+  ]
+}

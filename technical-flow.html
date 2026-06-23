@@ -258,6 +258,7 @@
         <div class="step" data-phase="3"><span class="k">override</span>catalog-driven unit <span class="note">· ลัง/ถาด ไม่ใช่ ขวด</span><br/><span class="res">→ ลัง</span></div>
         <div class="step" data-phase="3"><span class="k">match</span>store: normalize + RapidFuzz → Visit / Unknown-store<br/><span class="res">"ป้าแดง มินิมาร์ท" → ร้านป้าแดง #42</span></div>
         <div class="step" data-phase="3"><span class="k">guard</span>period / store mismatch<br/><span class="res">2026-06 ✓</span></div>
+        <div class="step" data-phase="3"><span class="k">score</span>ความมั่นใจรายบรรทัด + กันพลาดเงียบ <span class="note">· verifiable ไม่ใช่ AI ให้คะแนนตัวเอง</span><br/><span class="res">บส.ญ → 100% ✓</span> <span class="res" style="background:rgba(249,115,22,.09);border-color:var(--ai-line);color:#9a4a12;">สัวเล็ก → 53% ⚠ ตรวจ</span></div>
       </div>
     </div>
 
@@ -312,6 +313,28 @@
       <div class="glass pcard"><span class="n">04</span><span class="ico">🗂</span><h3>Routing</h3><p>Visit · Unknown · Orphan · Non-receipt</p></div>
       <div class="glass pcard"><span class="n">05</span><span class="ico">📊</span><h3>Aggregate</h3><p>(store, month) → [(product, qty)]</p></div>
     </div>
+  </section>
+
+  <section class="section" id="guardrails2">
+    <div class="eyebrow">Guardrail Layer · Zero Extra Cost</div>
+    <h2>ความมั่นใจรายบรรทัด + กันพลาดเงียบ</h2>
+    <p class="sub">ทุกบรรทัดมีคะแนนความมั่นใจที่ <b>server คำนวณเอง</b> (พิสูจน์ย้อนได้ ไม่ใช่ AI ให้คะแนนตัวเอง) — บวกด่านกัน error ที่กระทบรายงานแบบไม่มีใครเห็น</p>
+
+    <div class="glass tablecard">
+      <table>
+        <thead><tr><th>guard</th><th>silent error ที่จับ</th><th>กลไก · deterministic พิสูจน์ได้</th></tr></thead>
+        <tbody>
+          <tr><td class="tag-store">🎯 ความมั่นใจรายบรรทัด</td><td>ลายมือ/ตัวย่อที่ยังไม่เคยยืนยัน</td><td><span class="mono">raw</span> ตรงกับชื่อ/คำย่อที่ยืนยันแล้ว (hit ≥ 2) แค่ไหน → ต่ำ = flag</td></tr>
+          <tr><td class="tag-cat">📐 รวมหน่วยปนกัน</td><td>2 ลัง + 3 ขวด = 5 (มั่ว)</td><td>aggregate bucket ด้วย (สินค้า + <b>หน่วย</b>) → ไม่รวมข้ามหน่วย</td></tr>
+          <tr><td class="tag-cat">🧾 นับใบซ้ำ</td><td>ถ่ายใบเดิมคนละมุม = นับ 2 รอบ</td><td>dedup (ร้าน + เลขที่เอกสาร) — <span class="mono">file_hash</span> เดิมจับไม่ได้</td></tr>
+          <tr><td class="tag-cat">🔢 จำนวนเพี้ยน</td><td>อ่าน 30 แทน 3</td><td>เศษในหน่วยจำนวนเต็ม · ยอดรวมรายการ ≠ ท้ายบิล (amount cross-check)</td></tr>
+          <tr><td class="tag-store">🏪 ร้านผิด</td><td>fuzzy match เข้าร้านผิด</td><td>match 88–96% → flag ให้ยืนยันก่อนนับรวม</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="pull" style="max-width:42ch;">“ยืนยัน → เรียนคำย่อ → รอบหน้า<span class="grad">อ่านแม่นขึ้น + flag น้อยลง</span>”</p>
+    <p class="footnote">บส.ญ ยืนยัน 2 ครั้ง: 36% ⚠ → 100% ✓ &nbsp;·&nbsp; ทุก guard flag ให้คนตรวจ ไม่ auto-act &nbsp;·&nbsp; ใช้ call เดิม / server logic — <b style="color:var(--gd-b)">ไม่เพิ่ม cost</b></p>
   </section>
 
   <section class="section" id="qa">
@@ -383,20 +406,54 @@
         </div></div>
       </div>
 
+      <div class="glass qa">
+        <div class="q"><span class="badge">Q6</span><h3>วัดความแม่น “รายบรรทัด” ได้จริงเหรอ — แค่ไหน?</h3><span class="chev">▸</span></div>
+        <div class="a"><div class="a-in">
+          <p class="sound">“ได้ — วัดจากใบจริงที่คน review ครบ: จำนวน 100% · ชื่อสินค้า 97.6% (22 ใบ / 85 บรรทัด)”</p>
+          <ul>
+            <li><b>per-line accuracy แบบวัดผล</b> — เทียบทุกบรรทัด (raw → SKU + จำนวน) กับที่คน review แล้ว → รู้ว่าบรรทัดไหนถูก/ผิด · มี harness รันซ้ำได้ ดึง ground truth สดจาก DB</li>
+            <li><b>“96%” บนสไลด์ = ความแม่นของ “จำนวน”</b> ซึ่งคือสิ่งที่เข้ารายงานจริง — ชุด demo 96.4% · ใบจริง 100% → ตัวเลขที่ปักไว้ conservative ด้วยซ้ำ</li>
+            <li><b>จุดพลาดเดียว = ชื่อสินค้าบนลายมือย่อกำกวม</b> (เช่น “สัวเล็ก”) ซึ่งถูก flag ให้คนตรวจเสมอ — จำนวนยังถูก</li>
+          </ul>
+          <p class="limit">N ปัจจุบันยังเล็ก (demo + ใบที่ review แล้ว) — ขยายได้ทันทีด้วยการ review เพิ่มแล้วรันสคริปต์ (ground truth มาจาก DB สด)</p>
+        </div></div>
+      </div>
+
+      <div class="glass qa">
+        <div class="q"><span class="badge">Q7</span><h3>ความมั่นใจรายบรรทัด = AI ให้คะแนนตัวเองหรือเปล่า?</h3><span class="chev">▸</span></div>
+        <div class="a"><div class="a-in">
+          <p class="sound">“ไม่ใช่ — server คำนวณจาก ‘คำที่อ่านได้ตรงกับคำย่อที่ยืนยันแล้วแค่ไหน’ พิสูจน์ย้อนได้ AI โกงไม่ได้”</p>
+          <ul>
+            <li><b>self-grade เชื่อไม่ได้</b> — AI อ่าน “สัวเล็ก” ผิด มันก็มั่นใจกับคำตอบที่ผิด → เราเลยไม่ใช้คะแนนที่ AI ให้ตัวเอง</li>
+            <li><b>แยกด้วย “ความคุ้นเคย” ไม่ใช่ “หน้าตา”</b> — ตัวย่อที่ถูก/อ่านผิด หน้าตาไม่เหมือนชื่อเต็มทั้งคู่ · ตัวชี้ขาดคือ <b>เคยถูกยืนยันไหม</b> → บส.ญ (ยืนยันแล้ว) เชื่อ · สัวเล็ก (ไม่เคย) flag</li>
+            <li><b>ยิ่งใช้ยิ่งแม่น</b> — rep กดยืนยัน → เรียนคำย่อเข้า dictionary (ต้องยืนยัน ≥ 2 ครั้งกัน poison) → รอบหน้าอ่านถูก + flag น้อยลง + map อัตโนมัติ</li>
+          </ul>
+          <p class="limit">“อ่านผิดแบบมั่นใจ ที่ยอดเงินก็ดันตรง” ยังต้อง <b>human review</b> — เราไม่เคย auto-accept (4% ที่เหลือถูก flag ไม่หลุดเข้ารายงาน)</p>
+        </div></div>
+      </div>
+
     </div>
   </section>
 
   <section class="section" id="numbers">
     <div class="eyebrow">Technical Credibility</div>
     <h2>ตัวเลข</h2>
-    <div class="nums">
+
+    <!-- Measured accuracy — วัดจากใบจริงที่พนักงาน review ครบทุกใบ (ไม่ใช่เคลม) -->
+    <div class="nums" style="grid-template-columns:repeat(3,1fr);max-width:740px;margin-left:auto;margin-right:auto;">
+      <div class="glass num"><div class="v" style="background:linear-gradient(180deg,var(--gd-a),var(--gd-b));-webkit-background-clip:text;background-clip:text;color:transparent;">100%</div><div class="l"><b>จำนวน</b> ถูก<br/>22 ใบจริง · 85 บรรทัด · คน review</div></div>
+      <div class="glass num"><div class="v" style="background:linear-gradient(180deg,var(--gd-a),var(--gd-b));-webkit-background-clip:text;background-clip:text;color:transparent;">97.6%</div><div class="l"><b>ชื่อสินค้า</b> ถูก<br/>พลาดเฉพาะลายมือย่อกำกวม → flag</div></div>
+      <div class="glass num"><div class="v" style="background:linear-gradient(180deg,var(--gd-a),var(--gd-b));-webkit-background-clip:text;background-clip:text;color:transparent;">96.4%</div><div class="l"><b>จำนวน</b> บนชุด demo<br/>เลขที่ปักบนสไลด์ — conservative</div></div>
+    </div>
+
+    <div class="nums" style="margin-top:16px;">
       <div class="glass num"><div class="v">1</div><div class="l">vision call / ใบ<br/>(one-shot, ไม่มี loop)</div></div>
-      <div class="glass num"><div class="v">6</div><div class="l">ฟิลด์ / ใบเสร็จ</div></div>
-      <div class="glass num"><div class="v">113</div><div class="l">tests (pytest)</div></div>
+      <div class="glass num"><div class="v">6</div><div class="l">guardrails กันพลาดเงียบ<br/>(zero extra cost)</div></div>
+      <div class="glass num"><div class="v">162</div><div class="l">tests (pytest)</div></div>
       <div class="glass num"><div class="v">×3</div><div class="l">retry + backoff</div></div>
       <div class="glass num"><div class="v">2</div><div class="l">master lists<br/>(catalog + store)</div></div>
     </div>
-    <p class="footnote">ไม่โชว์: fraud · price · VAT · discount · totals — ถอดออกหมดแล้ว (pivot พ.ค. 2026)</p>
+    <p class="footnote">ความแม่น “จำนวน” = ตัวที่เข้ารายงานจริง · ไม่เก็บ/ไม่โชว์: fraud · price · VAT · discount (ถอดตอน pivot พ.ค. 2026) — amount/ยอดรวมอ่าน transient ไว้ครอสเช็คเท่านั้น</p>
   </section>
 
 </div>

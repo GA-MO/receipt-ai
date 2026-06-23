@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ความแม่นยำที่วัดจริง — Thai Receipt Intelligence</title>
+
+<!-- Fonts: IBM Plex Sans Thai (prose) + IBM Plex Mono (data/numbers).
+     Matches the product's "Ledger" type system. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* ===========================================
+   THEME — "The Ledger": warm paper, ink, ruled lines,
+   a red margin rule, and the app's own confidence colours.
+   =========================================== */
+:root{
+  --paper:#f4eede;
+  --paper-2:#efe6d2;
+  --ink:#211d17;
+  --ink-soft:#6d6456;
+  --ink-faint:#a99e89;
+  --rule:rgba(33,29,23,0.10);
+  --rule-strong:rgba(33,29,23,0.22);
+  --red:#ad3a2c;          /* ledger margin line / stamp */
+  --green:#2f7d39;        /* trusted */
+  --amber:#a8650f;        /* needs review */
+  --gap:#a8322a;          /* off-catalog */
+
+  --stage-bg:#211d17;     /* letterbox colour */
+  --slide-bg:var(--paper);
+
+  --font-thai:'IBM Plex Sans Thai',sans-serif;
+  --font-mono:'IBM Plex Mono',monospace;
+
+  --pad:120px;
+  --ease:cubic-bezier(0.16,1,0.3,1);
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+/* ===========================================
+   FIXED 16:9 STAGE — mandatory base (viewport-base.css, verbatim)
+   =========================================== */
+html,body{width:100%;height:100%;margin:0;overflow:hidden;background:var(--stage-bg,#000);}
+.deck-viewport{position:fixed;inset:0;overflow:hidden;background:var(--stage-bg,#000);}
+.deck-stage{position:absolute;left:0;top:0;width:1920px;height:1080px;overflow:hidden;transform-origin:0 0;background:var(--slide-bg,#fff);}
+.slide{position:absolute;inset:0;width:1920px;height:1080px;overflow:hidden;display:block;visibility:hidden;opacity:0;pointer-events:none;background:var(--slide-bg,#fff);}
+.slide.active,.slide.visible{visibility:visible;opacity:1;pointer-events:auto;z-index:1;}
+img,video,canvas,svg{max-width:100%;max-height:100%;}
+.deck-controls{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:1000;}
+@media print{
+  html,body{width:1920px;height:auto;overflow:visible;background:#fff;}
+  .deck-viewport{position:static;overflow:visible;background:#fff;}
+  .deck-stage{position:static;width:auto;height:auto;transform:none !important;background:none;}
+  .slide{position:relative;display:block !important;visibility:visible !important;opacity:1 !important;pointer-events:auto !important;width:1920px;height:1080px;break-after:page;page-break-after:always;}
+  .slide:last-child{break-after:auto;page-break-after:auto;}
+  .deck-controls{display:none !important;}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:0.01ms !important;transition-duration:0.2s !important;}
+}
+
+/* ===========================================
+   PAPER — ruled accounting lines + red margin rule on every slide
+   =========================================== */
+.slide{
+  font-family:var(--font-thai);
+  color:var(--ink);
+  /* faint horizontal rules like ledger paper */
+  background-image:
+    repeating-linear-gradient(to bottom,transparent 0 71px,var(--rule) 71px 72px);
+  background-color:var(--paper);
+}
+.slide::before{ /* warm vignette + grain feel */
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:
+    radial-gradient(120% 80% at 100% 0%,rgba(173,58,44,0.05),transparent 55%),
+    radial-gradient(120% 90% at 0% 100%,rgba(33,29,23,0.06),transparent 50%);
+}
+.slide::after{ /* red ledger margin rule */
+  content:"";position:absolute;top:0;bottom:0;left:var(--pad);width:2px;
+  background:var(--red);opacity:0.55;
+}
+.pad{position:absolute;inset:0;padding:96px var(--pad) 96px calc(var(--pad) + 64px);
+  display:flex;flex-direction:column;}
+
+/* running header + page stamp */
+.eyebrow{font-family:var(--font-mono);font-size:21px;letter-spacing:0.22em;
+  text-transform:uppercase;color:var(--red);font-weight:600;}
+.folio{position:absolute;right:var(--pad);bottom:64px;font-family:var(--font-mono);
+  font-size:20px;color:var(--ink-faint);letter-spacing:0.12em;}
+.kicker{position:absolute;left:calc(var(--pad) + 64px);top:64px;font-family:var(--font-mono);
+  font-size:19px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-faint);}
+
+/* headings */
+h1{font-weight:700;font-size:118px;line-height:1.0;letter-spacing:-0.01em;}
+h2{font-weight:700;font-size:74px;line-height:1.06;letter-spacing:-0.01em;margin-bottom:8px;}
+.lead{font-size:34px;line-height:1.5;color:var(--ink-soft);font-weight:400;max-width:1320px;}
+.mono{font-family:var(--font-mono);}
+.hl-green{color:var(--green);font-weight:600;}
+.hl-amber{color:var(--amber);font-weight:600;}
+.hl-red{color:var(--gap);font-weight:600;}
+.hl-ink{color:var(--ink);font-weight:600;}
+
+/* ===========================================
+   COMPONENTS
+   =========================================== */
+/* perforated receipt card */
+.receipt{position:relative;background:#fbf7ec;border-left:1px solid var(--rule-strong);
+  border-right:1px solid var(--rule-strong);
+  box-shadow:0 18px 50px -28px rgba(33,29,23,0.5);padding:54px 60px;}
+.receipt::before,.receipt::after{content:"";position:absolute;left:0;right:0;height:14px;
+  background-image:radial-gradient(circle at 7px 0,transparent 6px,#fbf7ec 6px);
+  background-size:14px 14px;background-repeat:repeat-x;}
+.receipt::before{top:-14px;background-position:0 -7px;transform:scaleY(-1);}
+.receipt::after{bottom:-14px;background-position:0 -7px;}
+
+/* stamp */
+.stamp{display:inline-flex;align-items:center;gap:14px;font-family:var(--font-mono);
+  font-weight:700;font-size:24px;letter-spacing:0.06em;color:var(--red);
+  border:2.5px solid var(--red);border-radius:8px;padding:10px 20px;
+  text-transform:uppercase;transform:rotate(-3deg);opacity:0.92;}
+
+/* metric */
+.metricrow{display:flex;gap:64px;flex-wrap:wrap;}
+.metric .num{font-family:var(--font-mono);font-weight:700;font-size:92px;line-height:1;
+  letter-spacing:-0.02em;}
+.metric .cap{font-size:25px;color:var(--ink-soft);margin-top:10px;}
+
+/* ledger table */
+table.ledger{border-collapse:collapse;width:100%;font-size:28px;}
+table.ledger th{font-family:var(--font-mono);font-weight:600;font-size:20px;
+  letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-faint);
+  text-align:left;padding:0 24px 14px 0;border-bottom:2px solid var(--rule-strong);}
+table.ledger td{padding:20px 24px 20px 0;border-bottom:1px solid var(--rule);
+  vertical-align:middle;}
+table.ledger td.mono,table.ledger th.mono{font-family:var(--font-mono);}
+.tnum{font-variant-numeric:tabular-nums;}
+
+/* confidence bar (mirrors the real UI badge) */
+.bar{display:inline-flex;align-items:center;gap:12px;font-family:var(--font-mono);
+  font-size:24px;font-weight:600;font-variant-numeric:tabular-nums;}
+.bar .track{width:74px;height:9px;border-radius:5px;background:rgba(33,29,23,0.12);
+  overflow:hidden;}
+.bar .fill{height:100%;display:block;}
+.flagrow td{background:rgba(168,101,15,0.07);box-shadow:inset 4px 0 0 var(--amber);}
+
+/* two-column */
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:72px;}
+.card{background:#fbf7ec;border:1px solid var(--rule-strong);border-radius:4px;
+  padding:40px 44px;box-shadow:0 12px 36px -26px rgba(33,29,23,0.5);}
+.card h3{font-size:30px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:12px;}
+.card p{font-size:25px;line-height:1.5;color:var(--ink-soft);}
+.tag{font-family:var(--font-mono);font-size:18px;letter-spacing:0.1em;text-transform:uppercase;
+  padding:5px 12px;border-radius:4px;font-weight:600;}
+.tag-no{color:var(--gap);background:rgba(168,50,42,0.10);}
+.tag-yes{color:var(--green);background:rgba(47,125,57,0.12);}
+
+/* loop chips */
+.loop{display:flex;align-items:center;gap:26px;flex-wrap:wrap;font-size:26px;}
+.chip{font-family:var(--font-thai);font-weight:600;font-size:26px;background:#fbf7ec;
+  border:1.5px solid var(--rule-strong);border-radius:999px;padding:16px 28px;}
+.arrow{font-family:var(--font-mono);color:var(--red);font-size:30px;font-weight:700;}
+
+.note{font-size:24px;color:var(--ink-soft);line-height:1.5;}
+.big-q{font-size:96px;font-weight:700;line-height:1.08;letter-spacing:-0.01em;}
+
+/* ===========================================
+   REVEAL ANIMATIONS
+   =========================================== */
+.reveal{opacity:0;transform:translateY(24px);
+  transition:opacity .42s var(--ease),transform .42s var(--ease);}
+.slide.visible .reveal{opacity:1;transform:translateY(0);}
+.slide.visible .reveal:nth-child(1){transition-delay:.04s;}
+.slide.visible .reveal:nth-child(2){transition-delay:.10s;}
+.slide.visible .reveal:nth-child(3){transition-delay:.16s;}
+.slide.visible .reveal:nth-child(4){transition-delay:.22s;}
+.slide.visible .reveal:nth-child(5){transition-delay:.28s;}
+.slide.visible .reveal:nth-child(6){transition-delay:.34s;}
+.r2{opacity:0;transform:translateY(24px);transition:opacity .42s var(--ease) .3s,transform .42s var(--ease) .3s;}
+.slide.visible .r2{opacity:1;transform:translateY(0);}
+.stampin{opacity:0;transform:rotate(-3deg) scale(1.4);
+  transition:opacity .34s ease .34s,transform .34s var(--ease) .34s;}
+.slide.visible .stampin{opacity:.92;transform:rotate(-3deg) scale(1);}
+
+/* progress + edit chrome */
+.progress{position:fixed;left:0;bottom:0;height:4px;background:var(--red);z-index:1000;
+  transition:width .4s var(--ease);}
+.edit-hotzone{position:fixed;top:0;left:0;width:80px;height:80px;z-index:10000;cursor:pointer;}
+.edit-toggle{position:fixed;top:18px;left:18px;z-index:10001;opacity:0;pointer-events:none;
+  transition:opacity .3s ease;border:none;background:var(--ink);color:var(--paper);
+  font-size:20px;border-radius:8px;padding:8px 12px;cursor:pointer;}
+.edit-toggle.show,.edit-toggle.active{opacity:1;pointer-events:auto;}
+.edit-toggle.active{background:var(--red);}
+[contenteditable="true"]{outline:2px dashed var(--red);outline-offset:4px;border-radius:3px;}
+</style>
+</head>
+<body>
+<div class="deck-viewport">
+<main class="deck-stage" id="deckStage">
+
+  <!-- ============ 1. TITLE ============ -->
+  <section class="slide title active">
+    <div class="pad" style="justify-content:center;">
+      <div class="eyebrow reveal">Thai Receipt Intelligence · SBP AI Hackathon 2026</div>
+      <h1 class="reveal" style="margin-top:26px;">อ่านลายมือไทย<br>ให้<span style="color:var(--red);">เชื่อได้</span></h1>
+      <p class="lead reveal" style="margin-top:34px;">
+        <span class="hl-ink">วัดจริง</span> · <span class="hl-ink">ตรวจสอบได้</span> · <span class="hl-ink">ยิ่งใช้ยิ่งแม่น</span>
+      </p>
+      <div class="reveal" style="margin-top:46px;">
+        <span class="stamp stampin">● ตอบกรรมการ — per-line accuracy</span>
+      </div>
+    </div>
+    <div class="folio">01</div>
+  </section>
+
+  <!-- ============ 2. THE QUESTION ============ -->
+  <section class="slide">
+    <div class="kicker">คำถามจากกรรมการ</div>
+    <div class="pad" style="justify-content:center;">
+      <div class="big-q reveal">"ทำไมสไลด์บอก<br>ความแม่นแค่ <span style="color:var(--red);">96%</span>?"</div>
+      <p class="lead reveal" style="margin-top:40px;">
+        ถามต่อ — <span class="hl-ink">รายบรรทัดทำได้จริงไหม?</span><br>
+        เริ่มจากตอบให้ตรง: 96% คือความแม่นของ <span class="hl-ink">อะไร</span>
+      </p>
+    </div>
+    <div class="folio">02</div>
+  </section>
+
+  <!-- ============ 3. WHAT 96% MEANS ============ -->
+  <section class="slide">
+    <div class="kicker">96% คือความแม่นของ "จำนวน"</div>
+    <div class="pad">
+      <h2 class="reveal">96% = ความแม่นของ <span style="color:var(--red);">จำนวน</span></h2>
+      <p class="lead reveal" style="margin-top:10px;">
+        วัดจากใบจริงที่คนตรวจครบทุกใบ — ไม่ใช่ตัวเลขที่เคลม
+      </p>
+
+      <div class="receipt reveal" style="margin-top:48px;max-width:1360px;">
+        <table class="ledger">
+          <thead>
+            <tr><th>ชุดข้อมูล</th><th class="mono" style="text-align:right;">จำนวน (qty)</th>
+            <th class="mono" style="text-align:right;">ชื่อสินค้า</th><th class="mono" style="text-align:right;">ทั้งคู่ถูก</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>ใบจริงที่คนตรวจแล้ว</b> · 22 ใบ / 85 บรรทัด</td>
+              <td class="mono tnum" style="text-align:right;"><span class="hl-green">100%</span></td>
+              <td class="mono tnum" style="text-align:right;">97.6%</td>
+              <td class="mono tnum" style="text-align:right;">97.6%</td>
+            </tr>
+            <tr>
+              <td>ชุด demo · 10 ใบ / 55 บรรทัด</td>
+              <td class="mono tnum" style="text-align:right;"><span class="hl-green">96.4%</span></td>
+              <td class="mono tnum" style="text-align:right;">89.1%</td>
+              <td class="mono tnum" style="text-align:right;">85.5%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="note r2" style="margin-top:40px;font-size:28px;">
+        จำนวน = ตัวที่เข้ารายงานจริง (สินค้า × จำนวน) →
+        <span class="hl-ink">"96%" ยืนยันแล้ว — และ conservative ด้วยซ้ำ</span>
+      </p>
+    </div>
+    <div class="folio">03</div>
+  </section>
+
+  <!-- ============ 4. THE PROBLEM ============ -->
+  <section class="slide">
+    <div class="kicker">ทำไมไม่ให้ AI ให้คะแนนตัวเอง</div>
+    <div class="pad" style="justify-content:center;">
+      <h2 class="reveal">ปัญหา: AI ให้คะแนน<span style="color:var(--red);">ตัวเอง</span> เชื่อไม่ได้</h2>
+      <div class="receipt reveal" style="margin-top:44px;max-width:1200px;">
+        <div class="mono" style="font-size:26px;color:var(--ink-soft);letter-spacing:0.04em;">
+          ลายมือบนใบ &nbsp;→&nbsp; AI อ่านว่า
+        </div>
+        <div style="font-size:48px;font-weight:700;margin:14px 0 6px;">
+          "สัวเล็ก" &nbsp;<span class="mono" style="color:var(--ink-faint);font-size:34px;">→</span>&nbsp;
+          เบียร์<span style="color:var(--gap);">สิงห์</span>ขวดเล็ก
+          <span class="mono" style="font-size:30px;color:var(--gap);">✗ ผิด (จริงคือ ลีโอเล็ก)</span>
+        </div>
+        <div class="note" style="margin-top:10px;font-size:27px;">
+          …แล้วก็มั่นใจกับคำตอบที่ผิด <span class="hl-ink">สูงพอ ๆ กับตอนถูก</span>
+        </div>
+      </div>
+      <p class="lead r2" style="margin-top:42px;">
+        เราเลย <span class="hl-ink">ไม่ใช้คะแนนที่ AI ให้ตัวเอง</span>
+      </p>
+    </div>
+    <div class="folio">04</div>
+  </section>
+
+  <!-- ============ 5. THE SOLUTION ============ -->
+  <section class="slide">
+    <div class="kicker">per-line confidence ที่ตรวจสอบได้</div>
+    <div class="pad">
+      <h2 class="reveal">คะแนนรายบรรทัดที่ <span style="color:var(--red);">ตรวจสอบได้</span></h2>
+      <p class="lead reveal" style="margin-top:10px;">
+        คำนวณฝั่ง server — "คำที่อ่านได้" ตรงกับ "ชื่อ/คำย่อที่ SKU นี้ยืนยันแล้ว" แค่ไหน
+      </p>
+      <div class="cols reveal" style="margin-top:48px;">
+        <div class="card">
+          <h3><span class="tag tag-no">30%</span> ไม่พบใน catalog</h3>
+          <p>ไม่ match SKU เลย → flag ให้เลือกสินค้าก่อนเสมอ</p>
+        </div>
+        <div class="card">
+          <h3><span class="tag tag-yes">100%</span> ตรงกับที่ยืนยันแล้ว</h3>
+          <p>raw ตรงกับชื่อ/คำย่อที่เคยยืนยัน (hit ≥ 2) → เชื่อได้</p>
+        </div>
+        <div class="card">
+          <h3 style="color:var(--amber);">คล้าย &lt; 80% → ตรวจ</h3>
+          <p>ความตรงของข้อความกับชื่อในระบบ — ไม่ใช่ "โอกาสถูก"</p>
+        </div>
+        <div class="card" style="background:#211d17;border-color:#211d17;">
+          <h3 style="color:#f4eede;">หัวใจ</h3>
+          <p style="color:#d9cfb8;">AI โกงคะแนนนี้ไม่ได้ — เพราะเราคิดเองจาก output ของมัน</p>
+        </div>
+      </div>
+    </div>
+    <div class="folio">05</div>
+  </section>
+
+  <!-- ============ 6. THE INSIGHT ============ -->
+  <section class="slide">
+    <div class="kicker">insight สำคัญ</div>
+    <div class="pad">
+      <h2 class="reveal">แยกด้วย <span style="color:var(--red);">"ความคุ้นเคย"</span> ไม่ใช่ "หน้าตา"</h2>
+      <p class="lead reveal" style="margin-top:10px;">
+        ตัวย่อที่ถูก กับ อ่านผิด — หน้าตาไม่เหมือนชื่อเต็มทั้งคู่ ความคล้ายแยกไม่ออก
+      </p>
+      <div class="receipt reveal" style="margin-top:40px;max-width:1480px;">
+        <table class="ledger">
+          <thead>
+            <tr><th>สิ่งที่ AI อ่าน</th><th>map เป็น</th>
+              <th class="mono" style="text-align:center;">เคยยืนยัน?</th>
+              <th class="mono" style="text-align:right;">ผล</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="mono" style="font-size:30px;">"บส.ญ"</td>
+              <td>เบียร์สิงห์ขวดใหญ่ <span class="note">(ตัวย่อสากล — ถูก)</span></td>
+              <td style="text-align:center;"><span class="tag tag-yes">ใช่</span></td>
+              <td style="text-align:right;"><span class="bar"><span class="track"><span class="fill" style="width:100%;background:var(--green);"></span></span><span class="hl-green">เชื่อได้</span></span></td>
+            </tr>
+            <tr class="flagrow">
+              <td class="mono" style="font-size:30px;">"สัวเล็ก"</td>
+              <td>ลีโอขวดเล็ก <span class="note">(อ่านผิด/scribble)</span></td>
+              <td style="text-align:center;"><span class="tag tag-no">ไม่</span></td>
+              <td style="text-align:right;"><span class="bar"><span class="track"><span class="fill" style="width:53%;background:var(--amber);"></span></span><span class="hl-amber">ต้องตรวจ</span></span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note r2" style="margin-top:34px;font-size:28px;">
+        คะแนน = <span class="hl-ink">"พิสูจน์แล้วแค่ไหน"</span> →
+        ยืนยันแล้ว = เชื่อ · ไม่เคยเห็น = flag
+      </p>
+    </div>
+    <div class="folio">06</div>
+  </section>
+
+  <!-- ============ 7. FEEDBACK LOOP ============ -->
+  <section class="slide">
+    <div class="kicker">feedback loop</div>
+    <div class="pad">
+      <h2 class="reveal"><span style="color:var(--red);">ยิ่งใช้ยิ่งแม่น</span></h2>
+      <p class="lead reveal" style="margin-top:10px;">
+        กด "บันทึกทั้งหมด" ครั้งเดียว → approve ทุกใบ + เรียนคำย่อที่ยืนยันแล้ว
+      </p>
+
+      <div class="loop reveal" style="margin-top:46px;">
+        <span class="chip">rep ยืนยัน</span><span class="arrow">→</span>
+        <span class="chip">เรียนเข้า dictionary</span><span class="arrow">→</span>
+        <span class="chip">รอบหน้าอ่านแม่นขึ้น</span><span class="arrow">→</span>
+        <span class="chip">flag น้อยลง</span>
+      </div>
+
+      <div class="cols reveal" style="margin-top:48px;grid-template-columns:1fr 1fr 1fr;gap:40px;">
+        <div class="card"><h3>① ฉีดกลับ prompt</h3><p>โมเดลเห็นคำย่อในตาราง → อ่านถูกตั้งแต่แรก</p></div>
+        <div class="card"><h3>② map อัตโนมัติ</h3><p>emit raw เฉย ๆ ระบบเติม SKU ให้</p></div>
+        <div class="card"><h3>③ ความมั่นใจ</h3><p>บรรทัดเขียว ไม่ flag → ตรวจน้อยลง</p></div>
+      </div>
+
+      <p class="note r2" style="margin-top:38px;font-size:28px;">
+        ทดสอบจริง: <span class="mono">"บส.ญ"</span> ยืนยัน 2 ครั้ง →
+        <span class="mono hl-amber">0.36 ⚠</span> &nbsp;กลายเป็น&nbsp; <span class="mono hl-green">1.00 ✓</span>
+        &nbsp;ส่วน <span class="mono">"สัวเล็ก"</span> ที่ไม่มีใครยืนยัน — ยังถูก flag
+      </p>
+    </div>
+    <div class="folio">07</div>
+  </section>
+
+  <!-- ============ 8. HONESTY ============ -->
+  <section class="slide">
+    <div class="kicker">ความซื่อสัตย์</div>
+    <div class="pad" style="justify-content:center;">
+      <h2 class="reveal">คะแนนคือ <span style="color:var(--red);">การช่วยจัดลำดับ</span> ไม่ใช่การรับประกัน</h2>
+      <div class="cols reveal" style="margin-top:46px;">
+        <div class="card">
+          <h3>สิ่งที่จับได้ ✓</h3>
+          <p>ลายมือเลือน · สินค้านอก catalog · ตัวย่อที่ยังไม่เคยยืนยัน — flag ให้ rep เพ่งก่อน</p>
+        </div>
+        <div class="card" style="box-shadow:inset 4px 0 0 var(--amber);">
+          <h3 style="color:var(--amber);">สิ่งที่ยังจับไม่ได้</h3>
+          <p>"อ่านผิดแบบมั่นใจ + คำที่ดูคุ้น" — ไม่มีราคา/ยอดให้ครอสเช็ค จึงไม่มีสัญญาณ verifiable ตัวไหนจับได้</p>
+        </div>
+      </div>
+      <p class="lead r2" style="margin-top:44px;">
+        → <span class="hl-ink">คนยังเป็นด่านสุดท้าย</span> ไม่เคย auto-accept ·
+        4% ที่เหลือถูก flag — <span class="hl-ink">ไม่หลุดเข้ารายงาน</span>
+      </p>
+    </div>
+    <div class="folio">08</div>
+  </section>
+
+  <!-- ============ 9. CLOSING ============ -->
+  <section class="slide">
+    <div class="pad" style="justify-content:center;">
+      <div class="eyebrow reveal">สรุป</div>
+      <h1 class="reveal" style="font-size:96px;margin-top:24px;">
+        วัดจริง · ตรวจสอบได้<br>ยิ่งใช้ยิ่งแม่น · <span style="color:var(--red);">คนคุมท้าย</span>
+      </h1>
+      <div class="loop reveal" style="margin-top:50px;">
+        <span class="chip"><b>96%</b> = ความแม่นจำนวน (วัดจริง)</span>
+        <span class="chip">confidence ที่ AI โกงไม่ได้</span>
+        <span class="chip">ยืนยัน → เรียน → แม่นขึ้น</span>
+      </div>
+      <p class="note r2" style="margin-top:46px;font-size:26px;">
+        Thai Receipt Intelligence — เปลี่ยนกองใบเสร็จลายมือ ให้เป็นรายงาน (สินค้า × จำนวน) ที่เชื่อถือได้
+      </p>
+    </div>
+    <div class="folio">09</div>
+  </section>
+
+</main>
+</div>
+
+<div class="progress" id="progress" style="width:11%;"></div>
+<div class="edit-hotzone" aria-hidden="true"></div>
+<button class="edit-toggle" id="editToggle" title="แก้ข้อความ (E)">✏️ แก้</button>
+
+<script>
+/* ===========================================
+   SLIDE CONTROLLER — scale stage, nav (keys/wheel/touch), progress
+   =========================================== */
+class SlidePresentation{
+  constructor(){
+    this.slides=[...document.querySelectorAll('.slide')];
+    this.i=0;
+    this.stage=document.getElementById('deckStage');
+    this.progress=document.getElementById('progress');
+    this.scale();this.keys();this.touch();this.wheel();this.show(0);
+    window.addEventListener('resize',()=>this.scale());
+  }
+  scale(){
+    const f=Math.min(innerWidth/1920,innerHeight/1080);
+    const x=(innerWidth-1920*f)/2, y=(innerHeight-1080*f)/2;
+    this.stage.style.transform=`translate(${x}px,${y}px) scale(${f})`;
+  }
+  show(n){
+    this.i=Math.max(0,Math.min(n,this.slides.length-1));
+    this.slides.forEach((s,k)=>{s.classList.toggle('active',k===this.i);s.classList.toggle('visible',k===this.i);});
+    this.progress.style.width=((this.i+1)/this.slides.length*100)+'%';
+  }
+  next(){this.show(this.i+1);} prev(){this.show(this.i-1);}
+  keys(){
+    addEventListener('keydown',e=>{
+      if(e.target.getAttribute && e.target.getAttribute('contenteditable')==='true')return;
+      if(['ArrowRight','ArrowDown',' ','PageDown'].includes(e.key)){e.preventDefault();this.next();}
+      else if(['ArrowLeft','ArrowUp','PageUp'].includes(e.key)){e.preventDefault();this.prev();}
+      else if(e.key==='Home')this.show(0);
+      else if(e.key==='End')this.show(this.slides.length-1);
+    });
+  }
+  wheel(){let lock=false;addEventListener('wheel',e=>{
+    if(lock)return;if(Math.abs(e.deltaY)<24)return;lock=true;
+    e.deltaY>0?this.next():this.prev();setTimeout(()=>lock=false,650);
+  },{passive:true});}
+  touch(){let x0=null;
+    addEventListener('touchstart',e=>x0=e.touches[0].clientX,{passive:true});
+    addEventListener('touchend',e=>{if(x0==null)return;const dx=e.changedTouches[0].clientX-x0;
+      if(Math.abs(dx)>55)dx<0?this.next():this.prev();x0=null;},{passive:true});}
+}
+const deck=new SlidePresentation();
+
+/* ===========================================
+   INLINE EDITING — hover top-left or press E, edits saved to localStorage
+   =========================================== */
+const editor={
+  isActive:false,
+  toggle(){
+    this.isActive=!this.isActive;
+    const btn=document.getElementById('editToggle');
+    btn.classList.toggle('active',this.isActive);
+    btn.classList.toggle('show',this.isActive);
+    document.querySelectorAll('h1,h2,h3,p,td,th,span,div.big-q,.chip,.eyebrow').forEach(el=>{
+      if(el.children.length===0||el.classList.contains('big-q'))
+        el.setAttribute('contenteditable',this.isActive);
+    });
+    if(!this.isActive)this.save();
+  },
+  save(){try{localStorage.setItem('deck-edits',document.querySelector('.deck-stage').innerHTML);}catch(e){}},
+  load(){try{const s=localStorage.getItem('deck-edits');if(s)document.querySelector('.deck-stage').innerHTML=s;}catch(e){}}
+};
+const btn=document.getElementById('editToggle'),hz=document.querySelector('.edit-hotzone');
+let ht=null;
+btn.addEventListener('click',()=>editor.toggle());
+hz.addEventListener('click',()=>editor.toggle());
+hz.addEventListener('mouseenter',()=>{clearTimeout(ht);btn.classList.add('show');});
+hz.addEventListener('mouseleave',()=>{ht=setTimeout(()=>{if(!editor.isActive)btn.classList.remove('show');},400);});
+btn.addEventListener('mouseenter',()=>clearTimeout(ht));
+btn.addEventListener('mouseleave',()=>{ht=setTimeout(()=>{if(!editor.isActive)btn.classList.remove('show');},400);});
+addEventListener('keydown',e=>{
+  if((e.key==='e'||e.key==='E')&&e.target.getAttribute('contenteditable')!=='true')editor.toggle();
+  if(e.key==='s'&&(e.ctrlKey||e.metaKey)&&editor.isActive){e.preventDefault();editor.save();}
+});
+addEventListener('input',()=>{if(editor.isActive)editor.save();});
+</script>
+</body>
+</html>

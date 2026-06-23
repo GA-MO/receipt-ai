@@ -48,6 +48,7 @@ import {
 } from "../api/queries";
 import { useToast } from "@/components/Toast";
 import { ImageCanvas } from "@/components/ImageCanvas";
+import { ConfidenceBadge, lineConfidenceMeta } from "@/components/ConfidenceBadge";
 
 const STATUS_LABEL: Record<string, { color: string; label: string }> = {
   pending: { color: "gray", label: "รอ" },
@@ -308,9 +309,17 @@ export default function VisitReviewPage() {
               <Group gap="xs">
                 <Text fw={600}>รายการสินค้า ({doc.items.length})</Text>
                 {doc.confidence != null && (
-                  <Text size="xs" c="dimmed">
-                    AI อ่าน {(doc.confidence * 100).toFixed(0)}%
-                  </Text>
+                  <Tooltip
+                    label="คะแนนที่ AI ประเมินความชัดของทั้งใบเอง — คนละตัวกับแถบความตรงราย
+บรรทัด (ที่ระบบคำนวณเทียบกับ catalog)"
+                    multiline
+                    w={250}
+                    withArrow
+                  >
+                    <Text size="xs" c="dimmed">
+                      AI ประเมินทั้งใบ {(doc.confidence * 100).toFixed(0)}%
+                    </Text>
+                  </Tooltip>
                 )}
                 <Badge size="sm" color={STATUS_LABEL[doc.status]?.color || "gray"} variant="light">
                   {STATUS_LABEL[doc.status]?.label || doc.status}
@@ -569,12 +578,18 @@ function ItemRow({
   }, [name]);
 
   const matched = !!item.product_code;
+  const conf = lineConfidenceMeta(item);
 
   const numOrNull = (v: number | string) =>
     typeof v === "string" && v === "" ? null : Number(v);
 
   return (
-    <Table.Tr>
+    <Table.Tr
+      style={{
+        background: conf.tint,
+        boxShadow: conf.flag ? `inset 3px 0 0 ${conf.color}` : undefined,
+      }}
+    >
       <Table.Td ta="center">
         {matched ? (
           <Tooltip label={`SKU ${item.product_code}`}>
@@ -600,9 +615,12 @@ function ItemRow({
           }}
           limit={8}
         />
-        {item.product_name_raw && item.product_name_raw !== item.product_name_normalized && (
-          <Text size="xs" c="dimmed">raw: {item.product_name_raw}</Text>
-        )}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 2 }}>
+          <ConfidenceBadge item={item} />
+          {item.product_name_raw && item.product_name_raw !== item.product_name_normalized && (
+            <Text size="xs" c="dimmed">raw: {item.product_name_raw}</Text>
+          )}
+        </div>
       </Table.Td>
       <Table.Td>
         <NumberInput

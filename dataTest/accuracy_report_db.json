@@ -1,0 +1,225 @@
+{
+  "reviewed": {
+    "receipts": 1,
+    "gt_lines": 7,
+    "product": 0.8571428571428571,
+    "quantity": 1.0,
+    "line": 0.8571428571428571
+  },
+  "agreement": {
+    "receipts": 21,
+    "gt_lines": 78,
+    "product": 1.0,
+    "quantity": 1.0,
+    "line": 1.0
+  },
+  "all": {
+    "receipts": 22,
+    "gt_lines": 85,
+    "product": 0.9882352941176471,
+    "quantity": 1.0,
+    "line": 0.9882352941176471
+  },
+  "reviewed_rows": [
+    {
+      "gt_lines": 7,
+      "pred_lines": 7,
+      "product_matched": 6,
+      "qty_correct": 6,
+      "qty_multiset_correct": 7,
+      "file": "Image.jpeg",
+      "status": "reviewed"
+    }
+  ],
+  "agreement_rows": [
+    {
+      "gt_lines": 4,
+      "pred_lines": 4,
+      "product_matched": 4,
+      "qty_correct": 4,
+      "qty_multiset_correct": 4,
+      "file": "IMG_9321.jpg",
+      "status": "extracted"
+    },
+    {
+      "gt_lines": 4,
+      "pred_lines": 4,
+      "product_matched": 4,
+      "qty_correct": 4,
+      "qty_multiset_correct": 4,
+      "file": "IMG_9322.jpg",
+      "status": "extracted"
+    },
+    {
+      "gt_lines": 3,
+      "pred_lines": 3,
+      "product_matched": 3,
+      "qty_correct": 3,
+      "qty_multiset_correct": 3,
+      "file": "IMG_9323.jpg",
+      "status": "extracted"
+    },
+    {
+      "gt_lines": 4,
+      "pred_lines": 4,
+      "product_matched": 4,
+      "qty_correct": 4,
+      "qty_multiset_correct": 4,
+      "file": "IMG_9324.jpg",
+      "status": "extracted"
+    },
+    {
+      "gt_lines": 3,
+      "pred_lines": 3,
+      "product_matched": 3,
+      "qty_correct": 3,
+      "qty_multiset_correct": 3,
+      "file": "IMG_9325.jpg",
+      "status": "extracted"
+    },
+    {
+      "gt_lines": 3,
+      "pred_lines": 3,
+      "product_matched": 3,
+      "qty_correct": 3,
+      "qty_multiset_correct": 3,
+      "file": "IMG_9326.jpg",
+      "status": "extracted"
+    },
+    {
+      "gt_lines": 3,
+      "pred_lines": 3,
+      "product_matched": 3,
+      "qty_correct": 3,
+      "qty_multiset_correct": 3,
+      "file": "IMG_9327.jpg",
+      "status": "extracted"
+    },
+    {
+      "gt_lines": 3,
+      "pred_lines": 4,
+      "product_matched": 3,
+      "qty_correct": 3,
+      "qty_multiset_correct": 3,
+      "file": "IMG_9328.jpg",
+      "status": "extracted"
+    },
+    {
+      "gt_lines": 3,
+      "pred_lines": 5,
+      "product_matched": 3,
+      "qty_correct": 3,
+      "qty_multiset_correct": 3,
+      "file": "IMG_9329.jpg",
+      "status": "extracted"
+    },
+    {
+      "gt_lines": 2,
+      "pred_lines": 3,
+      "product_matched": 2,
+      "qty_correct": 2,
+      "qty_multiset_correct": 2,
+      "file": "IMG_9330.jpg",
+      "status": "extracted"
+    },
+    {
+      "gt_lines": 4,
+      "pred_lines": 4,
+      "product_matched": 4,
+      "qty_correct": 4,
+      "qty_multiset_correct": 4,
+      "file": "IMG_9331.jpg",
+      "status": "extracted"
+    },
+    {
+      "gt_lines": 4,
+      "pred_lines": 4,
+      "product_matched": 4,
+      "qty_correct": 4,
+      "qty_multiset_correct": 4,
+      "file": "IMG_9332.jpg",
+      "status": "extracted"
+    },
+    {
+      "gt_lines": 4,
+      "pred_lines": 4,
+      "product_matched": 4,
+      "qty_correct": 4,
+      "qty_multiset_correct": 4,
+      "file": "IMG_9333.jpg",
+      "status": "extracted"
+    },
+    {
+      "gt_lines": 3,
+      "pred_lines": 3,
+      "product_matched": 3,
+      "qty_correct": 3,
+      "qty_multiset_correct": 3,
+      "file": "IMG_9334.jpg",
+      "status": "extracted"
+    },
+    {
+      "gt_lines": 2,
+      "pred_lines": 2,
+      "product_matched": 2,
+      "qty_correct": 2,
+      "qty_multiset_correct": 2,
+      "file": "IMG_9335.jpg",
+      "status": "extracted"
+    },
+    {
+      "gt_lines": 3,
+      "pred_lines": 3,
+      "product_matched": 3,
+      "qty_correct": 3,
+      "qty_multiset_correct": 3,
+      "file": "IMG_9336.jpg",
+      "status": "extracted"
+    },
+    {
+      "gt_lines": 4,
+      "pred_lines": 4,
+      "product_matched": 4,
+      "qty_correct": 4,
+      "qty_multiset_correct": 4,
+      "file": "IMG_9337.jpg",
+      "status": "extracted"
+    },
+    {
+      "gt_lines": 3,
+      "pred_lines": 3,
+      "product_matched": 3,
+      "qty_correct": 3,
+      "qty_multiset_correct": 3,
+      "file": "IMG_9338.jpg",
+      "status": "extracted"
+    },
+    {
+      "gt_lines": 2,
+      "pred_lines": 2,
+      "product_matched": 2,
+      "qty_correct": 2,
+      "qty_multiset_correct": 2,
+      "file": "IMG_9339.jpg",
+      "status": "extracted"
+    },
+    {
+      "gt_lines": 13,
+      "pred_lines": 14,
+      "product_matched": 13,
+      "qty_correct": 13,
+      "qty_multiset_correct": 13,
+      "file": "IMG_9340.jpg",
+      "status": "extracted"
+    },
+    {
+      "gt_lines": 4,
+      "pred_lines": 4,
+      "product_matched": 4,
+      "qty_correct": 4,
+      "qty_multiset_correct": 4,
+      "file": "IMG_9341.jpg",
+      "status": "extracted"
+    }
+  ]
+}

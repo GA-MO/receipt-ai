@@ -1,6 +1,7 @@
 """Tests for the Visit router + aggregate service."""
 
 import io
+import itertools
 import struct
 import zlib
 from unittest.mock import patch
@@ -54,9 +55,15 @@ def _make_tiny_png() -> bytes:
     return sig + ihdr + idat + iend
 
 
+_doc_seq = itertools.count(1)
+
+
 def _seed_doc(db, *, merchant_normalized="ร้านA", visit_id=None, items=None) -> Document:
+    # Unique per call. Previously used ``id(items)`` which is constant for the
+    # ``items=None`` default (id(None)) and can be reused after GC — both cause
+    # duplicate-id collisions in the shared in-memory test DB.
     doc = Document(
-        id=f"doc-{merchant_normalized}-{id(items)}",
+        id=f"doc-{merchant_normalized}-{next(_doc_seq)}",
         filename="r.png",
         file_path="/tmp/r.png",
         file_type="image",
@@ -443,9 +450,14 @@ class TestAggregate:
                 }
             ],
         )
+        # Different units for the same off-catalog name must NOT be summed
+        # (2 ลัง + 24 ขวด ≠ 26 of anything). They split into two honest rows.
         rows = aggregate_visit(db_session, v.id)
-        assert len(rows) == 1
-        assert sorted(rows[0].units_seen) == ["ขวด", "ลัง"]
+        assert len(rows) == 2
+        by_unit = {r.unit: r for r in rows}
+        assert by_unit["ลัง"].total_quantity == 2
+        assert by_unit["ขวด"].total_quantity == 24
+        assert by_unit["ลัง"].units_seen == ["ลัง"]
 
     def test_manufacturer_propagated_from_product(self, db_session):
         v = get_or_create_visit_for_merchant(db_session, "ร้านA", report_period="2026-05")

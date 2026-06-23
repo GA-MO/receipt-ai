@@ -1,0 +1,120 @@
+{
+  "_note": "Human-labelled ground truth for the 10 demo receipts. Labelled 2026-06-22 by reading each image; quantities cross-checked against the amount column (qty x unit_price = amount) where present. 'kind' marks printed vs handwritten so accuracy can be split. Each line: product (canonical identity), quantity. Prices intentionally omitted (out of scope).",
+  "images": {
+    "05.jpeg": {
+      "kind": "handwritten",
+      "merchant": "สุดาพาณิชย์",
+      "lines": [
+        {"product": "เบียร์ลีโอ ขวดใหญ่", "quantity": 60},
+        {"product": "เบียร์สิงห์ ขวดใหญ่", "quantity": 120},
+        {"product": "โซดาสิงห์", "quantity": 37},
+        {"product": "น้ำสิงห์ เพ็ท 600ml", "quantity": 28},
+        {"product": "สิงห์เลมอนโซดา", "quantity": 2},
+        {"product": "สิงห์เลมอนโซดา เรด", "quantity": 1}
+      ]
+    },
+    "07.jpeg": {
+      "kind": "handwritten",
+      "merchant": "จำปิสโตร์",
+      "lines": [
+        {"product": "เบียร์สิงห์", "quantity": 150},
+        {"product": "เบียร์ลีโอ", "quantity": 80},
+        {"product": "ไฮเนเก้น", "quantity": 120},
+        {"product": "น้ำดื่ม", "quantity": 80},
+        {"product": "สุรา", "quantity": 6}
+      ]
+    },
+    "08.jpeg": {
+      "kind": "handwritten",
+      "merchant": "กวงเสิน",
+      "lines": [
+        {"product": "เบียร์สิงห์ 320ml", "quantity": 15},
+        {"product": "เบียร์อาซาฮี 320ml", "quantity": 2},
+        {"product": "โซดาสิงห์", "quantity": 1},
+        {"product": "เหล้า สิงห์", "quantity": 3}
+      ]
+    },
+    "09.jpeg": {
+      "kind": "handwritten",
+      "merchant": "ประสงค์การค้า",
+      "lines": [
+        {"product": "เบียร์สิงห์ ขวดใหญ่", "quantity": 40},
+        {"product": "เบียร์ลีโอ ขวดใหญ่", "quantity": 3}
+      ]
+    },
+    "11.jpeg": {
+      "kind": "printed",
+      "merchant": "ชุก กิ๊ก",
+      "lines": [
+        {"product": "โซดาสิงห์", "quantity": 18},
+        {"product": "น้ำสิงห์", "quantity": 36},
+        {"product": "เบียร์สิงห์ ขวดใหญ่", "quantity": 184},
+        {"product": "สิงห์เลมอนโซดา", "quantity": 4},
+        {"product": "มายเบียร์ ขวดใหญ่", "quantity": 2},
+        {"product": "เบียร์ลีโอ ขวดใหญ่", "quantity": 68},
+        {"product": "วิสกี้ซิลเวอร์วูล์ฟ 350ml", "quantity": 2}
+      ]
+    },
+    "17_multi_category_large.jpeg": {
+      "kind": "printed",
+      "merchant": "ลิ้มเฮงพัฒนา",
+      "lines": [
+        {"product": "เบียร์ลีโอ ขวดใหญ่", "quantity": 150},
+        {"product": "สุราหงส์ทอง 350ml", "quantity": 80},
+        {"product": "น้ำดื่มสิงห์ 1.5L", "quantity": 300},
+        {"product": "โซดาสิงห์", "quantity": 200},
+        {"product": "บรั่นดีรีเจนซี่ แบน", "quantity": 30},
+        {"product": "สุราเบลนด์ 285", "quantity": 25},
+        {"product": "จอห์นนี่ วอล์คเกอร์ เรด", "quantity": 10},
+        {"product": "วิสกี้ซิลเวอร์วูล์ฟ", "quantity": 18},
+        {"product": "สิงห์เลมอนโซดา", "quantity": 40},
+        {"product": "เบียร์อาซาฮี กระป๋อง", "quantity": 20},
+        {"product": "น้ำแร่ฟีฟ่า 500ml", "quantity": 5},
+        {"product": "น้ำดื่มสิงห์ 600ml", "quantity": 100}
+      ]
+    },
+    "22_items_total_mismatch.jpeg": {
+      "kind": "printed",
+      "merchant": "ณ บวร เทรดดิ้ง",
+      "lines": [
+        {"product": "เบียร์ลีโอ ขวดใหญ่", "quantity": 2},
+        {"product": "สุราหงส์ทอง", "quantity": 3},
+        {"product": "บรั่นดีรีเจนซี่", "quantity": 4},
+        {"product": "น้ำสิงห์ เพ็ท 1.5L", "quantity": 40},
+        {"product": "โซดาสิงห์", "quantity": 20},
+        {"product": "จอห์นนี่ วอล์คเกอร์ เรด", "quantity": 1},
+        {"product": "เสื้อยืดลีโอสุพรีม", "quantity": 10},
+        {"product": "สิงห์เลมอนโซดา", "quantity": 2},
+        {"product": "แก้วเก็บความเย็น Snowy Journey", "quantity": 5}
+      ]
+    },
+    "25a_sudaphanij_baseline_1.jpeg": {
+      "kind": "printed",
+      "merchant": "สุดาพาณิชย์",
+      "lines": [
+        {"product": "เบียร์สิงห์ ขวดใหญ่", "quantity": 5},
+        {"product": "โซดาสิงห์", "quantity": 3}
+      ]
+    },
+    "25b_sudaphanij_baseline_2.jpeg": {
+      "kind": "printed",
+      "merchant": "สุดาพาณิชย์",
+      "lines": [
+        {"product": "เบียร์ลีโอ ขวดใหญ่", "quantity": 8},
+        {"product": "น้ำสิงห์ เพ็ท 600ml", "quantity": 6}
+      ]
+    },
+    "31_ai_reads_shorthand.jpeg": {
+      "kind": "handwritten",
+      "merchant": "รวยสุรา",
+      "lines": [
+        {"product": "เบียร์ลีโอ ขวดใหญ่", "quantity": 2},
+        {"product": "เบียร์สิงห์ ขวดใหญ่", "quantity": 3},
+        {"product": "เบียร์ช้าง", "quantity": 1},
+        {"product": "เบียร์ลีโอ ขวดใหญ่", "quantity": 2},
+        {"product": "เบียร์สิงห์ ขวดใหญ่", "quantity": 1},
+        {"product": "เบียร์อาซาฮี กระป๋อง", "quantity": 4}
+      ]
+    }
+  }
+}

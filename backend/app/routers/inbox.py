@@ -41,6 +41,7 @@ from ..schemas import (
 )
 from ..services.audit import record as record_event
 from ..services.merchants import assign_normalized_merchant
+from ..services.product_aliases import learn_confirmed_aliases
 from ..services.storage import save_bytes, validate_and_hash
 from ..services.visits import (
     cleanup_empty_visits,
@@ -600,9 +601,12 @@ def discard_inbox_doc(doc_id: str, db: Session = Depends(get_db)):
 
 @router.post("/visits/{visit_id}/mark-reviewed")
 def mark_visit_reviewed(visit_id: str, db: Session = Depends(get_db)):
-    """Stamp ``last_reviewed_at`` so the dashboard stops nagging until new docs
-    arrive *after* this moment. Pairs with the dashboard's
-    ``new_doc_count`` signal."""
+    """Approve every document in the visit in one shot (the Flow page's
+    "บันทึกทั้งหมด" — no per-receipt clicking) and stamp ``last_reviewed_at``.
+
+    Approving each doc also confirms its matched (raw → SKU) lines as verified
+    shorthand, so the next receipt reads them confidently (the learning loop).
+    """
     visit = (
         db.query(Visit)
         .filter(Visit.id == visit_id, Visit.deleted_at.is_(None))
@@ -610,9 +614,33 @@ def mark_visit_reviewed(visit_id: str, db: Session = Depends(get_db)):
     )
     if not visit:
         raise HTTPException(404, "Visit not found")
-    visit.last_reviewed_at = datetime.now(UTC)
+
+    now = datetime.now(UTC)
+    docs = (
+        db.query(Document)
+        .filter(Document.visit_id == visit_id, Document.deleted_at.is_(None))
+        .all()
+    )
+    approved = 0
+    aliases_confirmed = 0
+    for doc in docs:
+        if doc.status == "not_receipt":
+            continue
+        if doc.status != "reviewed":
+            doc.status = "reviewed"
+            doc.reviewed_at = now
+            approved += 1
+        doc.needs_review = False
+        aliases_confirmed += learn_confirmed_aliases(db, doc.items)
+
+    visit.last_reviewed_at = now
     db.commit()
-    return {"id": visit.id, "last_reviewed_at": visit.last_reviewed_at.isoformat()}
+    return {
+        "id": visit.id,
+        "last_reviewed_at": visit.last_reviewed_at.isoformat(),
+        "approved": approved,
+        "aliases_confirmed": aliases_confirmed,
+    }
 
 
 # ---------------------------------------------------------------------------

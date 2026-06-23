@@ -12,12 +12,19 @@ from ..schemas import VisitAggregateRow
 from .catalog import _norm
 
 
-def _group_key(item: DocumentItem) -> tuple[str, str]:
-    """Return ``(kind, key)`` — catalog SKU wins, else normalized name fallback."""
+def _group_key(item: DocumentItem) -> tuple[str, str, str]:
+    """Return ``(kind, key, unit)`` — catalog SKU wins, else normalized name.
+
+    Unit is part of the key so quantities are NEVER summed across different
+    units (e.g. ``2 ลัง`` + ``3 ขวด`` must stay two rows, not become ``5``).
+    Catalog items are forced to one selling unit upstream, so they don't split;
+    only genuinely mixed-unit off-catalog lines fan out into separate rows.
+    """
+    unit = _norm(item.unit or "")
     if item.product_code:
-        return ("sku", item.product_code)
+        return ("sku", item.product_code, unit)
     name = item.product_name_normalized or item.product_name_raw or "?"
-    return ("name", _norm(name))
+    return ("name", _norm(name), unit)
 
 
 def _live_docs(visit_id: str, db: Session, *, date_from=None, date_to=None) -> list[Document]:
