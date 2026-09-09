@@ -1,52 +1,64 @@
 {
   "summary": {
-    "all": {
-      "receipts": 10,
-      "gt_lines": 55,
-      "product_acc": 0.8909090909090909,
-      "quantity_acc": 0.9636363636363636,
-      "line_acc": 0.8545454545454545,
-      "merchant_acc": 0.9
+    "read": {
+      "receipts": 32,
+      "gt_lines": 145,
+      "product_acc": 1.0,
+      "quantity_acc": 0.993103448275862,
+      "line_acc": 0.993103448275862,
+      "missed": 0,
+      "invented": 0,
+      "merchant_acc": 0.96875
     },
-    "printed": {
-      "receipts": 5,
-      "gt_lines": 32,
-      "product_acc": 0.96875,
-      "quantity_acc": 0.96875,
-      "line_acc": 0.9375,
-      "merchant_acc": 0.8
-    },
-    "handwritten": {
-      "receipts": 5,
-      "gt_lines": 23,
-      "product_acc": 0.782608695652174,
-      "quantity_acc": 0.9565217391304348,
-      "line_acc": 0.7391304347826086,
-      "merchant_acc": 1.0
+    "catalog": {
+      "receipts": 32,
+      "gt_lines": 136,
+      "product_acc": 1.0,
+      "quantity_acc": 0.9926470588235294,
+      "line_acc": 0.9926470588235294,
+      "missed": 0,
+      "invented": 0,
+      "merchant_acc": 0.96875
     }
   },
   "results": [
     {
       "name": "05.jpeg",
       "kind": "handwritten",
-      "gt_lines": 6,
       "pred_lines": 6,
-      "product_correct": 5,
-      "quantity_correct": 6,
-      "line_correct": 5,
       "merchant_ok": true,
+      "read": {
+        "gt_lines": 6,
+        "product_correct": 6,
+        "quantity_correct": 6,
+        "line_correct": 6,
+        "missed": 0,
+        "invented": 0
+      },
+      "catalog": {
+        "gt_lines": 6,
+        "product_correct": 6,
+        "quantity_correct": 6,
+        "line_correct": 6,
+        "missed": 0,
+        "invented": 0
+      },
       "per_line": [
         {
           "status": "ok",
           "product_ok": true,
           "quantity_ok": true,
           "gt": {
-            "product": "เบียร์ลีโอ ขวดใหญ่",
-            "quantity": 60
+            "product": "เบียร์ลีโอขวดใหญ่",
+            "quantity": 60.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-LEO-L",
+            "in_catalog": true
           },
           "pred": {
             "product": "เบียร์ลีโอขวดใหญ่",
-            "quantity": 60.0
+            "quantity": 60.0,
+            "in_catalog": true
           }
         },
         {
@@ -54,12 +66,16 @@
           "product_ok": true,
           "quantity_ok": true,
           "gt": {
-            "product": "เบียร์สิงห์ ขวดใหญ่",
-            "quantity": 120
+            "product": "เบียร์สิงห์ขวดใหญ่",
+            "quantity": 120.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-SINGHA-L",
+            "in_catalog": true
           },
           "pred": {
             "product": "เบียร์สิงห์ขวดใหญ่",
-            "quantity": 120.0
+            "quantity": 120.0,
+            "in_catalog": true
           }
         },
         {
@@ -68,24 +84,32 @@
           "quantity_ok": true,
           "gt": {
             "product": "โซดาสิงห์",
-            "quantity": 37
+            "quantity": 37.0,
+            "unit": "ถาด",
+            "code": "10097730100",
+            "in_catalog": true
           },
           "pred": {
             "product": "โซดาสิงห์",
-            "quantity": 37.0
+            "quantity": 37.0,
+            "in_catalog": true
           }
         },
         {
-          "status": "wrong",
-          "product_ok": false,
+          "status": "ok",
+          "product_ok": true,
           "quantity_ok": true,
           "gt": {
-            "product": "น้ำสิงห์ เพ็ท 600ml",
-            "quantity": 28
+            "product": "น้ำดื่มสิงห์ขวดแก้ว",
+            "quantity": 28.0,
+            "unit": "ลัง",
+            "code": "INT-WATER-SINGHA-GLASS",
+            "in_catalog": true
           },
           "pred": {
             "product": "น้ำดื่มสิงห์ขวดแก้ว",
-            "quantity": 28.0
+            "quantity": 28.0,
+            "in_catalog": true
           }
         },
         {
@@ -94,11 +118,15 @@
           "quantity_ok": true,
           "gt": {
             "product": "สิงห์เลมอนโซดา",
-            "quantity": 2
+            "quantity": 2.0,
+            "unit": "ถาด",
+            "code": "10096910100",
+            "in_catalog": true
           },
           "pred": {
             "product": "สิงห์เลมอนโซดา",
-            "quantity": 2.0
+            "quantity": 2.0,
+            "in_catalog": true
           }
         },
         {
@@ -107,36 +135,62 @@
           "quantity_ok": true,
           "gt": {
             "product": "สิงห์เลมอนโซดา เรด",
-            "quantity": 1
+            "quantity": 1.0,
+            "unit": "ถาด",
+            "code": "10096940100",
+            "in_catalog": true
           },
           "pred": {
             "product": "สิงห์เลมอนโซดา เรด",
-            "quantity": 1.0
+            "quantity": 1.0,
+            "in_catalog": true
           }
         }
-      ]
+      ],
+      "gt_lines": 6,
+      "product_correct": 6,
+      "quantity_correct": 6,
+      "line_correct": 6,
+      "missed": 0,
+      "invented": 0
     },
     {
       "name": "07.jpeg",
       "kind": "handwritten",
-      "gt_lines": 5,
       "pred_lines": 5,
-      "product_correct": 2,
-      "quantity_correct": 5,
-      "line_correct": 2,
       "merchant_ok": true,
+      "read": {
+        "gt_lines": 5,
+        "product_correct": 5,
+        "quantity_correct": 5,
+        "line_correct": 5,
+        "missed": 0,
+        "invented": 0
+      },
+      "catalog": {
+        "gt_lines": 5,
+        "product_correct": 5,
+        "quantity_correct": 5,
+        "line_correct": 5,
+        "missed": 0,
+        "invented": 0
+      },
       "per_line": [
         {
           "status": "ok",
           "product_ok": true,
           "quantity_ok": true,
           "gt": {
-            "product": "เบียร์สิงห์",
-            "quantity": 150
+            "product": "เบียร์สิงห์ขวดใหญ่",
+            "quantity": 150.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-SINGHA-L",
+            "in_catalog": true
           },
           "pred": {
             "product": "เบียร์สิงห์ขวดใหญ่",
-            "quantity": 150.0
+            "quantity": 150.0,
+            "in_catalog": true
           }
         },
         {
@@ -144,76 +198,114 @@
           "product_ok": true,
           "quantity_ok": true,
           "gt": {
-            "product": "เบียร์ลีโอ",
-            "quantity": 80
+            "product": "เบียร์ลีโอขวดใหญ่",
+            "quantity": 80.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-LEO-L",
+            "in_catalog": true
           },
           "pred": {
             "product": "เบียร์ลีโอขวดใหญ่",
-            "quantity": 80.0
+            "quantity": 80.0,
+            "in_catalog": true
           }
         },
         {
-          "status": "wrong",
-          "product_ok": false,
+          "status": "ok",
+          "product_ok": true,
           "quantity_ok": true,
           "gt": {
-            "product": "ไฮเนเก้น",
-            "quantity": 120
+            "product": "โซดาสิงห์",
+            "quantity": 120.0,
+            "unit": "ถาด",
+            "code": "10097730100",
+            "in_catalog": true
           },
           "pred": {
             "product": "โซดาสิงห์",
-            "quantity": 120.0
+            "quantity": 120.0,
+            "in_catalog": true
           }
         },
         {
-          "status": "wrong",
-          "product_ok": false,
+          "status": "ok",
+          "product_ok": true,
           "quantity_ok": true,
           "gt": {
-            "product": "น้ำดื่ม",
-            "quantity": 80
+            "product": "น้ำดื่มสิงห์ขวดแก้ว",
+            "quantity": 80.0,
+            "unit": "ลัง",
+            "code": "INT-WATER-SINGHA-GLASS",
+            "in_catalog": true
           },
           "pred": {
             "product": "น้ำดื่มสิงห์ขวดแก้ว",
-            "quantity": 80.0
+            "quantity": 80.0,
+            "in_catalog": true
           }
         },
         {
-          "status": "wrong",
-          "product_ok": false,
+          "status": "ok",
+          "product_ok": true,
           "quantity_ok": true,
           "gt": {
-            "product": "สุรา",
-            "quantity": 6
+            "product": "สิงห์เลมอนโซดา",
+            "quantity": 6.0,
+            "unit": "ถาด",
+            "code": "10096910100",
+            "in_catalog": true
           },
           "pred": {
             "product": "สิงห์เลมอนโซดา",
-            "quantity": 6.0
+            "quantity": 6.0,
+            "in_catalog": true
           }
         }
-      ]
+      ],
+      "gt_lines": 5,
+      "product_correct": 5,
+      "quantity_correct": 5,
+      "line_correct": 5,
+      "missed": 0,
+      "invented": 0
     },
     {
       "name": "08.jpeg",
       "kind": "handwritten",
-      "gt_lines": 4,
       "pred_lines": 4,
-      "product_correct": 3,
-      "quantity_correct": 4,
-      "line_correct": 3,
       "merchant_ok": true,
+      "read": {
+        "gt_lines": 4,
+        "product_correct": 4,
+        "quantity_correct": 4,
+        "line_correct": 4,
+        "missed": 0,
+        "invented": 0
+      },
+      "catalog": {
+        "gt_lines": 3,
+        "product_correct": 3,
+        "quantity_correct": 3,
+        "line_correct": 3,
+        "missed": 0,
+        "invented": 0
+      },
       "per_line": [
         {
           "status": "ok",
           "product_ok": true,
           "quantity_ok": true,
           "gt": {
-            "product": "เบียร์สิงห์ 320ml",
-            "quantity": 15
+            "product": "เบียร์สิงห์ขวดเล็ก",
+            "quantity": 15.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-SINGHA-S",
+            "in_catalog": true
           },
           "pred": {
             "product": "เบียร์สิงห์ขวดเล็ก",
-            "quantity": 15.0
+            "quantity": 15.0,
+            "in_catalog": true
           }
         },
         {
@@ -221,12 +313,16 @@
           "product_ok": true,
           "quantity_ok": true,
           "gt": {
-            "product": "เบียร์อาซาฮี 320ml",
-            "quantity": 2
+            "product": "เบียร์อาซาฮีขวดเล็ก",
+            "quantity": 2.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-ASAHI-S",
+            "in_catalog": true
           },
           "pred": {
             "product": "เบียร์อาซาฮีขวดเล็ก",
-            "quantity": 2.0
+            "quantity": 2.0,
+            "in_catalog": true
           }
         },
         {
@@ -235,75 +331,127 @@
           "quantity_ok": true,
           "gt": {
             "product": "โซดาสิงห์",
-            "quantity": 1
+            "quantity": 1.0,
+            "unit": "ถาด",
+            "code": "10097730100",
+            "in_catalog": true
           },
           "pred": {
             "product": "โซดาสิงห์",
-            "quantity": 1.0
+            "quantity": 1.0,
+            "in_catalog": true
           }
         },
         {
-          "status": "wrong",
-          "product_ok": false,
+          "status": "ok",
+          "product_ok": true,
           "quantity_ok": true,
           "gt": {
-            "product": "เหล้า สิงห์",
-            "quantity": 3
+            "product": "เหล้า KULOV ลิตร",
+            "quantity": 3.0,
+            "unit": "ขวด",
+            "code": null,
+            "in_catalog": false
           },
           "pred": {
             "product": "เหล้า KULOV",
-            "quantity": 3.0
+            "quantity": 3.0,
+            "in_catalog": false
           }
         }
-      ]
+      ],
+      "gt_lines": 4,
+      "product_correct": 4,
+      "quantity_correct": 4,
+      "line_correct": 4,
+      "missed": 0,
+      "invented": 0
     },
     {
       "name": "09.jpeg",
       "kind": "handwritten",
-      "gt_lines": 2,
       "pred_lines": 2,
+      "merchant_ok": true,
+      "read": {
+        "gt_lines": 2,
+        "product_correct": 2,
+        "quantity_correct": 1,
+        "line_correct": 1,
+        "missed": 0,
+        "invented": 0
+      },
+      "catalog": {
+        "gt_lines": 2,
+        "product_correct": 2,
+        "quantity_correct": 1,
+        "line_correct": 1,
+        "missed": 0,
+        "invented": 0
+      },
+      "per_line": [
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์สิงห์ขวดใหญ่",
+            "quantity": 40.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-SINGHA-L",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์สิงห์ขวดใหญ่",
+            "quantity": 40.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "wrong",
+          "product_ok": true,
+          "quantity_ok": false,
+          "gt": {
+            "product": "เบียร์ลีโอขวดใหญ่",
+            "quantity": 3.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-LEO-L",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์ลีโอขวดใหญ่",
+            "quantity": 30.0,
+            "in_catalog": true
+          }
+        }
+      ],
+      "gt_lines": 2,
       "product_correct": 2,
       "quantity_correct": 1,
       "line_correct": 1,
-      "merchant_ok": true,
-      "per_line": [
-        {
-          "status": "ok",
-          "product_ok": true,
-          "quantity_ok": true,
-          "gt": {
-            "product": "เบียร์สิงห์ ขวดใหญ่",
-            "quantity": 40
-          },
-          "pred": {
-            "product": "เบียร์สิงห์ขวดใหญ่",
-            "quantity": 40.0
-          }
-        },
-        {
-          "status": "wrong",
-          "product_ok": true,
-          "quantity_ok": false,
-          "gt": {
-            "product": "เบียร์ลีโอ ขวดใหญ่",
-            "quantity": 3
-          },
-          "pred": {
-            "product": "เบียร์ลีโอขวดใหญ่",
-            "quantity": 30.0
-          }
-        }
-      ]
+      "missed": 0,
+      "invented": 0
     },
     {
       "name": "11.jpeg",
-      "kind": "printed",
-      "gt_lines": 7,
+      "kind": "handwritten",
       "pred_lines": 7,
-      "product_correct": 6,
-      "quantity_correct": 7,
-      "line_correct": 6,
-      "merchant_ok": false,
+      "merchant_ok": true,
+      "read": {
+        "gt_lines": 7,
+        "product_correct": 7,
+        "quantity_correct": 7,
+        "line_correct": 7,
+        "missed": 0,
+        "invented": 0
+      },
+      "catalog": {
+        "gt_lines": 7,
+        "product_correct": 7,
+        "quantity_correct": 7,
+        "line_correct": 7,
+        "missed": 0,
+        "invented": 0
+      },
       "per_line": [
         {
           "status": "ok",
@@ -311,24 +459,32 @@
           "quantity_ok": true,
           "gt": {
             "product": "โซดาสิงห์",
-            "quantity": 18
+            "quantity": 18.0,
+            "unit": "ถาด",
+            "code": "10097730100",
+            "in_catalog": true
           },
           "pred": {
             "product": "โซดาสิงห์",
-            "quantity": 18.0
+            "quantity": 18.0,
+            "in_catalog": true
           }
         },
         {
-          "status": "wrong",
-          "product_ok": false,
+          "status": "ok",
+          "product_ok": true,
           "quantity_ok": true,
           "gt": {
-            "product": "น้ำสิงห์",
-            "quantity": 36
+            "product": "น้ำดื่มสิงห์ขวดแก้ว",
+            "quantity": 36.0,
+            "unit": "ลัง",
+            "code": "INT-WATER-SINGHA-GLASS",
+            "in_catalog": true
           },
           "pred": {
             "product": "น้ำดื่มสิงห์ขวดแก้ว",
-            "quantity": 36.0
+            "quantity": 36.0,
+            "in_catalog": true
           }
         },
         {
@@ -336,12 +492,16 @@
           "product_ok": true,
           "quantity_ok": true,
           "gt": {
-            "product": "เบียร์สิงห์ ขวดใหญ่",
-            "quantity": 184
+            "product": "เบียร์สิงห์ขวดใหญ่",
+            "quantity": 184.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-SINGHA-L",
+            "in_catalog": true
           },
           "pred": {
             "product": "เบียร์สิงห์ขวดใหญ่",
-            "quantity": 184.0
+            "quantity": 184.0,
+            "in_catalog": true
           }
         },
         {
@@ -350,11 +510,15 @@
           "quantity_ok": true,
           "gt": {
             "product": "สิงห์เลมอนโซดา",
-            "quantity": 4
+            "quantity": 4.0,
+            "unit": "ถาด",
+            "code": "10096910100",
+            "in_catalog": true
           },
           "pred": {
             "product": "สิงห์เลมอนโซดา",
-            "quantity": 4.0
+            "quantity": 4.0,
+            "in_catalog": true
           }
         },
         {
@@ -362,12 +526,16 @@
           "product_ok": true,
           "quantity_ok": true,
           "gt": {
-            "product": "มายเบียร์ ขวดใหญ่",
-            "quantity": 2
+            "product": "มายเบียร์ขวดเล็ก",
+            "quantity": 2.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-MYBEER-S",
+            "in_catalog": true
           },
           "pred": {
             "product": "มายเบียร์ขวดเล็ก",
-            "quantity": 2.0
+            "quantity": 2.0,
+            "in_catalog": true
           }
         },
         {
@@ -375,12 +543,16 @@
           "product_ok": true,
           "quantity_ok": true,
           "gt": {
-            "product": "เบียร์ลีโอ ขวดใหญ่",
-            "quantity": 68
+            "product": "เบียร์ลีโอขวดใหญ่",
+            "quantity": 68.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-LEO-L",
+            "in_catalog": true
           },
           "pred": {
             "product": "เบียร์ลีโอขวดใหญ่",
-            "quantity": 68.0
+            "quantity": 68.0,
+            "in_catalog": true
           }
         },
         {
@@ -388,37 +560,63 @@
           "product_ok": true,
           "quantity_ok": true,
           "gt": {
-            "product": "วิสกี้ซิลเวอร์วูล์ฟ 350ml",
-            "quantity": 2
+            "product": "วิสกี้ซิลเวอร์วูล์ฟ ขวดแบน",
+            "quantity": 2.0,
+            "unit": "ลัง",
+            "code": "INT-WHISKY-SILVERWOLF-S",
+            "in_catalog": true
           },
           "pred": {
             "product": "วิสกี้ซิลเวอร์วูล์ฟ ขวดแบน",
-            "quantity": 2.0
+            "quantity": 2.0,
+            "in_catalog": true
           }
         }
-      ]
+      ],
+      "gt_lines": 7,
+      "product_correct": 7,
+      "quantity_correct": 7,
+      "line_correct": 7,
+      "missed": 0,
+      "invented": 0
     },
     {
       "name": "17_multi_category_large.jpeg",
-      "kind": "printed",
-      "gt_lines": 12,
+      "kind": "handwritten",
       "pred_lines": 12,
-      "product_correct": 12,
-      "quantity_correct": 12,
-      "line_correct": 12,
       "merchant_ok": true,
+      "read": {
+        "gt_lines": 12,
+        "product_correct": 12,
+        "quantity_correct": 12,
+        "line_correct": 12,
+        "missed": 0,
+        "invented": 0
+      },
+      "catalog": {
+        "gt_lines": 11,
+        "product_correct": 11,
+        "quantity_correct": 11,
+        "line_correct": 11,
+        "missed": 0,
+        "invented": 0
+      },
       "per_line": [
         {
           "status": "ok",
           "product_ok": true,
           "quantity_ok": true,
           "gt": {
-            "product": "เบียร์ลีโอ ขวดใหญ่",
-            "quantity": 150
+            "product": "เบียร์ลีโอขวดใหญ่",
+            "quantity": 150.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-LEO-L",
+            "in_catalog": true
           },
           "pred": {
             "product": "เบียร์ลีโอขวดใหญ่",
-            "quantity": 150.0
+            "quantity": 150.0,
+            "in_catalog": true
           }
         },
         {
@@ -426,12 +624,16 @@
           "product_ok": true,
           "quantity_ok": true,
           "gt": {
-            "product": "สุราหงส์ทอง 350ml",
-            "quantity": 80
+            "product": "สุราหงส์ทอง",
+            "quantity": 80.0,
+            "unit": "ลัง",
+            "code": "INT-SPIRIT-HONGTHONG",
+            "in_catalog": true
           },
           "pred": {
             "product": "สุราหงส์ทอง",
-            "quantity": 80.0
+            "quantity": 80.0,
+            "in_catalog": true
           }
         },
         {
@@ -439,12 +641,16 @@
           "product_ok": true,
           "quantity_ok": true,
           "gt": {
-            "product": "น้ำดื่มสิงห์ 1.5L",
-            "quantity": 300
+            "product": "น้ำสิงห์เพ็ท 1.5L",
+            "quantity": 300.0,
+            "unit": "แพ็ค",
+            "code": "10089870100",
+            "in_catalog": true
           },
           "pred": {
             "product": "น้ำสิงห์เพ็ท 1.5L",
-            "quantity": 300.0
+            "quantity": 300.0,
+            "in_catalog": true
           }
         },
         {
@@ -453,11 +659,15 @@
           "quantity_ok": true,
           "gt": {
             "product": "โซดาสิงห์",
-            "quantity": 200
+            "quantity": 200.0,
+            "unit": "ถาด",
+            "code": "10097730100",
+            "in_catalog": true
           },
           "pred": {
             "product": "โซดาสิงห์",
-            "quantity": 200.0
+            "quantity": 200.0,
+            "in_catalog": true
           }
         },
         {
@@ -465,12 +675,16 @@
           "product_ok": true,
           "quantity_ok": true,
           "gt": {
-            "product": "บรั่นดีรีเจนซี่ แบน",
-            "quantity": 30
+            "product": "บรั่นดีรีเจนซี่",
+            "quantity": 30.0,
+            "unit": "ลัง",
+            "code": "INT-SPIRIT-REGENCY",
+            "in_catalog": true
           },
           "pred": {
             "product": "บรั่นดีรีเจนซี่",
-            "quantity": 30.0
+            "quantity": 30.0,
+            "in_catalog": true
           }
         },
         {
@@ -479,11 +693,15 @@
           "quantity_ok": true,
           "gt": {
             "product": "สุราเบลนด์ 285",
-            "quantity": 25
+            "quantity": 25.0,
+            "unit": "ลัง",
+            "code": "INT-SPIRIT-BLEND285",
+            "in_catalog": true
           },
           "pred": {
             "product": "สุราเบลนด์ 285",
-            "quantity": 25.0
+            "quantity": 25.0,
+            "in_catalog": true
           }
         },
         {
@@ -492,11 +710,15 @@
           "quantity_ok": true,
           "gt": {
             "product": "จอห์นนี่ วอล์คเกอร์ เรด",
-            "quantity": 10
+            "quantity": 10.0,
+            "unit": "ลัง",
+            "code": "INT-WHISKY-JW-RED",
+            "in_catalog": true
           },
           "pred": {
             "product": "จอห์นนี่ วอล์คเกอร์ เรด",
-            "quantity": 10.0
+            "quantity": 10.0,
+            "in_catalog": true
           }
         },
         {
@@ -504,12 +726,16 @@
           "product_ok": true,
           "quantity_ok": true,
           "gt": {
-            "product": "วิสกี้ซิลเวอร์วูล์ฟ",
-            "quantity": 18
+            "product": "วิสกี้ซิลเวอร์วูล์ฟ ขวดใหญ่",
+            "quantity": 18.0,
+            "unit": "ลัง",
+            "code": "INT-WHISKY-SILVERWOLF-L",
+            "in_catalog": true
           },
           "pred": {
             "product": "วิสกี้ซิลเวอร์วูล์ฟ ขวดใหญ่",
-            "quantity": 18.0
+            "quantity": 18.0,
+            "in_catalog": true
           }
         },
         {
@@ -518,11 +744,15 @@
           "quantity_ok": true,
           "gt": {
             "product": "สิงห์เลมอนโซดา",
-            "quantity": 40
+            "quantity": 40.0,
+            "unit": "ถาด",
+            "code": "10096910100",
+            "in_catalog": true
           },
           "pred": {
             "product": "สิงห์เลมอนโซดา",
-            "quantity": 40.0
+            "quantity": 40.0,
+            "in_catalog": true
           }
         },
         {
@@ -530,12 +760,16 @@
           "product_ok": true,
           "quantity_ok": true,
           "gt": {
-            "product": "เบียร์อาซาฮี กระป๋อง",
-            "quantity": 20
+            "product": "เบียร์อาซาฮีกระป๋อง",
+            "quantity": 20.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-ASAHI-CAN",
+            "in_catalog": true
           },
           "pred": {
             "product": "เบียร์อาซาฮีกระป๋อง",
-            "quantity": 20.0
+            "quantity": 20.0,
+            "in_catalog": true
           }
         },
         {
@@ -543,12 +777,16 @@
           "product_ok": true,
           "quantity_ok": true,
           "gt": {
-            "product": "น้ำแร่ฟีฟ่า 500ml",
-            "quantity": 5
+            "product": "น้ำแร่ฟิจิ 500ml",
+            "quantity": 5.0,
+            "unit": "Pack",
+            "code": null,
+            "in_catalog": false
           },
           "pred": {
             "product": "น้ำแร่ฟิจิ 500ml",
-            "quantity": 5.0
+            "quantity": 5.0,
+            "in_catalog": false
           }
         },
         {
@@ -556,37 +794,63 @@
           "product_ok": true,
           "quantity_ok": true,
           "gt": {
-            "product": "น้ำดื่มสิงห์ 600ml",
-            "quantity": 100
+            "product": "น้ำสิงห์เพ็ท 600ml",
+            "quantity": 100.0,
+            "unit": "แพ็ค",
+            "code": "10089790100",
+            "in_catalog": true
           },
           "pred": {
             "product": "น้ำสิงห์เพ็ท 600ml",
-            "quantity": 100.0
+            "quantity": 100.0,
+            "in_catalog": true
           }
         }
-      ]
+      ],
+      "gt_lines": 12,
+      "product_correct": 12,
+      "quantity_correct": 12,
+      "line_correct": 12,
+      "missed": 0,
+      "invented": 0
     },
     {
       "name": "22_items_total_mismatch.jpeg",
-      "kind": "printed",
-      "gt_lines": 9,
+      "kind": "handwritten",
       "pred_lines": 9,
-      "product_correct": 9,
-      "quantity_correct": 8,
-      "line_correct": 8,
       "merchant_ok": true,
+      "read": {
+        "gt_lines": 9,
+        "product_correct": 9,
+        "quantity_correct": 9,
+        "line_correct": 9,
+        "missed": 0,
+        "invented": 0
+      },
+      "catalog": {
+        "gt_lines": 7,
+        "product_correct": 7,
+        "quantity_correct": 7,
+        "line_correct": 7,
+        "missed": 0,
+        "invented": 0
+      },
       "per_line": [
         {
           "status": "ok",
           "product_ok": true,
           "quantity_ok": true,
           "gt": {
-            "product": "เบียร์ลีโอ ขวดใหญ่",
-            "quantity": 2
+            "product": "เบียร์ลีโอขวดใหญ่",
+            "quantity": 2.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-LEO-L",
+            "in_catalog": true
           },
           "pred": {
             "product": "เบียร์ลีโอขวดใหญ่",
-            "quantity": 2.0
+            "quantity": 2.0,
+            "in_catalog": true
           }
         },
         {
@@ -595,24 +859,15 @@
           "quantity_ok": true,
           "gt": {
             "product": "สุราหงส์ทอง",
-            "quantity": 3
+            "quantity": 3.0,
+            "unit": "ลัง",
+            "code": "INT-SPIRIT-HONGTHONG",
+            "in_catalog": true
           },
           "pred": {
             "product": "สุราหงส์ทอง",
-            "quantity": 3.0
-          }
-        },
-        {
-          "status": "wrong",
-          "product_ok": true,
-          "quantity_ok": false,
-          "gt": {
-            "product": "บรั่นดีรีเจนซี่",
-            "quantity": 4
-          },
-          "pred": {
-            "product": "บรั่นดีรีเจนซี่",
-            "quantity": 2.0
+            "quantity": 3.0,
+            "in_catalog": true
           }
         },
         {
@@ -620,12 +875,33 @@
           "product_ok": true,
           "quantity_ok": true,
           "gt": {
-            "product": "น้ำสิงห์ เพ็ท 1.5L",
-            "quantity": 40
+            "product": "บรั่นดีรีเจนซี่",
+            "quantity": 2.0,
+            "unit": "ลัง",
+            "code": "INT-SPIRIT-REGENCY",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "บรั่นดีรีเจนซี่",
+            "quantity": 2.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "น้ำสิงห์เพ็ท 1.5L",
+            "quantity": 40.0,
+            "unit": "แพ็ค",
+            "code": "10089870100",
+            "in_catalog": true
           },
           "pred": {
             "product": "น้ำสิงห์เพ็ท 1.5L",
-            "quantity": 40.0
+            "quantity": 40.0,
+            "in_catalog": true
           }
         },
         {
@@ -634,11 +910,15 @@
           "quantity_ok": true,
           "gt": {
             "product": "โซดาสิงห์",
-            "quantity": 20
+            "quantity": 20.0,
+            "unit": "ถาด",
+            "code": "10097730100",
+            "in_catalog": true
           },
           "pred": {
             "product": "โซดาสิงห์",
-            "quantity": 20.0
+            "quantity": 20.0,
+            "in_catalog": true
           }
         },
         {
@@ -647,11 +927,15 @@
           "quantity_ok": true,
           "gt": {
             "product": "จอห์นนี่ วอล์คเกอร์ เรด",
-            "quantity": 1
+            "quantity": 1.0,
+            "unit": "ลัง",
+            "code": "INT-WHISKY-JW-RED",
+            "in_catalog": true
           },
           "pred": {
             "product": "จอห์นนี่ วอล์คเกอร์ เรด",
-            "quantity": 1.0
+            "quantity": 1.0,
+            "in_catalog": true
           }
         },
         {
@@ -659,12 +943,16 @@
           "product_ok": true,
           "quantity_ok": true,
           "gt": {
-            "product": "เสื้อยืดลีโอสุพรีม",
-            "quantity": 10
+            "product": "เสื้อยืดลีโอสุพรีม (Leo Supreme L)",
+            "quantity": 10.0,
+            "unit": "ตัว",
+            "code": null,
+            "in_catalog": false
           },
           "pred": {
             "product": "เสื้อยืดลีโอสุพรีม (Leo Supreme L)",
-            "quantity": 10.0
+            "quantity": 10.0,
+            "in_catalog": false
           }
         },
         {
@@ -673,11 +961,15 @@
           "quantity_ok": true,
           "gt": {
             "product": "สิงห์เลมอนโซดา",
-            "quantity": 2
+            "quantity": 2.0,
+            "unit": "ถาด",
+            "code": "10096910100",
+            "in_catalog": true
           },
           "pred": {
             "product": "สิงห์เลมอนโซดา",
-            "quantity": 2.0
+            "quantity": 2.0,
+            "in_catalog": true
           }
         },
         {
@@ -686,36 +978,62 @@
           "quantity_ok": true,
           "gt": {
             "product": "แก้วเก็บความเย็น Snowy Journey",
-            "quantity": 5
+            "quantity": 5.0,
+            "unit": "ใบ",
+            "code": null,
+            "in_catalog": false
           },
           "pred": {
             "product": "แก้วเก็บความเย็น Snowy Journey",
-            "quantity": 5.0
+            "quantity": 5.0,
+            "in_catalog": false
           }
         }
-      ]
+      ],
+      "gt_lines": 9,
+      "product_correct": 9,
+      "quantity_correct": 9,
+      "line_correct": 9,
+      "missed": 0,
+      "invented": 0
     },
     {
       "name": "25a_sudaphanij_baseline_1.jpeg",
-      "kind": "printed",
-      "gt_lines": 2,
+      "kind": "handwritten",
       "pred_lines": 2,
-      "product_correct": 2,
-      "quantity_correct": 2,
-      "line_correct": 2,
       "merchant_ok": true,
+      "read": {
+        "gt_lines": 2,
+        "product_correct": 2,
+        "quantity_correct": 2,
+        "line_correct": 2,
+        "missed": 0,
+        "invented": 0
+      },
+      "catalog": {
+        "gt_lines": 2,
+        "product_correct": 2,
+        "quantity_correct": 2,
+        "line_correct": 2,
+        "missed": 0,
+        "invented": 0
+      },
       "per_line": [
         {
           "status": "ok",
           "product_ok": true,
           "quantity_ok": true,
           "gt": {
-            "product": "เบียร์สิงห์ ขวดใหญ่",
-            "quantity": 5
+            "product": "เบียร์สิงห์ขวดใหญ่",
+            "quantity": 5.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-SINGHA-L",
+            "in_catalog": true
           },
           "pred": {
             "product": "เบียร์สิงห์ขวดใหญ่",
-            "quantity": 5.0
+            "quantity": 5.0,
+            "in_catalog": true
           }
         },
         {
@@ -724,36 +1042,62 @@
           "quantity_ok": true,
           "gt": {
             "product": "โซดาสิงห์",
-            "quantity": 3
+            "quantity": 3.0,
+            "unit": "ถาด",
+            "code": "10097730100",
+            "in_catalog": true
           },
           "pred": {
             "product": "โซดาสิงห์",
-            "quantity": 3.0
+            "quantity": 3.0,
+            "in_catalog": true
           }
         }
-      ]
-    },
-    {
-      "name": "25b_sudaphanij_baseline_2.jpeg",
-      "kind": "printed",
+      ],
       "gt_lines": 2,
-      "pred_lines": 2,
       "product_correct": 2,
       "quantity_correct": 2,
       "line_correct": 2,
+      "missed": 0,
+      "invented": 0
+    },
+    {
+      "name": "25b_sudaphanij_baseline_2.jpeg",
+      "kind": "handwritten",
+      "pred_lines": 2,
       "merchant_ok": true,
+      "read": {
+        "gt_lines": 2,
+        "product_correct": 2,
+        "quantity_correct": 2,
+        "line_correct": 2,
+        "missed": 0,
+        "invented": 0
+      },
+      "catalog": {
+        "gt_lines": 2,
+        "product_correct": 2,
+        "quantity_correct": 2,
+        "line_correct": 2,
+        "missed": 0,
+        "invented": 0
+      },
       "per_line": [
         {
           "status": "ok",
           "product_ok": true,
           "quantity_ok": true,
           "gt": {
-            "product": "เบียร์ลีโอ ขวดใหญ่",
-            "quantity": 8
+            "product": "เบียร์ลีโอขวดใหญ่",
+            "quantity": 8.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-LEO-L",
+            "in_catalog": true
           },
           "pred": {
             "product": "เบียร์ลีโอขวดใหญ่",
-            "quantity": 8.0
+            "quantity": 8.0,
+            "in_catalog": true
           }
         },
         {
@@ -761,37 +1105,63 @@
           "product_ok": true,
           "quantity_ok": true,
           "gt": {
-            "product": "น้ำสิงห์ เพ็ท 600ml",
-            "quantity": 6
+            "product": "น้ำสิงห์เพ็ท 600ml",
+            "quantity": 6.0,
+            "unit": "แพ็ค",
+            "code": "10089790100",
+            "in_catalog": true
           },
           "pred": {
             "product": "น้ำสิงห์เพ็ท 600ml",
-            "quantity": 6.0
+            "quantity": 6.0,
+            "in_catalog": true
           }
         }
-      ]
+      ],
+      "gt_lines": 2,
+      "product_correct": 2,
+      "quantity_correct": 2,
+      "line_correct": 2,
+      "missed": 0,
+      "invented": 0
     },
     {
       "name": "31_ai_reads_shorthand.jpeg",
       "kind": "handwritten",
-      "gt_lines": 6,
       "pred_lines": 6,
-      "product_correct": 6,
-      "quantity_correct": 6,
-      "line_correct": 6,
       "merchant_ok": true,
+      "read": {
+        "gt_lines": 6,
+        "product_correct": 6,
+        "quantity_correct": 6,
+        "line_correct": 6,
+        "missed": 0,
+        "invented": 0
+      },
+      "catalog": {
+        "gt_lines": 6,
+        "product_correct": 6,
+        "quantity_correct": 6,
+        "line_correct": 6,
+        "missed": 0,
+        "invented": 0
+      },
       "per_line": [
         {
           "status": "ok",
           "product_ok": true,
           "quantity_ok": true,
           "gt": {
-            "product": "เบียร์ลีโอ ขวดใหญ่",
-            "quantity": 2
+            "product": "เบียร์ลีโอขวดใหญ่",
+            "quantity": 2.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-LEO-L",
+            "in_catalog": true
           },
           "pred": {
             "product": "เบียร์ลีโอขวดใหญ่",
-            "quantity": 2.0
+            "quantity": 2.0,
+            "in_catalog": true
           }
         },
         {
@@ -799,12 +1169,16 @@
           "product_ok": true,
           "quantity_ok": true,
           "gt": {
-            "product": "เบียร์สิงห์ ขวดใหญ่",
-            "quantity": 3
+            "product": "เบียร์สิงห์ขวดใหญ่",
+            "quantity": 3.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-SINGHA-L",
+            "in_catalog": true
           },
           "pred": {
             "product": "เบียร์สิงห์ขวดใหญ่",
-            "quantity": 3.0
+            "quantity": 3.0,
+            "in_catalog": true
           }
         },
         {
@@ -813,11 +1187,15 @@
           "quantity_ok": true,
           "gt": {
             "product": "เบียร์ช้าง",
-            "quantity": 1
+            "quantity": 1.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-CHANG",
+            "in_catalog": true
           },
           "pred": {
             "product": "เบียร์ช้าง",
-            "quantity": 1.0
+            "quantity": 1.0,
+            "in_catalog": true
           }
         },
         {
@@ -825,12 +1203,16 @@
           "product_ok": true,
           "quantity_ok": true,
           "gt": {
-            "product": "เบียร์ลีโอ ขวดใหญ่",
-            "quantity": 2
+            "product": "เบียร์ลีโอขวดใหญ่",
+            "quantity": 2.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-LEO-L",
+            "in_catalog": true
           },
           "pred": {
             "product": "เบียร์ลีโอขวดใหญ่",
-            "quantity": 2.0
+            "quantity": 2.0,
+            "in_catalog": true
           }
         },
         {
@@ -838,12 +1220,16 @@
           "product_ok": true,
           "quantity_ok": true,
           "gt": {
-            "product": "เบียร์สิงห์ ขวดใหญ่",
-            "quantity": 1
+            "product": "เบียร์สิงห์ขวดใหญ่",
+            "quantity": 1.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-SINGHA-L",
+            "in_catalog": true
           },
           "pred": {
             "product": "เบียร์สิงห์ขวดใหญ่",
-            "quantity": 1.0
+            "quantity": 1.0,
+            "in_catalog": true
           }
         },
         {
@@ -851,15 +1237,2220 @@
           "product_ok": true,
           "quantity_ok": true,
           "gt": {
-            "product": "เบียร์อาซาฮี กระป๋อง",
-            "quantity": 4
+            "product": "เบียร์อาซาฮีกระป๋อง",
+            "quantity": 4.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-ASAHI-CAN",
+            "in_catalog": true
           },
           "pred": {
             "product": "เบียร์อาซาฮีกระป๋อง",
-            "quantity": 4.0
+            "quantity": 4.0,
+            "in_catalog": true
           }
         }
-      ]
+      ],
+      "gt_lines": 6,
+      "product_correct": 6,
+      "quantity_correct": 6,
+      "line_correct": 6,
+      "missed": 0,
+      "invented": 0
+    },
+    {
+      "name": "IMG_9321.jpg",
+      "kind": "handwritten",
+      "pred_lines": 4,
+      "merchant_ok": true,
+      "read": {
+        "gt_lines": 4,
+        "product_correct": 4,
+        "quantity_correct": 4,
+        "line_correct": 4,
+        "missed": 0,
+        "invented": 0
+      },
+      "catalog": {
+        "gt_lines": 4,
+        "product_correct": 4,
+        "quantity_correct": 4,
+        "line_correct": 4,
+        "missed": 0,
+        "invented": 0
+      },
+      "per_line": [
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "น้ำดื่มสิงห์ขวดแก้ว",
+            "quantity": 10.0,
+            "unit": "ลัง",
+            "code": "INT-WATER-SINGHA-GLASS",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "น้ำดื่มสิงห์ขวดแก้ว",
+            "quantity": 10.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "น้ำสิงห์เพ็ท 600ml",
+            "quantity": 5.0,
+            "unit": "แพ็ค",
+            "code": "10089790100",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "น้ำสิงห์เพ็ท 600ml",
+            "quantity": 5.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "สิงห์เลมอนโซดา พิงก์",
+            "quantity": 2.0,
+            "unit": "ถาด",
+            "code": "10097200100",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "สิงห์เลมอนโซดา พิงก์",
+            "quantity": 2.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "สิงห์เลมอนโซดา บ๊วย",
+            "quantity": 2.0,
+            "unit": "ถาด",
+            "code": "10096970100",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "สิงห์เลมอนโซดา บ๊วย",
+            "quantity": 2.0,
+            "in_catalog": true
+          }
+        }
+      ],
+      "gt_lines": 4,
+      "product_correct": 4,
+      "quantity_correct": 4,
+      "line_correct": 4,
+      "missed": 0,
+      "invented": 0
+    },
+    {
+      "name": "IMG_9322.jpg",
+      "kind": "handwritten",
+      "pred_lines": 4,
+      "merchant_ok": true,
+      "read": {
+        "gt_lines": 4,
+        "product_correct": 4,
+        "quantity_correct": 4,
+        "line_correct": 4,
+        "missed": 0,
+        "invented": 0
+      },
+      "catalog": {
+        "gt_lines": 4,
+        "product_correct": 4,
+        "quantity_correct": 4,
+        "line_correct": 4,
+        "missed": 0,
+        "invented": 0
+      },
+      "per_line": [
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์สิงห์ขวดใหญ่",
+            "quantity": 15.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-SINGHA-L",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์สิงห์ขวดใหญ่",
+            "quantity": 15.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์ลีโอขวดใหญ่",
+            "quantity": 12.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-LEO-L",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์ลีโอขวดใหญ่",
+            "quantity": 12.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "มายเบียร์ขวดเล็ก",
+            "quantity": 6.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-MYBEER-S",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "มายเบียร์ขวดเล็ก",
+            "quantity": 6.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์ยูเบียร์",
+            "quantity": 5.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-UBEER",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์ยูเบียร์",
+            "quantity": 5.0,
+            "in_catalog": true
+          }
+        }
+      ],
+      "gt_lines": 4,
+      "product_correct": 4,
+      "quantity_correct": 4,
+      "line_correct": 4,
+      "missed": 0,
+      "invented": 0
+    },
+    {
+      "name": "IMG_9323.jpg",
+      "kind": "handwritten",
+      "pred_lines": 3,
+      "merchant_ok": true,
+      "read": {
+        "gt_lines": 3,
+        "product_correct": 3,
+        "quantity_correct": 3,
+        "line_correct": 3,
+        "missed": 0,
+        "invented": 0
+      },
+      "catalog": {
+        "gt_lines": 3,
+        "product_correct": 3,
+        "quantity_correct": 3,
+        "line_correct": 3,
+        "missed": 0,
+        "invented": 0
+      },
+      "per_line": [
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "โซดาสิงห์",
+            "quantity": 8.0,
+            "unit": "ถาด",
+            "code": "10097730100",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "โซดาสิงห์",
+            "quantity": 8.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "โซดาลีโอ ขวดเล็ก",
+            "quantity": 6.0,
+            "unit": "ถาด",
+            "code": "10079780100",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "โซดาลีโอ ขวดเล็ก",
+            "quantity": 6.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "น้ำดื่มสิงห์ขวดแก้ว",
+            "quantity": 4.0,
+            "unit": "ลัง",
+            "code": "INT-WATER-SINGHA-GLASS",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "น้ำดื่มสิงห์ขวดแก้ว",
+            "quantity": 4.0,
+            "in_catalog": true
+          }
+        }
+      ],
+      "gt_lines": 3,
+      "product_correct": 3,
+      "quantity_correct": 3,
+      "line_correct": 3,
+      "missed": 0,
+      "invented": 0
+    },
+    {
+      "name": "IMG_9324.jpg",
+      "kind": "handwritten",
+      "pred_lines": 4,
+      "merchant_ok": true,
+      "read": {
+        "gt_lines": 4,
+        "product_correct": 4,
+        "quantity_correct": 4,
+        "line_correct": 4,
+        "missed": 0,
+        "invented": 0
+      },
+      "catalog": {
+        "gt_lines": 4,
+        "product_correct": 4,
+        "quantity_correct": 4,
+        "line_correct": 4,
+        "missed": 0,
+        "invented": 0
+      },
+      "per_line": [
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์สิงห์ขวดใหญ่",
+            "quantity": 10.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-SINGHA-L",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์สิงห์ขวดใหญ่",
+            "quantity": 10.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์ลีโอขวดใหญ่",
+            "quantity": 8.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-LEO-L",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์ลีโอขวดใหญ่",
+            "quantity": 8.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "น้ำดื่มสิงห์ขวดแก้ว",
+            "quantity": 5.0,
+            "unit": "ลัง",
+            "code": "INT-WATER-SINGHA-GLASS",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "น้ำดื่มสิงห์ขวดแก้ว",
+            "quantity": 5.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "โซดาสิงห์",
+            "quantity": 4.0,
+            "unit": "ถาด",
+            "code": "10097730100",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "โซดาสิงห์",
+            "quantity": 4.0,
+            "in_catalog": true
+          }
+        }
+      ],
+      "gt_lines": 4,
+      "product_correct": 4,
+      "quantity_correct": 4,
+      "line_correct": 4,
+      "missed": 0,
+      "invented": 0
+    },
+    {
+      "name": "IMG_9325.jpg",
+      "kind": "handwritten",
+      "pred_lines": 3,
+      "merchant_ok": true,
+      "read": {
+        "gt_lines": 3,
+        "product_correct": 3,
+        "quantity_correct": 3,
+        "line_correct": 3,
+        "missed": 0,
+        "invented": 0
+      },
+      "catalog": {
+        "gt_lines": 3,
+        "product_correct": 3,
+        "quantity_correct": 3,
+        "line_correct": 3,
+        "missed": 0,
+        "invented": 0
+      },
+      "per_line": [
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์สิงห์ขวดใหญ่",
+            "quantity": 6.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-SINGHA-L",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์สิงห์ขวดใหญ่",
+            "quantity": 6.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "น้ำสิงห์เพ็ท 600ml",
+            "quantity": 3.0,
+            "unit": "แพ็ค",
+            "code": "10089790100",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "น้ำสิงห์เพ็ท 600ml",
+            "quantity": 3.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "สิงห์เลมอนโซดา เรด",
+            "quantity": 2.0,
+            "unit": "ถาด",
+            "code": "10096940100",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "สิงห์เลมอนโซดา เรด",
+            "quantity": 2.0,
+            "in_catalog": true
+          }
+        }
+      ],
+      "gt_lines": 3,
+      "product_correct": 3,
+      "quantity_correct": 3,
+      "line_correct": 3,
+      "missed": 0,
+      "invented": 0
+    },
+    {
+      "name": "IMG_9326.jpg",
+      "kind": "handwritten",
+      "pred_lines": 3,
+      "merchant_ok": true,
+      "read": {
+        "gt_lines": 3,
+        "product_correct": 3,
+        "quantity_correct": 3,
+        "line_correct": 3,
+        "missed": 0,
+        "invented": 0
+      },
+      "catalog": {
+        "gt_lines": 3,
+        "product_correct": 3,
+        "quantity_correct": 3,
+        "line_correct": 3,
+        "missed": 0,
+        "invented": 0
+      },
+      "per_line": [
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์สิงห์กระป๋อง",
+            "quantity": 12.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-SINGHA-CAN",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์สิงห์กระป๋อง",
+            "quantity": 12.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "น้ำสิงห์เพ็ท 1.5L",
+            "quantity": 4.0,
+            "unit": "แพ็ค",
+            "code": "10089870100",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "น้ำสิงห์เพ็ท 1.5L",
+            "quantity": 4.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "โซดาลีโอ ขวดเล็ก",
+            "quantity": 3.0,
+            "unit": "ถาด",
+            "code": "10079780100",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "โซดาลีโอ ขวดเล็ก",
+            "quantity": 3.0,
+            "in_catalog": true
+          }
+        }
+      ],
+      "gt_lines": 3,
+      "product_correct": 3,
+      "quantity_correct": 3,
+      "line_correct": 3,
+      "missed": 0,
+      "invented": 0
+    },
+    {
+      "name": "IMG_9327.jpg",
+      "kind": "handwritten",
+      "pred_lines": 3,
+      "merchant_ok": true,
+      "read": {
+        "gt_lines": 3,
+        "product_correct": 3,
+        "quantity_correct": 3,
+        "line_correct": 3,
+        "missed": 0,
+        "invented": 0
+      },
+      "catalog": {
+        "gt_lines": 3,
+        "product_correct": 3,
+        "quantity_correct": 3,
+        "line_correct": 3,
+        "missed": 0,
+        "invented": 0
+      },
+      "per_line": [
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "Singha Sparkling Water กลิ่นมะนาว",
+            "quantity": 2.0,
+            "unit": "หน่วย",
+            "code": "10094980100",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "Singha Sparkling Water กลิ่นมะนาว",
+            "quantity": 2.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "น้ำสิงห์เพ็ท 1.5L",
+            "quantity": 3.0,
+            "unit": "แพ็ค",
+            "code": "10089870100",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "น้ำสิงห์เพ็ท 1.5L",
+            "quantity": 3.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์อาซาฮีกระป๋อง",
+            "quantity": 2.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-ASAHI-CAN",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์อาซาฮีกระป๋อง",
+            "quantity": 2.0,
+            "in_catalog": true
+          }
+        }
+      ],
+      "gt_lines": 3,
+      "product_correct": 3,
+      "quantity_correct": 3,
+      "line_correct": 3,
+      "missed": 0,
+      "invented": 0
+    },
+    {
+      "name": "IMG_9328.jpg",
+      "kind": "handwritten",
+      "pred_lines": 4,
+      "merchant_ok": true,
+      "read": {
+        "gt_lines": 4,
+        "product_correct": 4,
+        "quantity_correct": 4,
+        "line_correct": 4,
+        "missed": 0,
+        "invented": 0
+      },
+      "catalog": {
+        "gt_lines": 3,
+        "product_correct": 3,
+        "quantity_correct": 3,
+        "line_correct": 3,
+        "missed": 0,
+        "invented": 0
+      },
+      "per_line": [
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "น้ำดื่มสิงห์ขวดแก้ว",
+            "quantity": 4.0,
+            "unit": "ลัง",
+            "code": "INT-WATER-SINGHA-GLASS",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "น้ำดื่มสิงห์ขวดแก้ว",
+            "quantity": 4.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "สิงห์เลมอนโซดา ครีม",
+            "quantity": 2.0,
+            "unit": "ถาด",
+            "code": "10094600100",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "สิงห์เลมอนโซดา ครีม",
+            "quantity": 2.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "สิงห์เลมอนโซดา รสแตงโม",
+            "quantity": 1.0,
+            "unit": "ถาด",
+            "code": "10094630100",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "สิงห์เลมอนโซดา รสแตงโม",
+            "quantity": 1.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "มันฝรั่งเลย์",
+            "quantity": 5.0,
+            "unit": "ถุง",
+            "code": null,
+            "in_catalog": false,
+            "source": "extractor"
+          },
+          "pred": {
+            "product": "มันฝรั่งเลย์",
+            "quantity": 5.0,
+            "in_catalog": false
+          }
+        }
+      ],
+      "gt_lines": 4,
+      "product_correct": 4,
+      "quantity_correct": 4,
+      "line_correct": 4,
+      "missed": 0,
+      "invented": 0
+    },
+    {
+      "name": "IMG_9329.jpg",
+      "kind": "handwritten",
+      "pred_lines": 5,
+      "merchant_ok": true,
+      "read": {
+        "gt_lines": 5,
+        "product_correct": 5,
+        "quantity_correct": 5,
+        "line_correct": 5,
+        "missed": 0,
+        "invented": 0
+      },
+      "catalog": {
+        "gt_lines": 3,
+        "product_correct": 3,
+        "quantity_correct": 3,
+        "line_correct": 3,
+        "missed": 0,
+        "invented": 0
+      },
+      "per_line": [
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์สิงห์ขวดเล็ก",
+            "quantity": 3.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-SINGHA-S",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์สิงห์ขวดเล็ก",
+            "quantity": 3.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์ลีโอกระป๋อง",
+            "quantity": 4.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-LEO-CAN",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์ลีโอกระป๋อง",
+            "quantity": 4.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "น้ำสิงห์เพ็ท 600ml",
+            "quantity": 6.0,
+            "unit": "แพ็ค",
+            "code": "10089790100",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "น้ำสิงห์เพ็ท 600ml",
+            "quantity": 6.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "โค้ก",
+            "quantity": 3.0,
+            "unit": "แพ็ค",
+            "code": null,
+            "in_catalog": false,
+            "source": "extractor"
+          },
+          "pred": {
+            "product": "โค้ก",
+            "quantity": 3.0,
+            "in_catalog": false
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เอ็ม 150",
+            "quantity": 2.0,
+            "unit": "แพ็ค",
+            "code": null,
+            "in_catalog": false,
+            "source": "extractor"
+          },
+          "pred": {
+            "product": "เอ็ม 150",
+            "quantity": 2.0,
+            "in_catalog": false
+          }
+        }
+      ],
+      "gt_lines": 5,
+      "product_correct": 5,
+      "quantity_correct": 5,
+      "line_correct": 5,
+      "missed": 0,
+      "invented": 0
+    },
+    {
+      "name": "IMG_9330.jpg",
+      "kind": "handwritten",
+      "pred_lines": 3,
+      "merchant_ok": true,
+      "read": {
+        "gt_lines": 3,
+        "product_correct": 3,
+        "quantity_correct": 3,
+        "line_correct": 3,
+        "missed": 0,
+        "invented": 0
+      },
+      "catalog": {
+        "gt_lines": 2,
+        "product_correct": 2,
+        "quantity_correct": 2,
+        "line_correct": 2,
+        "missed": 0,
+        "invented": 0
+      },
+      "per_line": [
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์สิงห์ขวดใหญ่",
+            "quantity": 5.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-SINGHA-L",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์สิงห์ขวดใหญ่",
+            "quantity": 5.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "น้ำคริสตัล",
+            "quantity": 4.0,
+            "unit": "ขวด",
+            "code": null,
+            "in_catalog": false,
+            "source": "extractor"
+          },
+          "pred": {
+            "product": "น้ำคริสตัล",
+            "quantity": 4.0,
+            "in_catalog": false
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์ไฮเนเก้นขวดใหญ่",
+            "quantity": 2.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-HEINEKEN-L",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์ไฮเนเก้นขวดใหญ่",
+            "quantity": 2.0,
+            "in_catalog": true
+          }
+        }
+      ],
+      "gt_lines": 3,
+      "product_correct": 3,
+      "quantity_correct": 3,
+      "line_correct": 3,
+      "missed": 0,
+      "invented": 0
+    },
+    {
+      "name": "IMG_9331.jpg",
+      "kind": "handwritten",
+      "pred_lines": 4,
+      "merchant_ok": true,
+      "read": {
+        "gt_lines": 4,
+        "product_correct": 4,
+        "quantity_correct": 4,
+        "line_correct": 4,
+        "missed": 0,
+        "invented": 0
+      },
+      "catalog": {
+        "gt_lines": 4,
+        "product_correct": 4,
+        "quantity_correct": 4,
+        "line_correct": 4,
+        "missed": 0,
+        "invented": 0
+      },
+      "per_line": [
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์สิงห์ขวดใหญ่",
+            "quantity": 120.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-SINGHA-L",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์สิงห์ขวดใหญ่",
+            "quantity": 120.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์ลีโอขวดใหญ่",
+            "quantity": 60.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-LEO-L",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์ลีโอขวดใหญ่",
+            "quantity": 60.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "สุราหงส์ทอง",
+            "quantity": 10.0,
+            "unit": "ลัง",
+            "code": "INT-SPIRIT-HONGTHONG",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "สุราหงส์ทอง",
+            "quantity": 10.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "สุราแสงโสม",
+            "quantity": 8.0,
+            "unit": "ลัง",
+            "code": "INT-SPIRIT-SAENGSOM",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "สุราแสงโสม",
+            "quantity": 8.0,
+            "in_catalog": true
+          }
+        }
+      ],
+      "gt_lines": 4,
+      "product_correct": 4,
+      "quantity_correct": 4,
+      "line_correct": 4,
+      "missed": 0,
+      "invented": 0
+    },
+    {
+      "name": "IMG_9332.jpg",
+      "kind": "handwritten",
+      "pred_lines": 4,
+      "merchant_ok": true,
+      "read": {
+        "gt_lines": 4,
+        "product_correct": 4,
+        "quantity_correct": 4,
+        "line_correct": 4,
+        "missed": 0,
+        "invented": 0
+      },
+      "catalog": {
+        "gt_lines": 4,
+        "product_correct": 4,
+        "quantity_correct": 4,
+        "line_correct": 4,
+        "missed": 0,
+        "invented": 0
+      },
+      "per_line": [
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "จอห์นนี่ วอล์คเกอร์ แบล็ค",
+            "quantity": 5.0,
+            "unit": "ลัง",
+            "code": "INT-WHISKY-JW-BLACK",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "จอห์นนี่ วอล์คเกอร์ แบล็ค",
+            "quantity": 5.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "ชีวาส รีกัล 12",
+            "quantity": 3.0,
+            "unit": "ลัง",
+            "code": "INT-WHISKY-CHIVAS12",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "ชีวาส รีกัล 12",
+            "quantity": 3.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "วิสกี้ซิลเวอร์วูล์ฟ ขวดใหญ่",
+            "quantity": 6.0,
+            "unit": "ลัง",
+            "code": "INT-WHISKY-SILVERWOLF-L",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "วิสกี้ซิลเวอร์วูล์ฟ ขวดใหญ่",
+            "quantity": 6.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "วิสกี้ซิลเวอร์ไนท์ ขวดแบน",
+            "quantity": 4.0,
+            "unit": "ลัง",
+            "code": "INT-WHISKY-SILVERKNIGHT-S",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "วิสกี้ซิลเวอร์ไนท์ ขวดแบน",
+            "quantity": 4.0,
+            "in_catalog": true
+          }
+        }
+      ],
+      "gt_lines": 4,
+      "product_correct": 4,
+      "quantity_correct": 4,
+      "line_correct": 4,
+      "missed": 0,
+      "invented": 0
+    },
+    {
+      "name": "IMG_9333.jpg",
+      "kind": "handwritten",
+      "pred_lines": 4,
+      "merchant_ok": true,
+      "read": {
+        "gt_lines": 4,
+        "product_correct": 4,
+        "quantity_correct": 4,
+        "line_correct": 4,
+        "missed": 0,
+        "invented": 0
+      },
+      "catalog": {
+        "gt_lines": 4,
+        "product_correct": 4,
+        "quantity_correct": 4,
+        "line_correct": 4,
+        "missed": 0,
+        "invented": 0
+      },
+      "per_line": [
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "สุราเบลนด์ 285",
+            "quantity": 6.0,
+            "unit": "ลัง",
+            "code": "INT-SPIRIT-BLEND285",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "สุราเบลนด์ 285",
+            "quantity": 6.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "สุราแม่โขง",
+            "quantity": 4.0,
+            "unit": "ลัง",
+            "code": "INT-SPIRIT-MEKHONG",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "สุราแม่โขง",
+            "quantity": 4.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "สุรามิสเตอร์ซี",
+            "quantity": 3.0,
+            "unit": "ลัง",
+            "code": "INT-SPIRIT-MRC",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "สุรามิสเตอร์ซี",
+            "quantity": 3.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "สปายไวน์คูลเลอร์",
+            "quantity": 5.0,
+            "unit": "ลัง",
+            "code": "INT-WINE-SPY",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "สปายไวน์คูลเลอร์",
+            "quantity": 5.0,
+            "in_catalog": true
+          }
+        }
+      ],
+      "gt_lines": 4,
+      "product_correct": 4,
+      "quantity_correct": 4,
+      "line_correct": 4,
+      "missed": 0,
+      "invented": 0
+    },
+    {
+      "name": "IMG_9334.jpg",
+      "kind": "handwritten",
+      "pred_lines": 3,
+      "merchant_ok": true,
+      "read": {
+        "gt_lines": 3,
+        "product_correct": 3,
+        "quantity_correct": 3,
+        "line_correct": 3,
+        "missed": 0,
+        "invented": 0
+      },
+      "catalog": {
+        "gt_lines": 3,
+        "product_correct": 3,
+        "quantity_correct": 3,
+        "line_correct": 3,
+        "missed": 0,
+        "invented": 0
+      },
+      "per_line": [
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "100 ไพเพอร์ส",
+            "quantity": 4.0,
+            "unit": "ลัง",
+            "code": "INT-WHISKY-100PIPERS",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "100 ไพเพอร์ส",
+            "quantity": 4.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "บัลลันไทน์",
+            "quantity": 3.0,
+            "unit": "ลัง",
+            "code": "INT-WHISKY-BALLANTINES",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "บัลลันไทน์",
+            "quantity": 3.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "บรั่นดีรีเจนซี่",
+            "quantity": 5.0,
+            "unit": "ลัง",
+            "code": "INT-SPIRIT-REGENCY",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "บรั่นดีรีเจนซี่",
+            "quantity": 5.0,
+            "in_catalog": true
+          }
+        }
+      ],
+      "gt_lines": 3,
+      "product_correct": 3,
+      "quantity_correct": 3,
+      "line_correct": 3,
+      "missed": 0,
+      "invented": 0
+    },
+    {
+      "name": "IMG_9335.jpg",
+      "kind": "handwritten",
+      "pred_lines": 2,
+      "merchant_ok": true,
+      "read": {
+        "gt_lines": 2,
+        "product_correct": 2,
+        "quantity_correct": 2,
+        "line_correct": 2,
+        "missed": 0,
+        "invented": 0
+      },
+      "catalog": {
+        "gt_lines": 2,
+        "product_correct": 2,
+        "quantity_correct": 2,
+        "line_correct": 2,
+        "missed": 0,
+        "invented": 0
+      },
+      "per_line": [
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์สิงห์ขวดใหญ่",
+            "quantity": 6.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-SINGHA-L",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์สิงห์ขวดใหญ่",
+            "quantity": 6.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "น้ำสิงห์เพ็ท 600ml",
+            "quantity": 4.0,
+            "unit": "แพ็ค",
+            "code": "10089790100",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "น้ำสิงห์เพ็ท 600ml",
+            "quantity": 4.0,
+            "in_catalog": true
+          }
+        }
+      ],
+      "gt_lines": 2,
+      "product_correct": 2,
+      "quantity_correct": 2,
+      "line_correct": 2,
+      "missed": 0,
+      "invented": 0
+    },
+    {
+      "name": "IMG_9336.jpg",
+      "kind": "handwritten",
+      "pred_lines": 3,
+      "merchant_ok": true,
+      "read": {
+        "gt_lines": 3,
+        "product_correct": 3,
+        "quantity_correct": 3,
+        "line_correct": 3,
+        "missed": 0,
+        "invented": 0
+      },
+      "catalog": {
+        "gt_lines": 3,
+        "product_correct": 3,
+        "quantity_correct": 3,
+        "line_correct": 3,
+        "missed": 0,
+        "invented": 0
+      },
+      "per_line": [
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "โซดาสิงห์",
+            "quantity": 5.0,
+            "unit": "ถาด",
+            "code": "10097730100",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "โซดาสิงห์",
+            "quantity": 5.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "โซดาลีโอ ขวดเล็ก",
+            "quantity": 4.0,
+            "unit": "ถาด",
+            "code": "10079780100",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "โซดาลีโอ ขวดเล็ก",
+            "quantity": 4.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "สิงห์เลมอนโซดา",
+            "quantity": 3.0,
+            "unit": "ถาด",
+            "code": "10096910100",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "สิงห์เลมอนโซดา",
+            "quantity": 3.0,
+            "in_catalog": true
+          }
+        }
+      ],
+      "gt_lines": 3,
+      "product_correct": 3,
+      "quantity_correct": 3,
+      "line_correct": 3,
+      "missed": 0,
+      "invented": 0
+    },
+    {
+      "name": "IMG_9337.jpg",
+      "kind": "handwritten",
+      "pred_lines": 4,
+      "merchant_ok": true,
+      "read": {
+        "gt_lines": 4,
+        "product_correct": 4,
+        "quantity_correct": 4,
+        "line_correct": 4,
+        "missed": 0,
+        "invented": 0
+      },
+      "catalog": {
+        "gt_lines": 4,
+        "product_correct": 4,
+        "quantity_correct": 4,
+        "line_correct": 4,
+        "missed": 0,
+        "invented": 0
+      },
+      "per_line": [
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "สุราหงส์ทอง",
+            "quantity": 4.0,
+            "unit": "ลัง",
+            "code": "INT-SPIRIT-HONGTHONG",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "สุราหงส์ทอง",
+            "quantity": 4.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "สุราแสงโสม",
+            "quantity": 3.0,
+            "unit": "ลัง",
+            "code": "INT-SPIRIT-SAENGSOM",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "สุราแสงโสม",
+            "quantity": 3.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "สุรามิสเตอร์ซี",
+            "quantity": 2.0,
+            "unit": "ลัง",
+            "code": "INT-SPIRIT-MRC",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "สุรามิสเตอร์ซี",
+            "quantity": 2.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "สปายไวน์คูลเลอร์",
+            "quantity": 3.0,
+            "unit": "ลัง",
+            "code": "INT-WINE-SPY",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "สปายไวน์คูลเลอร์",
+            "quantity": 3.0,
+            "in_catalog": true
+          }
+        }
+      ],
+      "gt_lines": 4,
+      "product_correct": 4,
+      "quantity_correct": 4,
+      "line_correct": 4,
+      "missed": 0,
+      "invented": 0
+    },
+    {
+      "name": "IMG_9338.jpg",
+      "kind": "handwritten",
+      "pred_lines": 3,
+      "merchant_ok": true,
+      "read": {
+        "gt_lines": 3,
+        "product_correct": 3,
+        "quantity_correct": 3,
+        "line_correct": 3,
+        "missed": 0,
+        "invented": 0
+      },
+      "catalog": {
+        "gt_lines": 3,
+        "product_correct": 3,
+        "quantity_correct": 3,
+        "line_correct": 3,
+        "missed": 0,
+        "invented": 0
+      },
+      "per_line": [
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์ลีโอขวดใหญ่",
+            "quantity": 10.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-LEO-L",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์ลีโอขวดใหญ่",
+            "quantity": 10.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์สิงห์ขวดใหญ่",
+            "quantity": 8.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-SINGHA-L",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์สิงห์ขวดใหญ่",
+            "quantity": 8.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "น้ำดื่มสิงห์ขวดแก้ว",
+            "quantity": 6.0,
+            "unit": "ลัง",
+            "code": "INT-WATER-SINGHA-GLASS",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "น้ำดื่มสิงห์ขวดแก้ว",
+            "quantity": 6.0,
+            "in_catalog": true
+          }
+        }
+      ],
+      "gt_lines": 3,
+      "product_correct": 3,
+      "quantity_correct": 3,
+      "line_correct": 3,
+      "missed": 0,
+      "invented": 0
+    },
+    {
+      "name": "IMG_9339.jpg",
+      "kind": "handwritten",
+      "pred_lines": 2,
+      "merchant_ok": false,
+      "read": {
+        "gt_lines": 2,
+        "product_correct": 2,
+        "quantity_correct": 2,
+        "line_correct": 2,
+        "missed": 0,
+        "invented": 0
+      },
+      "catalog": {
+        "gt_lines": 2,
+        "product_correct": 2,
+        "quantity_correct": 2,
+        "line_correct": 2,
+        "missed": 0,
+        "invented": 0
+      },
+      "per_line": [
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์ลีโอขวดใหญ่",
+            "quantity": 5.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-LEO-L",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์ลีโอขวดใหญ่",
+            "quantity": 5.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "โซดาสิงห์",
+            "quantity": 3.0,
+            "unit": "ถาด",
+            "code": "10097730100",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "โซดาสิงห์",
+            "quantity": 3.0,
+            "in_catalog": true
+          }
+        }
+      ],
+      "gt_lines": 2,
+      "product_correct": 2,
+      "quantity_correct": 2,
+      "line_correct": 2,
+      "missed": 0,
+      "invented": 0
+    },
+    {
+      "name": "IMG_9340.jpg",
+      "kind": "handwritten",
+      "pred_lines": 14,
+      "merchant_ok": true,
+      "read": {
+        "gt_lines": 14,
+        "product_correct": 14,
+        "quantity_correct": 14,
+        "line_correct": 14,
+        "missed": 0,
+        "invented": 0
+      },
+      "catalog": {
+        "gt_lines": 13,
+        "product_correct": 13,
+        "quantity_correct": 13,
+        "line_correct": 13,
+        "missed": 0,
+        "invented": 0
+      },
+      "per_line": [
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์สิงห์ขวดใหญ่",
+            "quantity": 50.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-SINGHA-L",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์สิงห์ขวดใหญ่",
+            "quantity": 50.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์ลีโอขวดใหญ่",
+            "quantity": 8.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-LEO-L",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์ลีโอขวดใหญ่",
+            "quantity": 8.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์ลีโอกระป๋อง",
+            "quantity": 5.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-LEO-CAN",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์ลีโอกระป๋อง",
+            "quantity": 5.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "มายเบียร์ขวดเล็ก",
+            "quantity": 4.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-MYBEER-S",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "มายเบียร์ขวดเล็ก",
+            "quantity": 4.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์ช้าง",
+            "quantity": 12.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-CHANG",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์ช้าง",
+            "quantity": 12.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์อาซาฮีขวดใหญ่",
+            "quantity": 3.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-ASAHI-L",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์อาซาฮีขวดใหญ่",
+            "quantity": 3.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "น้ำดื่มสิงห์ขวดแก้ว",
+            "quantity": 6.0,
+            "unit": "ลัง",
+            "code": "INT-WATER-SINGHA-GLASS",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "น้ำดื่มสิงห์ขวดแก้ว",
+            "quantity": 6.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "น้ำสิงห์เพ็ท 600ml",
+            "quantity": 4.0,
+            "unit": "แพ็ค",
+            "code": "10089790100",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "น้ำสิงห์เพ็ท 600ml",
+            "quantity": 4.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "น้ำสิงห์เพ็ท 1.5L",
+            "quantity": 2.0,
+            "unit": "แพ็ค",
+            "code": "10089870100",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "น้ำสิงห์เพ็ท 1.5L",
+            "quantity": 2.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "โซดาสิงห์",
+            "quantity": 5.0,
+            "unit": "ถาด",
+            "code": "10097730100",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "โซดาสิงห์",
+            "quantity": 5.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "สิงห์เลมอนโซดา เรด",
+            "quantity": 2.0,
+            "unit": "ถาด",
+            "code": "10096940100",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "สิงห์เลมอนโซดา เรด",
+            "quantity": 2.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "สุราหงส์ทอง",
+            "quantity": 6.0,
+            "unit": "ลัง",
+            "code": "INT-SPIRIT-HONGTHONG",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "สุราหงส์ทอง",
+            "quantity": 6.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "วิสกี้ซิลเวอร์ไนท์ ขวดแบน",
+            "quantity": 3.0,
+            "unit": "ลัง",
+            "code": "INT-WHISKY-SILVERKNIGHT-S",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "วิสกี้ซิลเวอร์ไนท์ ขวดแบน",
+            "quantity": 3.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เป๊ปซี่",
+            "quantity": 3.0,
+            "unit": "แพ็ค",
+            "code": null,
+            "in_catalog": false,
+            "source": "extractor"
+          },
+          "pred": {
+            "product": "เป๊ปซี่",
+            "quantity": 3.0,
+            "in_catalog": false
+          }
+        }
+      ],
+      "gt_lines": 14,
+      "product_correct": 14,
+      "quantity_correct": 14,
+      "line_correct": 14,
+      "missed": 0,
+      "invented": 0
+    },
+    {
+      "name": "IMG_9341.jpg",
+      "kind": "handwritten",
+      "pred_lines": 4,
+      "merchant_ok": true,
+      "read": {
+        "gt_lines": 4,
+        "product_correct": 4,
+        "quantity_correct": 4,
+        "line_correct": 4,
+        "missed": 0,
+        "invented": 0
+      },
+      "catalog": {
+        "gt_lines": 4,
+        "product_correct": 4,
+        "quantity_correct": 4,
+        "line_correct": 4,
+        "missed": 0,
+        "invented": 0
+      },
+      "per_line": [
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์ช้าง",
+            "quantity": 20.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-CHANG",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์ช้าง",
+            "quantity": 20.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์ช้างเอสเปรสโซ่",
+            "quantity": 4.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-CHANG-ESP",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์ช้างเอสเปรสโซ่",
+            "quantity": 4.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์อาซาฮีขวดใหญ่",
+            "quantity": 6.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-ASAHI-L",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์อาซาฮีขวดใหญ่",
+            "quantity": 6.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์อาซาฮีกระป๋อง",
+            "quantity": 2.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-ASAHI-CAN",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์อาซาฮีกระป๋อง",
+            "quantity": 2.0,
+            "in_catalog": true
+          }
+        }
+      ],
+      "gt_lines": 4,
+      "product_correct": 4,
+      "quantity_correct": 4,
+      "line_correct": 4,
+      "missed": 0,
+      "invented": 0
+    },
+    {
+      "name": "Image.jpeg",
+      "kind": "handwritten",
+      "pred_lines": 7,
+      "merchant_ok": true,
+      "read": {
+        "gt_lines": 7,
+        "product_correct": 7,
+        "quantity_correct": 7,
+        "line_correct": 7,
+        "missed": 0,
+        "invented": 0
+      },
+      "catalog": {
+        "gt_lines": 7,
+        "product_correct": 7,
+        "quantity_correct": 7,
+        "line_correct": 7,
+        "missed": 0,
+        "invented": 0
+      },
+      "per_line": [
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์สิงห์ขวดใหญ่",
+            "quantity": 10.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-SINGHA-L",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์สิงห์ขวดใหญ่",
+            "quantity": 10.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์สิงห์กระป๋อง",
+            "quantity": 4.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-SINGHA-CAN",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์สิงห์กระป๋อง",
+            "quantity": 4.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์ลีโอขวดใหญ่",
+            "quantity": 8.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-LEO-L",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์ลีโอขวดใหญ่",
+            "quantity": 8.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์ลีโอขวดเล็ก",
+            "quantity": 6.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-LEO-S",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์ลีโอขวดเล็ก",
+            "quantity": 6.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์ช้าง",
+            "quantity": 12.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-CHANG",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์ช้าง",
+            "quantity": 12.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์อาซาฮีกระป๋อง",
+            "quantity": 3.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-ASAHI-CAN",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์อาซาฮีกระป๋อง",
+            "quantity": 3.0,
+            "in_catalog": true
+          }
+        },
+        {
+          "status": "ok",
+          "product_ok": true,
+          "quantity_ok": true,
+          "gt": {
+            "product": "เบียร์อาซาฮีขวดใหญ่",
+            "quantity": 5.0,
+            "unit": "ลัง",
+            "code": "INT-BEER-ASAHI-L",
+            "in_catalog": true
+          },
+          "pred": {
+            "product": "เบียร์อาซาฮีขวดใหญ่",
+            "quantity": 5.0,
+            "in_catalog": true
+          }
+        }
+      ],
+      "gt_lines": 7,
+      "product_correct": 7,
+      "quantity_correct": 7,
+      "line_correct": 7,
+      "missed": 0,
+      "invented": 0
     }
   ]
 }
