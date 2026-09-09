@@ -1,0 +1,142 @@
+# Internal test deployment — one pod holds the API and the arq worker together.
+#
+# They share a SQLite file and an uploads directory, so they must share a
+# filesystem. A ReadWriteOnce PVC can only attach to one pod, and SQLite over
+# ReadWriteMany (NFS) risks corruption rather than mere contention — so the two
+# processes live in one pod, and the Deployment is pinned to a single replica
+# with the Recreate strategy (a rolling update would briefly run two pods
+# against the same database file).
+#
+# That ceiling is deliberate for a box the boss is trying out. Before real reps
+# use this, move to Postgres + object storage; then worker and API become
+# separate, scalable Deployments.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: receipt-ai-data
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      # receipts.db plus the original photos, kept as audit evidence. Real
+      # phone photos measure ~1.9 MB, so this holds roughly 10k receipts.
+      storage: 20Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: receipt-ai-config
+data:
+  DATABASE_URL: "sqlite:////app/data/receipts.db"
+  UPLOAD_DIR: "/app/uploads"
+  CORS_ORIGINS: "http://receipt-ai.internal"
+  USE_ARQ: "true"
+  EXTRACTION_CONCURRENCY: "8"
+  LOG_LEVEL: "INFO"
+  TZ: "Asia/Bangkok"
+---
+# kubectl create secret generic receipt-ai-secrets \
+#   --from-literal=OPENROUTER_API_KEY=sk-or-v1-... \
+#   --from-literal=REDIS_PASSWORD=$(openssl rand -hex 16)
+# Committing the real values would put the API key in git history.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: receipt-ai-secrets
+type: Opaque
+stringData:
+  OPENROUTER_API_KEY: "REPLACE_ME"
+  REDIS_PASSWORD: "REPLACE_ME"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: receipt-ai
+spec:
+  replicas: 1 # SQLite: a second replica corrupts the database, it does not scale it
+  strategy:
+    type: Recreate # never two pods on one database file, not even for a moment
+  selector:
+    matchLabels: { app: receipt-ai }
+  template:
+    metadata:
+      labels: { app: receipt-ai }
+    spec:
+      # Migrations run once, before either process starts, so the API never
+      # serves against a half-migrated schema.
+      initContainers:
+        - name: migrate
+          image: receipt-ai-backend:latest
+          command: ["alembic", "upgrade", "head"]
+          envFrom:
+            - configMapRef: { name: receipt-ai-config }
+            - secretRef: { name: receipt-ai-secrets }
+          volumeMounts:
+            - { name: data, mountPath: /app/data, subPath: data }
+      containers:
+        - name: api
+          image: receipt-ai-backend:latest
+          args:
+            - uvicorn
+            - app.main:app
+            - --host=0.0.0.0
+            - --port=8000
+            - --proxy-headers
+          env:
+            - name: RUN_MIGRATIONS # the initContainer already did it
+              value: "false"
+            - name: REDIS_URL
+              value: "redis://:$(REDIS_PASSWORD)@redis:6379/0"
+          envFrom:
+            - configMapRef: { name: receipt-ai-config }
+            - secretRef: { name: receipt-ai-secrets }
+          ports:
+            - containerPort: 8000
+          readinessProbe:
+            httpGet: { path: /api/health, port: 8000 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /api/health, port: 8000 }
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          volumeMounts:
+            - { name: data, mountPath: /app/data, subPath: data }
+            - { name: data, mountPath: /app/uploads, subPath: uploads }
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { memory: 1Gi }
+        - name: worker
+          image: receipt-ai-backend:latest
+          args: ["arq", "app.worker.WorkerSettings"]
+          env:
+            - name: RUN_MIGRATIONS
+              value: "false"
+            - name: REDIS_URL
+              value: "redis://:$(REDIS_PASSWORD)@redis:6379/0"
+          envFrom:
+            - configMapRef: { name: receipt-ai-config }
+            - secretRef: { name: receipt-ai-secrets }
+          volumeMounts:
+            - { name: data, mountPath: /app/data, subPath: data }
+            - { name: data, mountPath: /app/uploads, subPath: uploads }
+          resources:
+            requests: { cpu: 200m, memory: 512Mi }
+            limits: { memory: 2Gi }
+      # An extraction can take ~30s and arq caps a job at 300s; give in-flight
+      # work a chance to finish rather than losing the upload on a redeploy.
+      terminationGracePeriodSeconds: 120
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: receipt-ai-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend # the frontend's nginx proxies to http://backend:8000
+spec:
+  selector: { app: receipt-ai }
+  ports:
+    - port: 8000
+      targetPort: 8000

@@ -1,10 +1,12 @@
 services:
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    # No published port: only the backend and worker need Redis, and an
+    # unauthenticated Redis on a public interface is found by scanners in hours.
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}"]
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -12,17 +14,25 @@ services:
   backend:
     build: ./backend
     env_file: ./backend/.env
+    # Reached only through the frontend's nginx (/api/), so no published port.
     environment:
       - DATABASE_URL=sqlite:///./data/receipts.db
       - UPLOAD_DIR=./uploads
       - CORS_ORIGINS=http://localhost
       - USE_ARQ=true
-      - REDIS_URL=redis://redis:6379/0
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - EXTRACTION_CONCURRENCY=8
+      - TZ=Asia/Bangkok
     volumes:
       - backend-data:/app/data
       - backend-uploads:/app/uploads
-    ports:
-      - "8000:8000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request;urllib.request.urlopen('http://localhost:8000/api/health')\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     depends_on:
       redis:
         condition: service_healthy
@@ -35,12 +45,20 @@ services:
       - DATABASE_URL=sqlite:///./data/receipts.db
       - UPLOAD_DIR=./uploads
       - USE_ARQ=true
-      - REDIS_URL=redis://redis:6379/0
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - EXTRACTION_CONCURRENCY=8
+      - TZ=Asia/Bangkok
+      # The backend container already migrated the shared file; a second
+      # alembic run against the same SQLite file at boot only risks a lock.
+      - RUN_MIGRATIONS=false
     volumes:
       - backend-data:/app/data
       - backend-uploads:/app/uploads
+    restart: unless-stopped
     depends_on:
       redis:
+        condition: service_healthy
+      backend:
         condition: service_healthy
 
   frontend:
@@ -50,6 +68,13 @@ services:
         VITE_API_BASE: /api
     ports:
       - "80:80"
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Bangkok
+    volumes:
+      # Shared password for the internal test box. Generate with:
+      #   htpasswd -bc deploy/htpasswd boss 'a-password'
+      - ./deploy/htpasswd:/etc/nginx/htpasswd:ro
     depends_on:
       - backend
 

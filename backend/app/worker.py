@@ -42,7 +42,7 @@ class WorkerSettings:
 
     functions = [process_document_task]
     redis_settings = _redis_settings()
-    max_jobs = 4  # tune based on Gemini rate limits + memory
+    max_jobs = settings.extraction_concurrency  # EXTRACTION_CONCURRENCY
     job_timeout = 300  # 5 min hard cap per document
     keep_result = 3600  # keep results for 1 hour for debugging
 

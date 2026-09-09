@@ -2,7 +2,7 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
@@ -57,6 +57,23 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get("/api/health", tags=["ops"])
+def health() -> dict:
+    """Liveness/readiness probe: reports whether the DB answers, not just
+    whether the process is up — a pod that cannot reach its volume is not
+    ready, and restarting it is the right response."""
+    from sqlalchemy import text
+
+    from .database import engine
+
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=503, detail=f"database unavailable: {exc}") from exc
+    return {"status": "ok", "model": settings.openrouter_model}
+
 
 app.include_router(documents.router, prefix="/api/documents", tags=["documents"])
 app.include_router(stores.router, prefix="/api/stores", tags=["stores"])

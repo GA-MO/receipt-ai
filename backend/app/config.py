@@ -23,6 +23,11 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str = "sqlite:///./data/receipts.db"
+    # Seconds a connection waits on a locked SQLite file before giving up. The
+    # API and the arq worker write to the same file; extraction bursts make
+    # them collide, and failing an upload over a lock the other side clears in
+    # milliseconds is the worst possible trade.
+    sqlite_busy_timeout: float = 15.0
 
     # Storage
     upload_dir: str = "./uploads"

@@ -1,0 +1,106 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: redis }
+  template:
+    metadata:
+      labels: { app: redis }
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          command: ["sh", "-c", 'exec redis-server --requirepass "$REDIS_PASSWORD"']
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: receipt-ai-secrets, key: REDIS_PASSWORD }
+          ports:
+            - containerPort: 6379
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+spec:
+  selector: { app: redis }
+  ports:
+    - port: 6379
+      targetPort: 6379
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: receipt-ai-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: receipt-ai-frontend }
+  template:
+    metadata:
+      labels: { app: receipt-ai-frontend }
+    spec:
+      containers:
+        - name: nginx
+          image: receipt-ai-frontend:latest
+          ports:
+            - containerPort: 80
+          # The image's nginx.conf asks for a password itself; on k8s the
+          # Ingress does that instead, so mount an htpasswd here too rather
+          # than leaving the file missing and nginx refusing to start.
+          volumeMounts:
+            - { name: htpasswd, mountPath: /etc/nginx/htpasswd, subPath: htpasswd, readOnly: true }
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { memory: 256Mi }
+      volumes:
+        - name: htpasswd
+          secret:
+            secretName: receipt-ai-basic-auth
+            items:
+              - { key: auth, path: htpasswd }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: receipt-ai-frontend
+spec:
+  selector: { app: receipt-ai-frontend }
+  ports:
+    - port: 80
+      targetPort: 80
+---
+# kubectl create secret generic receipt-ai-basic-auth \
+#   --from-file=auth=deploy/htpasswd
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: receipt-ai
+  annotations:
+    nginx.ingress.kubernetes.io/auth-type: basic
+    nginx.ingress.kubernetes.io/auth-secret: receipt-ai-basic-auth
+    nginx.ingress.kubernetes.io/auth-realm: "Thai Receipt Intelligence"
+    # Receipt photos off a phone run to several MB; the default 1m body limit
+    # would reject them at the edge before the app ever sees the upload.
+    nginx.ingress.kubernetes.io/proxy-body-size: "20m"
+    # An extraction takes ~30s at p50 and the upload response waits on it.
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: receipt-ai.internal # replace with the real internal hostname
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: receipt-ai-frontend
+                port:
+                  number: 80

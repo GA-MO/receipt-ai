@@ -1,0 +1,19 @@
+# Never ship secrets or local state into the build context — the context is
+# uploaded to the daemon in full, .env included, even when the Dockerfile
+# does not COPY it.
+.env
+.env.*
+!.env.example
+.venv/
+data/
+uploads/
+uploads_archive*/
+backend/
+*.db
+*.db.*
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.vite/
+tests/
