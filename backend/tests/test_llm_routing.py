@@ -93,3 +93,11 @@ def test_all_models_exhausted_reports_the_list(monkeypatch):
         monkeypatch, lambda model: (_ for _ in ()).throw(Exception("404 model not found"))))
     with pytest.raises(RuntimeError, match="No usable OpenRouter model"):
         _with("a/one", "b/two", lambda: generate_json(prompt="x"))
+
+
+def test_no_preview_models_in_the_default_chain():
+    # A preview fallback would reintroduce exactly the retirement risk the
+    # chain exists to remove.
+    defaults = type(settings)()
+    chain = [defaults.openrouter_model, *defaults.openrouter_fallback_models.split(",")]
+    assert not [m for m in chain if "preview" in m]

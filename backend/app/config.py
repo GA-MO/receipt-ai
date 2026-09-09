@@ -12,8 +12,11 @@ class Settings(BaseSettings):
     # unavailable primary falls through instead of failing every upload. Safe
     # because the 2026-09 sweep put all of these within one line of each other
     # on the 32-receipt set — they differ in speed and price, not accuracy.
+    # GA only, same rule as the primary — a preview fallback would hand back
+    # the retirement risk the chain exists to remove. Last entry is the newest
+    # GA Flash, the one most likely to outlive the others.
     openrouter_fallback_models: str = (
-        "google/gemini-3.5-flash-lite,google/gemini-3-flash-preview"
+        "google/gemini-3.5-flash-lite,google/gemini-3.8-flash"
     )
     openrouter_app_title: str = "Thai Receipt Intelligence"
     openrouter_app_url: str = ""
