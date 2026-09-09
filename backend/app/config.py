@@ -5,7 +5,16 @@ class Settings(BaseSettings):
     # OpenRouter (OpenAI-compatible) — single LLM gateway
     openrouter_api_key: str = ""
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
-    openrouter_model: str = "google/gemini-3-flash-preview"
+    # GA model, not a preview: a preview can be retired at short notice, and a
+    # missing .env must not silently drop the app onto one.
+    openrouter_model: str = "google/gemini-3.1-flash-lite"
+    # Handed to OpenRouter as its `models` routing list, so a retired or
+    # unavailable primary falls through instead of failing every upload. Safe
+    # because the 2026-09 sweep put all of these within one line of each other
+    # on the 32-receipt set — they differ in speed and price, not accuracy.
+    openrouter_fallback_models: str = (
+        "google/gemini-3.5-flash-lite,google/gemini-3-flash-preview"
+    )
     openrouter_app_title: str = "Thai Receipt Intelligence"
     openrouter_app_url: str = ""
 

@@ -57,6 +57,16 @@ def reset_openai_client() -> None:
     _openai_client = None
 
 
+def model_routing_list() -> list[str]:
+    """Primary model first, then configured fallbacks, de-duplicated."""
+    models = [settings.openrouter_model]
+    for name in (settings.openrouter_fallback_models or "").split(","):
+        name = name.strip()
+        if name and name not in models:
+            models.append(name)
+    return models
+
+
 def generate_json(
     *,
     prompt: str,
@@ -70,10 +80,39 @@ def generate_json(
     ``file_bytes`` + ``mime_type`` add a single image or PDF to the user turn.
     Pass ``None`` for text-only prompts.
     """
-    return _retry(
-        lambda: _generate_json_openrouter(
-            system_instruction, prompt, file_bytes, mime_type, temperature
-        )
+    routing = model_routing_list()
+    last_error: Exception | None = None
+    for position, model in enumerate(routing):
+        try:
+            return _retry(
+                lambda m=model, rest=routing[position:]: _generate_json_openrouter(
+                    m, rest, system_instruction, prompt, file_bytes, mime_type, temperature
+                )
+            )
+        except RuntimeError as exc:
+            # A retired or mistyped model id is rejected outright — OpenRouter's
+            # own `models` routing only covers a model that exists but is
+            # unavailable. Walk to the next candidate ourselves rather than
+            # failing every upload in the queue.
+            if not _is_model_unavailable(exc):
+                raise
+            last_error = exc
+            if position + 1 < len(routing):
+                logger.warning(
+                    "OpenRouter model %s unavailable — falling back to %s",
+                    model,
+                    routing[position + 1],
+                )
+    raise RuntimeError(f"No usable OpenRouter model in {routing}: {last_error}")
+
+
+def _is_model_unavailable(exc: Exception) -> bool:
+    msg = str(exc).lower()
+    return (
+        "not a valid model id" in msg
+        or "no endpoints found" in msg
+        or "model not found" in msg
+        or "404" in msg
     )
 
 
@@ -94,6 +133,10 @@ def _retry(call) -> str:
             )
             if is_auth_error:
                 reset_openai_client()
+            # Retrying a model that does not exist just burns the backoff before
+            # the caller can try the next one.
+            if _is_model_unavailable(exc):
+                break
             if attempt < settings.llm_max_retries:
                 delay = settings.llm_retry_delay * (2 ** (attempt - 1))
                 time.sleep(delay)
@@ -103,6 +146,8 @@ def _retry(call) -> str:
 
 
 def _generate_json_openrouter(
+    model: str,
+    routing: list[str],
     system_instruction: str,
     prompt: str,
     file_bytes: bytes | None,
@@ -156,11 +201,21 @@ def _generate_json_openrouter(
 
     client = _get_openai_client()
     response = client.chat.completions.create(
-        model=settings.openrouter_model,
+        model=model,
         messages=messages,
         temperature=temperature,
         response_format={"type": "json_object"},
+        # OpenRouter routes down this list when a model is unavailable or has
+        # been retired, so losing one does not take the pipeline down with it.
+        extra_body={"models": routing} if len(routing) > 1 else None,
     )
+    served = getattr(response, "model", None)
+    if served and served.split(":")[0] != model.split(":")[0]:
+        logger.warning(
+            "OpenRouter served %s instead of %s — primary model may be retired",
+            served,
+            model,
+        )
     if response.usage and response.usage.prompt_tokens_details:
         details = response.usage.prompt_tokens_details
         cached = getattr(details, "cached_tokens", 0) or 0
