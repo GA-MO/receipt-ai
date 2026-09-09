@@ -1,16 +1,9 @@
+# Two containers, no broker. Extraction runs in the API process on a thread
+# pool sized by EXTRACTION_CONCURRENCY; work stranded by a restart is picked
+# back up from the database at boot (see requeue_stuck_documents). arq/Redis
+# remains supported — set USE_ARQ=true and run `arq app.worker.WorkerSettings`
+# — but a single internal box does not need the extra moving parts.
 services:
-  redis:
-    image: redis:7-alpine
-    # No published port: only the backend and worker need Redis, and an
-    # unauthenticated Redis on a public interface is found by scanners in hours.
-    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}"]
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
-
   backend:
     build: ./backend
     env_file: ./backend/.env
@@ -19,8 +12,7 @@ services:
       - DATABASE_URL=sqlite:///./data/receipts.db
       - UPLOAD_DIR=./uploads
       - CORS_ORIGINS=http://localhost
-      - USE_ARQ=true
-      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - USE_ARQ=false
       - EXTRACTION_CONCURRENCY=8
       - TZ=Asia/Bangkok
     volumes:
@@ -33,33 +25,9 @@ services:
       timeout: 5s
       retries: 3
       start_period: 20s
-    depends_on:
-      redis:
-        condition: service_healthy
-
-  worker:
-    build: ./backend
-    command: ["arq", "app.worker.WorkerSettings"]
-    env_file: ./backend/.env
-    environment:
-      - DATABASE_URL=sqlite:///./data/receipts.db
-      - UPLOAD_DIR=./uploads
-      - USE_ARQ=true
-      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
-      - EXTRACTION_CONCURRENCY=8
-      - TZ=Asia/Bangkok
-      # The backend container already migrated the shared file; a second
-      # alembic run against the same SQLite file at boot only risks a lock.
-      - RUN_MIGRATIONS=false
-    volumes:
-      - backend-data:/app/data
-      - backend-uploads:/app/uploads
-    restart: unless-stopped
-    depends_on:
-      redis:
-        condition: service_healthy
-      backend:
-        condition: service_healthy
+    # In-flight extractions finish on SIGTERM; anything still queued is
+    # requeued at the next boot rather than dropped.
+    stop_grace_period: 120s
 
   frontend:
     build:
@@ -76,7 +44,8 @@ services:
       #   htpasswd -bc deploy/htpasswd boss 'a-password'
       - ./deploy/htpasswd:/etc/nginx/htpasswd:ro
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 volumes:
   backend-data:

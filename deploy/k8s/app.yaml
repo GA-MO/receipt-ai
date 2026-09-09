@@ -1,15 +1,14 @@
-# Internal test deployment — one pod holds the API and the arq worker together.
+# Internal test deployment — one container, no broker.
 #
-# They share a SQLite file and an uploads directory, so they must share a
-# filesystem. A ReadWriteOnce PVC can only attach to one pod, and SQLite over
-# ReadWriteMany (NFS) risks corruption rather than mere contention — so the two
-# processes live in one pod, and the Deployment is pinned to a single replica
-# with the Recreate strategy (a rolling update would briefly run two pods
-# against the same database file).
+# Extraction runs inside the API process on a thread pool, so there is nothing
+# to share a SQLite file with. The Deployment is still pinned to one replica
+# with the Recreate strategy: a ReadWriteOnce PVC attaches to one pod, and two
+# pods on one SQLite file corrupt it rather than scale it.
 #
 # That ceiling is deliberate for a box the boss is trying out. Before real reps
-# use this, move to Postgres + object storage; then worker and API become
-# separate, scalable Deployments.
+# use this, move to Postgres + object storage; extraction can then move back
+# out to its own scalable Deployment (arq/Redis is still supported — set
+# USE_ARQ=true).
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -30,14 +29,13 @@ data:
   DATABASE_URL: "sqlite:////app/data/receipts.db"
   UPLOAD_DIR: "/app/uploads"
   CORS_ORIGINS: "http://receipt-ai.internal"
-  USE_ARQ: "true"
+  USE_ARQ: "false"
   EXTRACTION_CONCURRENCY: "8"
   LOG_LEVEL: "INFO"
   TZ: "Asia/Bangkok"
 ---
 # kubectl create secret generic receipt-ai-secrets \
-#   --from-literal=OPENROUTER_API_KEY=sk-or-v1-... \
-#   --from-literal=REDIS_PASSWORD=$(openssl rand -hex 16)
+#   --from-literal=OPENROUTER_API_KEY=sk-or-v1-...
 # Committing the real values would put the API key in git history.
 apiVersion: v1
 kind: Secret
@@ -46,7 +44,6 @@ metadata:
 type: Opaque
 stringData:
   OPENROUTER_API_KEY: "REPLACE_ME"
-  REDIS_PASSWORD: "REPLACE_ME"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -62,8 +59,8 @@ spec:
     metadata:
       labels: { app: receipt-ai }
     spec:
-      # Migrations run once, before either process starts, so the API never
-      # serves against a half-migrated schema.
+      # Migrations run before the API starts, so it never serves against a
+      # half-migrated schema.
       initContainers:
         - name: migrate
           image: receipt-ai-backend:latest
@@ -85,8 +82,6 @@ spec:
           env:
             - name: RUN_MIGRATIONS # the initContainer already did it
               value: "false"
-            - name: REDIS_URL
-              value: "redis://:$(REDIS_PASSWORD)@redis:6379/0"
           envFrom:
             - configMapRef: { name: receipt-ai-config }
             - secretRef: { name: receipt-ai-secrets }
@@ -106,25 +101,8 @@ spec:
           resources:
             requests: { cpu: 100m, memory: 256Mi }
             limits: { memory: 1Gi }
-        - name: worker
-          image: receipt-ai-backend:latest
-          args: ["arq", "app.worker.WorkerSettings"]
-          env:
-            - name: RUN_MIGRATIONS
-              value: "false"
-            - name: REDIS_URL
-              value: "redis://:$(REDIS_PASSWORD)@redis:6379/0"
-          envFrom:
-            - configMapRef: { name: receipt-ai-config }
-            - secretRef: { name: receipt-ai-secrets }
-          volumeMounts:
-            - { name: data, mountPath: /app/data, subPath: data }
-            - { name: data, mountPath: /app/uploads, subPath: uploads }
-          resources:
-            requests: { cpu: 200m, memory: 512Mi }
-            limits: { memory: 2Gi }
-      # An extraction can take ~30s and arq caps a job at 300s; give in-flight
-      # work a chance to finish rather than losing the upload on a redeploy.
+      # An extraction takes ~30s; let in-flight work finish on SIGTERM. Whatever
+      # does not make it is requeued from the database at the next boot.
       terminationGracePeriodSeconds: 120
       volumes:
         - name: data

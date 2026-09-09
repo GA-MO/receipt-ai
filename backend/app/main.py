@@ -34,6 +34,15 @@ async def lifespan(_app: FastAPI):
             db.close()
     except Exception as exc:  # noqa: BLE001
         logger.warning("Product auto-seed failed: %s", exc)
+    # A previous process may have died mid-batch; pick that work back up.
+    try:
+        from .routers.documents import requeue_stuck_documents
+
+        requeued = requeue_stuck_documents()
+        if requeued:
+            logger.info("Requeued %d document(s) stranded in processing", requeued)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Requeue of stuck documents failed: %s", exc)
     logger.info("Application started — upload_dir=%s", settings.upload_dir)
     yield
     # Drain in-flight extractions so we don't drop work on reload/SIGTERM.

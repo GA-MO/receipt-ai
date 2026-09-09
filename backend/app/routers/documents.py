@@ -200,6 +200,39 @@ def shutdown_extraction_pool() -> None:
         _extraction_pool = None
 
 
+def requeue_stuck_documents() -> int:
+    """Resubmit documents left mid-extraction by a previous process.
+
+    Without a broker the thread pool is the only record that work was in
+    flight, and it dies with the process — a redeploy or an OOM kill during a
+    batch would strand those documents in ``processing`` forever, with nothing
+    to pick them up. The database already knows: ``processing`` means unfinished.
+    """
+    db = SessionLocal()
+    try:
+        stuck = (
+            db.query(Document)
+            .filter(Document.status == "processing", Document.deleted_at.is_(None))
+            .all()
+        )
+        jobs = [(d.id, d.file_path) for d in stuck]
+    finally:
+        db.close()
+
+    for doc_id, file_path in jobs:
+        if not os.path.exists(file_path):
+            logger.warning("Requeue skipped for %s: file missing (%s)", doc_id, file_path)
+            continue
+        logger.info("Requeuing document stranded in processing: %s", doc_id)
+        if settings.use_arq:
+            from ..worker import enqueue_process_document
+
+            enqueue_process_document(doc_id, file_path)
+        else:
+            _get_extraction_pool().submit(_run_processing, doc_id, file_path)
+    return len(jobs)
+
+
 def _run_processing(doc_id: str, file_path: str) -> None:
     """Core processing logic, shared between BackgroundTasks and arq worker."""
     db = SessionLocal()
