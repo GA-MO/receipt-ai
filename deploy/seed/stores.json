@@ -1,0 +1,88 @@
+{
+  "stores": [
+    {
+      "code": null,
+      "name": "จำปีสโตร์",
+      "normalized_name": "จำปีสโตร์",
+      "address": null,
+      "notes": null
+    },
+    {
+      "code": "DEMO-S2",
+      "name": "บริษัท ก.เจริญพาณิชย์ จำกัด",
+      "normalized_name": "ก.เจริญพาณิชย์",
+      "address": "88 ถ.เพชรเกษม จ.ราชบุรี",
+      "notes": null
+    },
+    {
+      "code": null,
+      "name": "บริษัท ณ บวร เทรดดิ้ง จำกัด",
+      "normalized_name": "บริษัท ณ บวร เทรดดิ้ง จำกัด",
+      "address": null,
+      "notes": null
+    },
+    {
+      "code": null,
+      "name": "รวยสุรา (หจก. รวยสุรา กรุ๊ป)",
+      "normalized_name": "รวยสุรา",
+      "address": null,
+      "notes": null
+    },
+    {
+      "code": null,
+      "name": "ร้าน ซุก กิ๊ก",
+      "normalized_name": "ร้าน ซุก กิ๊ก",
+      "address": null,
+      "notes": null
+    },
+    {
+      "code": "DEMO-S4",
+      "name": "ร้านป้าแดง มินิมาร์ท",
+      "normalized_name": "ป้าแดง มินิมาร์ท",
+      "address": "สาขาบางนา กรุงเทพฯ",
+      "notes": null
+    },
+    {
+      "code": null,
+      "name": "ร้านลิ้มเฮงพัฒนา",
+      "normalized_name": "ลิ้มเฮงพัฒนา",
+      "address": null,
+      "notes": null
+    },
+    {
+      "code": null,
+      "name": "ร้านสุดาพาณิชย์",
+      "normalized_name": "สุดาพาณิชย์",
+      "address": null,
+      "notes": null
+    },
+    {
+      "code": null,
+      "name": "หจก. ประสงค์การค้าแพร่",
+      "normalized_name": "ประสงค์การค้าแพร่",
+      "address": null,
+      "notes": null
+    },
+    {
+      "code": "DEMO-S3",
+      "name": "หจก. รวยทรัพย์เจริญ",
+      "normalized_name": "รวยทรัพย์เจริญ",
+      "address": "99 ถ.มิตรภาพ จ.ขอนแก่น",
+      "notes": null
+    },
+    {
+      "code": null,
+      "name": "ห้างหุ้นส่วนจำกัด กวงเสิน",
+      "normalized_name": "กวงเสิน",
+      "address": null,
+      "notes": null
+    },
+    {
+      "code": "DEMO-S5",
+      "name": "โชห่วยลุงสมชาย",
+      "normalized_name": "โชห่วยลุงสมชาย",
+      "address": null,
+      "notes": null
+    }
+  ]
+}
