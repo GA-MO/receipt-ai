@@ -1,0 +1,228 @@
+/* ==========================================================================
+   Work mode, dressed like /flow.
+
+   The daily app is Mantine; the demo is hand-rolled CSS. Rather than rewrite
+   every page, this layer gives the AppShell the same skin: the mesh backdrop
+   and grain, glass panels, one radius, one shadow, one accent. Scoped to
+   .work-surface so /flow and /  are untouched.
+   ========================================================================== */
+
+/* Sits on AppShell.Main, never on the AppShell root: the root is a CSS grid
+   and ::before/::after would become two stray grid items, folding the layout. */
+.work-surface {
+  --ink: #1d1d1f;
+  --ink-soft: #6e6e73;
+  --ink-faint: #a1a1a6;
+  --w-radius: 24px;
+  --w-line: rgba(28, 28, 30, 0.07);
+  --w-glass: rgba(255, 255, 255, 0.72);
+  --w-shadow: 0 30px 70px -55px rgba(28, 28, 30, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --w-shadow-lift: 0 40px 90px -50px rgba(79, 70, 229, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  background: #fbfbfd;
+  /* No padding-inline here: AppShell.Main uses its inline padding to clear the
+     navbar, and overriding it slides the page under the sidebar. */
+}
+/* a comfortable measure on a wide monitor, and room for the backdrop to read
+   down both sides */
+.work-surface > * {
+  max-width: 1280px;
+  margin-inline: auto;
+}
+
+/* the same fixed mesh + grain the demo uses, so switching modes feels like
+   walking between rooms of one building rather than two products */
+.work-surface::before,
+.work-surface::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.work-surface::before {
+  background:
+    radial-gradient(880px 620px at 8% 0%, rgba(99, 102, 241, 0.2), transparent 62%),
+    radial-gradient(900px 700px at 96% -6%, rgba(168, 85, 247, 0.17), transparent 60%),
+    radial-gradient(760px 620px at 78% 112%, rgba(56, 189, 248, 0.14), transparent 62%),
+    radial-gradient(700px 560px at -6% 104%, rgba(129, 140, 248, 0.13), transparent 62%);
+}
+.work-surface::after {
+  opacity: 0.35;
+  mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.work-surface > * {
+  position: relative;
+  z-index: 1;
+}
+/* Main is painted under the header/navbar, which carry their own blur. */
+.work-surface::before,
+.work-surface::after {
+  z-index: -1;
+}
+
+/* ---------- panels ---------- */
+.work-surface :where(.mantine-Paper-root, .mantine-Card-root) {
+  border-radius: var(--w-radius);
+  border-color: rgba(255, 255, 255, 0.9);
+  background: var(--w-glass);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: var(--w-shadow);
+}
+/* Menus, popovers and modals keep their own opaque surface — glass on a
+   floating layer over glass turns text to soup. */
+.work-surface
+  :where(.mantine-Menu-dropdown, .mantine-Popover-dropdown, .mantine-Modal-content, .mantine-Select-dropdown) {
+  background: #fff;
+  backdrop-filter: none;
+}
+
+/* rows that lead somewhere lift on hover, like the demo's cards */
+.work-surface a:where(.mantine-Paper-root, .mantine-Card-root),
+.work-surface :where(.mantine-Paper-root, .mantine-Card-root)[data-clickable="true"] {
+  transition:
+    transform 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.24s ease,
+    border-color 0.24s ease;
+}
+.work-surface a:where(.mantine-Paper-root, .mantine-Card-root):hover,
+.work-surface :where(.mantine-Paper-root, .mantine-Card-root)[data-clickable="true"]:hover {
+  transform: translateY(-3px);
+  border-color: rgba(79, 70, 229, 0.24);
+  box-shadow: var(--w-shadow-lift);
+}
+
+/* ---------- typography: the demo's tighter, larger headings ---------- */
+.work-surface :where(h1, h2, .mantine-Title-root) {
+  letter-spacing: -0.03em;
+}
+
+/* ---------- controls ---------- */
+.work-surface :where(.mantine-Button-root, .mantine-Badge-root, .mantine-Chip-label) {
+  border-radius: 999px;
+}
+.work-surface .mantine-Button-root[data-variant="filled"] {
+  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+  box-shadow: 0 12px 24px -16px rgba(79, 70, 229, 0.9);
+}
+.work-surface :where(.mantine-Input-input, .mantine-InputWrapper-root .mantine-Input-input) {
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+/* ---------- shell chrome ---------- */
+.work-header {
+  background: rgba(255, 255, 255, 0.72);
+  border-bottom: 1px solid var(--w-line);
+  backdrop-filter: blur(18px) saturate(180%);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+}
+.work-navbar {
+  background: rgba(255, 255, 255, 0.6);
+  border-right: 1px solid var(--w-line);
+  backdrop-filter: blur(18px) saturate(170%);
+  -webkit-backdrop-filter: blur(18px) saturate(170%);
+}
+
+/* The way back to the fork. Quiet until you look for it. */
+.work-home {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--ink-soft);
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+.work-home:hover {
+  color: #4f46e5;
+  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(79, 70, 229, 0.2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .work-surface a:where(.mantine-Paper-root, .mantine-Card-root):hover,
+  .work-surface :where(.mantine-Paper-root, .mantine-Card-root)[data-clickable="true"]:hover {
+    transform: none;
+  }
+}
+
+/* ---------- hero strip, borrowed from the demo's hero ---------- */
+.work-surface .surface-accent {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(22px, 2.6vw, 34px) clamp(22px, 2.8vw, 36px);
+  border-radius: var(--w-radius);
+  border-color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: var(--w-shadow);
+}
+/* the aurora that gives /flow its depth, held behind the text */
+.work-surface .surface-accent::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: -60% -10% auto -10%;
+  height: 260%;
+  pointer-events: none;
+  background:
+    radial-gradient(closest-side at 22% 45%, rgba(99, 102, 241, 0.22), transparent 70%),
+    radial-gradient(closest-side at 58% 55%, rgba(139, 92, 246, 0.16), transparent 70%),
+    radial-gradient(closest-side at 88% 40%, rgba(56, 189, 248, 0.13), transparent 70%);
+  filter: blur(46px);
+}
+.work-surface .surface-accent > * {
+  position: relative;
+  z-index: 1;
+}
+.work-surface .surface-accent .mantine-Title-root {
+  font-size: clamp(26px, 2.6vw, 34px);
+  line-height: 1.22;
+}
+
+/* The demo's headline gradient is static. The shimmer sweep in index.css reads
+   as decoration for its own sake next to it, so it stops at this door. */
+.work-surface .gradient-text {
+  /* the shorthand resets background-clip, so restate it or the gradient paints
+     the box instead of the glyphs */
+  background: linear-gradient(100deg, #4f46e5 0%, #8b5cf6 45%, #38bdf8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: none;
+}
+
+/* ---------- dropzone ---------- */
+.work-drop {
+  border-style: dashed !important;
+  border-width: 1.5px !important;
+  border-color: rgba(79, 70, 229, 0.32) !important;
+  border-radius: 26px !important;
+  background: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition:
+    transform 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.24s ease,
+    background 0.24s ease,
+    box-shadow 0.24s ease;
+}
+.work-drop:hover {
+  transform: translateY(-2px);
+  border-color: #4f46e5 !important;
+  box-shadow: var(--w-shadow-lift);
+}
+.work-drop[data-active="true"] {
+  border-style: solid !important;
+  border-color: #4f46e5 !important;
+  background: rgba(238, 242, 255, 0.85);
+}

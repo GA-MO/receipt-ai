@@ -228,17 +228,8 @@ export default function InboxPage() {
         withBorder
         p="xl"
         mb="md"
-        radius="md"
-        style={{
-          borderStyle: "dashed",
-          borderWidth: 2,
-          borderColor: dropzone.isDragActive
-            ? "var(--mantine-color-indigo-5)"
-            : "var(--mantine-color-gray-4)",
-          background: dropzone.isDragActive ? "var(--mantine-color-indigo-0)" : undefined,
-          cursor: "pointer",
-          transition: "all 0.15s ease",
-        }}
+        className="work-drop"
+        data-active={dropzone.isDragActive}
       >
         <input {...dropzone.getInputProps()} />
         <Group justify="center" gap="md">

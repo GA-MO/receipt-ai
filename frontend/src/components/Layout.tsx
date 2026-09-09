@@ -8,7 +8,8 @@ import {
   ThemeIcon,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { Calendar, FileText, Inbox, Receipt, Store, Trash2 } from "lucide-react";
+import "../styles/work-surface.css";
+import { Calendar, FileText, Inbox, Receipt, Store, Trash2, Home } from "lucide-react";
 import classes from "./Layout.module.css";
 import { LearnedAliasesBadge } from "@/components/LearnedAliasesPanel";
 import { useDashboard } from "@/api/queries";
@@ -42,9 +43,9 @@ export default function Layout() {
         breakpoint: "lg",
         collapsed: { mobile: !opened },
       }}
-      padding="md"
+      padding={{ base: "sm", md: "xl" }}
     >
-      <AppShell.Header className={classes.headerBar}>
+      <AppShell.Header className={`${classes.headerBar} work-header`}>
         <Group h="100%" px="md" justify="space-between">
           <Group>
             <Burger
@@ -66,12 +67,16 @@ export default function Layout() {
             </div>
           </Group>
           <Group gap="xs">
+            <RouterNavLink to="/" className="work-home">
+              <Home size={15} />
+              <span>หน้าแรก</span>
+            </RouterNavLink>
             <LearnedAliasesBadge />
           </Group>
         </Group>
       </AppShell.Header>
 
-      <AppShell.Navbar className={classes.navbar} p="sm">
+      <AppShell.Navbar className={`${classes.navbar} work-navbar`} p="sm">
         <AppShell.Section grow className={classes.navbarMain}>
           {links.map((link) => {
             const { to, label, icon: Icon } = link;
@@ -108,7 +113,7 @@ export default function Layout() {
         </AppShell.Section>
       </AppShell.Navbar>
 
-      <AppShell.Main>
+      <AppShell.Main className="work-surface">
         <Outlet />
       </AppShell.Main>
     </AppShell>

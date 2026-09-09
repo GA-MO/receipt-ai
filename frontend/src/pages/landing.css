@@ -1,0 +1,303 @@
+/* ==========================================================================
+   LandingPage — the fork: work on the left, demo on the right.
+
+   Rides on .flow-root for the palette, mesh backdrop and grain, so the two
+   surfaces read as one product. Everything below is scoped to .landing-root.
+   ========================================================================== */
+
+.landing-root {
+  display: flex;
+}
+
+.landing-wrap {
+  position: relative;
+  z-index: 1;
+  width: min(1180px, 100%);
+  margin: auto;
+  padding: 40px 28px 56px;
+}
+
+/* ---------- header ---------- */
+.landing-head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  justify-content: center;
+  margin-bottom: clamp(24px, 4.5vh, 44px);
+}
+.landing-brand {
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+.landing-brand-sub {
+  font-size: 12.5px;
+  color: var(--ink-faint);
+  line-height: 1.2;
+}
+
+.landing-lede {
+  text-align: center;
+  margin: 0 auto clamp(26px, 4.5vh, 44px);
+  max-width: 46ch;
+}
+.landing-lede h1 {
+  font-size: clamp(30px, 3.8vw, 46px);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.22;
+  margin: 0;
+}
+.landing-lede p {
+  margin: 12px 0 0;
+  font-size: clamp(14.5px, 1.4vw, 17px);
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+/* ---------- the split ---------- */
+.landing-split {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: stretch;
+  gap: clamp(8px, 2vw, 26px);
+}
+
+.landing-door {
+  display: flex;
+}
+.landing-door-link {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  padding: clamp(26px, 3.4vw, 42px);
+  border-radius: 26px;
+  overflow: hidden;
+  color: inherit;
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.66);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(16px);
+  box-shadow:
+    0 40px 90px -60px rgba(28, 28, 30, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transition:
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.28s ease,
+    border-color 0.28s ease,
+    background 0.28s ease;
+}
+.landing-door-link:hover,
+.landing-door-link:focus-visible {
+  transform: translateY(-6px);
+  border-color: rgba(79, 70, 229, 0.28);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow:
+    0 54px 110px -52px rgba(79, 70, 229, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+.landing-door-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+/* the half the cursor is on warms up; the glow sits behind the content */
+.landing-door-glow {
+  position: absolute;
+  inset: -45% -20%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(closest-side, rgba(99, 102, 241, 0.18), transparent 72%);
+  transition: opacity 0.32s ease;
+}
+.landing-door[data-side="right"] .landing-door-glow {
+  background: radial-gradient(closest-side, rgba(139, 92, 246, 0.2), transparent 72%);
+}
+.landing-door-link:hover .landing-door-glow,
+.landing-door-link:focus-visible .landing-door-glow {
+  opacity: 1;
+}
+.landing-door-link > *:not(.landing-door-glow) {
+  position: relative;
+  z-index: 1;
+}
+
+.landing-door-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 17px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  margin-bottom: 20px;
+  background: linear-gradient(135deg, var(--accent) 0%, #7c83ff 100%);
+  box-shadow: 0 16px 30px -16px rgba(79, 70, 229, 0.75);
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.landing-door[data-side="right"] .landing-door-icon {
+  background: linear-gradient(135deg, #7c3aed 0%, #a855f7 55%, #38bdf8 130%);
+  box-shadow: 0 16px 30px -16px rgba(124, 58, 237, 0.75);
+}
+.landing-door-link:hover .landing-door-icon {
+  transform: scale(1.06) rotate(-3deg);
+}
+
+.landing-eyebrow {
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.landing-door[data-side="right"] .landing-eyebrow {
+  color: #7c3aed;
+}
+.landing-door-title {
+  font-size: clamp(26px, 2.9vw, 36px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  margin: 8px 0 0;
+}
+.landing-door-blurb {
+  margin: 12px 0 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  max-width: 34ch;
+}
+
+.landing-points {
+  list-style: none;
+  margin: 22px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+.landing-points li {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 14px;
+  color: var(--ink);
+}
+.landing-points svg {
+  flex: none;
+  color: var(--accent);
+}
+.landing-door[data-side="right"] .landing-points svg {
+  color: #7c3aed;
+}
+
+.landing-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 26px;
+  padding: 11px 20px;
+  border-radius: 999px;
+  font-size: 14.5px;
+  font-weight: 650;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent) 0%, #6366f1 100%);
+  box-shadow: 0 14px 28px -16px rgba(79, 70, 229, 0.85);
+  transition:
+    gap 0.24s ease,
+    box-shadow 0.24s ease;
+}
+.landing-door[data-side="right"] .landing-cta {
+  background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+  box-shadow: 0 14px 28px -16px rgba(124, 58, 237, 0.85);
+}
+.landing-door-link:hover .landing-cta,
+.landing-door-link:focus-visible .landing-cta {
+  gap: 13px;
+  box-shadow: 0 18px 34px -14px rgba(79, 70, 229, 0.9);
+}
+
+/* ---------- the perforation ----------
+   A receipt tear-line, not a rule: notches punched top and bottom, dashes
+   between, and the word that makes the choice explicit. */
+.landing-perf {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  width: 34px;
+}
+.landing-perf-line {
+  flex: 1;
+  width: 0;
+  border-left: 2px dashed rgba(29, 29, 31, 0.16);
+}
+.landing-perf-notch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--bg);
+  box-shadow: inset 0 1px 3px rgba(28, 28, 30, 0.16);
+}
+/* Kept upright: Thai glyphs in writing-mode: vertical-rl are laid on their
+   side and stop being readable. A round chip reads at any orientation. */
+.landing-perf-or {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--ink-faint);
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  border-radius: 999px;
+  box-shadow: 0 6px 16px -12px rgba(28, 28, 30, 0.5);
+}
+
+/* ---------- narrow screens: stack, and turn the tear horizontal ---------- */
+@media (max-width: 860px) {
+  .landing-wrap {
+    padding: 28px 18px 40px;
+  }
+  .landing-split {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .landing-perf {
+    flex-direction: row;
+    width: auto;
+    height: 34px;
+    padding: 0 6px;
+  }
+  .landing-perf-line {
+    width: auto;
+    height: 0;
+    border-left: 0;
+    border-top: 2px dashed rgba(29, 29, 31, 0.16);
+  }
+
+  .landing-door-blurb {
+    max-width: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-door-link,
+  .landing-door-icon,
+  .landing-cta {
+    transition: none;
+  }
+  .landing-door-link:hover {
+    transform: none;
+  }
+  .landing-door-link:hover .landing-door-icon {
+    transform: none;
+  }
+}

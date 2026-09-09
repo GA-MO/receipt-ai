@@ -1545,7 +1545,6 @@ function EditableItem({ docId, item }: { docId: string; item: DocumentItemData }
         boxShadow: conf.flag ? `inset 3px 0 0 ${conf.color}` : undefined,
       }}
     >
-      <span className={`flow-dot ${isCatalog ? "flow-dot-ok" : "flow-dot-warn"}`} />
       <div className="flow-eitem-name">
         <Autocomplete
           variant="unstyled"

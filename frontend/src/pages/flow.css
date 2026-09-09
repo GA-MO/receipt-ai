@@ -1348,19 +1348,6 @@
   letter-spacing: -0.01em;
   white-space: nowrap;
 }
-.flow-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  flex: none;
-}
-.flow-dot-ok {
-  background: var(--good);
-}
-.flow-dot-warn {
-  background: var(--warn);
-}
-
 /* ---------- success overlay ---------- */
 .flow-success {
   position: fixed;
