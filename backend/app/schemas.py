@@ -16,6 +16,11 @@ class DocumentItemBase(BaseModel):
     # vision call (no extra cost), used to cross-check completeness, then
     # discarded — NOT a restored price feature, never persisted or shown.
     amount: float | None = None
+    # Same deal for the printed หน่วยละ column: quantity is the one field the
+    # rollup depends on and the only one nothing else could contradict, so
+    # ``quantity * unit_price ≈ amount`` is read purely to catch digit misreads
+    # (3 read as 30). Never persisted, never returned, never displayed.
+    unit_price: float | None = None
 
 
 class DocumentItemResponse(DocumentItemBase):
@@ -23,9 +28,11 @@ class DocumentItemResponse(DocumentItemBase):
     document_id: str
     confidence: float | None = None
     needs_review: bool = False
-    # ``amount`` is a transient validation-only input on the base model; never
-    # expose it on the API (no price fields leave the server post-pivot).
+    # ``amount``/``unit_price`` are transient validation-only inputs on the base
+    # model; never expose them on the API (no price fields leave the server
+    # post-pivot).
     amount: float | None = Field(default=None, exclude=True)
+    unit_price: float | None = Field(default=None, exclude=True)
 
     model_config = {"from_attributes": True}
 

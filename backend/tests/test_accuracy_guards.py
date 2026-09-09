@@ -60,6 +60,52 @@ def test_amount_check_skipped_when_amounts_missing():
     assert not any("ไม่ตรงยอดท้ายบิล" in m for m in w)
 
 
+# ---------- quantity x unit_price cross-check (#6) ----------
+
+def test_quantity_digit_misread_flagged():
+    # The 09.jpeg case: "3ลัง" read as 30. Line amount and bill total still
+    # agree (both read off the paper), so only the หน่วยละ column catches it.
+    items = [_item(quantity=30, unit_price=644, amount=1932)]
+    w = validate_extraction(_result(items, validation_total=1932))
+    assert any("น่าจะเป็น 3" in m for m in w)
+
+
+def test_quantity_matching_unit_price_ok():
+    items = [_item(quantity=3, unit_price=644, amount=1932)]
+    assert not any("น่าจะเป็น" in m for m in validate_extraction(_result(items)))
+
+
+def test_quantity_check_skipped_without_unit_price():
+    items = [_item(quantity=30, unit_price=None, amount=1932)]
+    assert not any("น่าจะเป็น" in m for m in validate_extraction(_result(items)))
+
+
+def test_quantity_check_skipped_when_division_is_fractional():
+    # 1932 / 700 = 2.76 — we misread the price, not the quantity. Stay quiet.
+    items = [_item(quantity=3, unit_price=700, amount=1932)]
+    assert not any("น่าจะเป็น" in m for m in validate_extraction(_result(items)))
+
+
+def test_quantity_rounding_within_tolerance_ok():
+    # 1,930 charged on 3 x 644 (satang knocked off) must not trip the guard.
+    items = [_item(quantity=3, unit_price=644, amount=1930)]
+    assert not any("น่าจะเป็น" in m for m in validate_extraction(_result(items)))
+
+
+def test_pack_size_annotation_not_treated_as_price():
+    # "1 ลัง @12" — 12 is bottles per case, not baht. 12,960/12 = 1,080 is a
+    # 135x gap: no digit misread looks like that, so distrust the price.
+    items = [_item(quantity=8, unit_price=12, amount=12960)]
+    assert not any("น่าจะเป็น" in m for m in validate_extraction(_result(items)))
+
+
+def test_quantity_warning_names_product_and_hides_price():
+    items = [_item(quantity=30, unit_price=644, amount=1932)]
+    w = [m for m in validate_extraction(_result(items)) if "น่าจะเป็น" in m]
+    assert w and "เบียร์สิงห์ขวดใหญ่" in w[0]
+    assert "644" not in w[0] and "1932" not in w[0] and "1,932" not in w[0]
+
+
 # ---------- semantic dedup (#2) ----------
 
 def test_duplicate_receipt_flagged(db_session):
