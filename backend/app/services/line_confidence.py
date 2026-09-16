@@ -11,6 +11,16 @@ confirmation history:
     "บส.ญ" → เบียร์สิงห์ขวดใหญ่ scores high once confirmed, while a one-off
     misread like "สัวเล็ก" stays low. The discriminator is "have we seen this
     mapping confirmed before", not "does the text look like the full name".
+  * ambiguity — does some OTHER SKU explain the read text at least as well as
+    the picked one? Familiarity alone is blind inside a product family: a bare
+    "น้ำสิงห์" is a token-subset of every Singha-water alias, so it scores 1.0
+    for the glass bottle, PET 600 and PET 1.5L alike — and the one wrong SKU
+    in the demo set slipped through green exactly that way. If a rival ties or
+    wins, the text does not say which SKU it is, and the line is flagged even
+    when its own score is high. Forms shared by several SKUs ("เบียร์",
+    "โซดา", "สิงห์") are dropped from the dictionary for this reason; a
+    reviewer-confirmed alias belongs to one SKU, so the flag heals as the
+    dictionary warms.
   * catalog gap — no SKU resolved at all → low, always flag.
 
 Cold-start caveat: before the alias dictionary is warm, even correct shorthand
@@ -65,23 +75,43 @@ def build_known_forms(db: Session) -> dict[str, set[str]]:
         .filter(Product.active.is_(True), Product.code.isnot(None))
         .all()
     )
-    forms: dict[str, set[str]] = {}
+    # Every form with the codes that claim it, by evidence strength. A form
+    # that several SKUs claim cannot vouch for any one of them, so ownership
+    # is resolved per form: a reviewer-confirmed alias beats a SKU's own name,
+    # which beats a seed tag ("เบียร์" is a seed tag of 17 codes; the
+    # flavoured lemon sodas list the plain one's name as a tag). Losing forms
+    # are dropped from the confidence dictionary — they stay in the LLM
+    # prompt, where breadth helps.
+    names: dict[str, set[str]] = {}
+    tags: dict[str, set[str]] = {}
     canon_to_code: dict[str, str] = {}
     for p in products:
-        bag = {_norm(p.display_name), _norm(p.canonical_name)}
-        bag.update(_norm(a) for a in _parse_seed_aliases(p.aliases))
-        forms[p.code] = {b for b in bag if b}
         for nm in (p.canonical_name, p.display_name):
-            if nm:
-                canon_to_code[_norm(nm)] = p.code
+            key = _norm(nm)
+            if key:
+                names.setdefault(key, set()).add(p.code)
+                canon_to_code[key] = p.code
+        for a in _parse_seed_aliases(p.aliases):
+            key = _norm(a)
+            if key:
+                tags.setdefault(key, set()).add(p.code)
 
+    learned: dict[str, set[str]] = {}
     for a in db.query(ProductAlias).filter(
         ProductAlias.hit_count >= CONFIRM_CORROBORATION
     ):
         code = canon_to_code.get(_norm(a.canonical_name))
         key = _norm(a.source_text)
         if code and key:
-            forms.setdefault(code, set()).add(key)
+            learned.setdefault(key, set()).add(code)
+
+    forms: dict[str, set[str]] = {p.code: set() for p in products}
+    for key in set(names) | set(tags) | set(learned):
+        for tier in (learned.get(key), names.get(key), tags.get(key)):
+            if tier:
+                if len(tier) == 1:
+                    forms[next(iter(tier))].add(key)
+                break  # a tie at the strongest tier drops the form entirely
     return forms
 
 
@@ -96,9 +126,28 @@ def score_line(raw: str | None, code: str | None, known_forms: dict[str, set[str
         return LineScore(CATALOG_GAP_CONFIDENCE, True, "อ่านชื่อสินค้าไม่ได้")
 
     if key in forms:
+        # Exact dictionary hit. No other SKU can hold the same form (shared
+        # forms are dropped in build_known_forms), so nothing to disambiguate.
         return LineScore(1.0, False, "ตรงกับคำย่อ/ชื่อที่ยืนยันแล้ว")
 
-    best = max((fuzz.token_set_ratio(key, f) for f in forms), default=0) / 100.0
-    needs = best < REVIEW_THRESHOLD
+    picked = _best_match(key, forms)
+    # Ambiguity: an exact hit on another SKU, or a fuzzy rival at least as
+    # close, means the text does not single out the picked SKU. Reported with
+    # the picked score intact — the number stays "how well the text matches",
+    # the flag says why it still needs eyes.
+    rival_exact = any(key in f for c, f in known_forms.items() if c != code)
+    rival = max(
+        (_best_match(key, f) for c, f in known_forms.items() if c != code and f),
+        default=0.0,
+    )
+    if rival_exact or (rival >= picked and picked >= REVIEW_THRESHOLD):
+        return LineScore(
+            round(picked, 2), True, "ข้อความนี้ตรง SKU อื่นได้เท่ากัน — ระบุขนาด/แบบไม่ได้ เทียบกับรูป"
+        )
+    needs = picked < REVIEW_THRESHOLD
     reason = "ตัวย่อนี้ยังไม่เคยยืนยัน — รอตรวจ" if needs else "ใกล้เคียงชื่อใน catalog"
-    return LineScore(round(best, 2), needs, reason)
+    return LineScore(round(picked, 2), needs, reason)
+
+
+def _best_match(key: str, forms: set[str]) -> float:
+    return max((fuzz.token_set_ratio(key, f) for f in forms), default=0) / 100.0
