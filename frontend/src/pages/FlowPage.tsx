@@ -13,6 +13,7 @@ import {
   IconX,
   IconCheck,
   IconAlertTriangle,
+  IconCopy,
   IconReceipt,
   IconPhotoOff,
   IconClock,
@@ -90,6 +91,18 @@ function isFlagged(d: {
   return d.needs_review || (d.confidence != null && d.confidence < 0.7) || d.status === "error";
 }
 
+/** product_code → line count, only for codes on 2+ lines of the same receipt.
+ *  Computed from the live items (not the extraction-time note) so the flag
+ *  clears as soon as the rep fixes a line. */
+function duplicateCodes(items: { product_code: string | null }[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const it of items) {
+    if (it.product_code) counts.set(it.product_code, (counts.get(it.product_code) ?? 0) + 1);
+  }
+  for (const [code, n] of counts) if (n < 2) counts.delete(code);
+  return counts;
+}
+
 /** Why the AI flagged this receipt — turns the accumulated `notes` (validation
  *  warnings, period/store mismatch) + off-catalog items + low confidence into
  *  short, human reasons so "ต้องตรวจ" actually says what to check. */
@@ -105,8 +118,15 @@ function reviewReasons(d: {
     for (const line of d.notes.split("\n")) {
       if (!line.includes("⚠️")) continue;
       const t = line.replace(/^⚠️\s*/, "").trim();
-      if (t) reasons.push(t);
+      // Duplicate-SKU is re-derived live below and shown on the rows
+      // themselves; the extraction-time note would go stale after an edit.
+      if (!t || t.includes("SKU ซ้ำ")) continue;
+      reasons.push(t);
     }
+  }
+  const dups = duplicateCodes(d.items);
+  if (dups.size > 0) {
+    reasons.push(`SKU ซ้ำ ${dups.size} รายการ (แถวสีเหลือง) — อ่านผิด หรือบิลลงซ้ำจริง เทียบกับรูป`);
   }
   const offCatalog = d.items.filter((it) => !it.product_code).length;
   if (offCatalog > 0) {
@@ -1301,6 +1321,7 @@ function ReceiptDetail({
   const d = doc.data;
   const flagged = isFlagged(meta);
   const reasons = d ? reviewReasons(d) : [];
+  const dupCodes = useMemo(() => duplicateCodes(d?.items ?? []), [d?.items]);
   const multi = docs.length > 1;
 
   const onConfirm = async () => {
@@ -1428,7 +1449,12 @@ function ReceiptDetail({
               </div>
             )}
             {d?.items.map((it) => (
-              <EditableItem key={it.id} docId={meta.id} item={it} />
+              <EditableItem
+                key={it.id}
+                docId={meta.id}
+                item={it}
+                dupCount={it.product_code ? dupCodes.get(it.product_code) ?? 0 : 0}
+              />
             ))}
           </div>
 
@@ -1500,7 +1526,16 @@ function AggregateRow({ row }: { row: VisitAggregateRow }) {
   );
 }
 
-function EditableItem({ docId, item }: { docId: string; item: DocumentItemData }) {
+function EditableItem({
+  docId,
+  item,
+  dupCount,
+}: {
+  docId: string;
+  item: DocumentItemData;
+  /** lines of this receipt sharing the SKU (0/1 = unique) */
+  dupCount: number;
+}) {
   const update = useUpdateItem(docId);
   const del = useDeleteItem(docId);
   const initialName = item.product_name_normalized || item.product_name_raw || "";
@@ -1535,15 +1570,15 @@ function EditableItem({ docId, item }: { docId: string; item: DocumentItemData }
 
   const isCatalog = !!item.product_code;
   const conf = lineConfidenceMeta(item);
+  // Duplicate SKU outranks the confidence tint — in a long bill the rep has
+  // to spot these rows at a glance, not by reading every badge.
+  const dup = dupCount > 1;
 
   return (
     <div
       className="flow-eitem"
       data-unknown={!isCatalog}
-      style={{
-        background: conf.tint || undefined,
-        boxShadow: conf.flag ? `inset 3px 0 0 ${conf.color}` : undefined,
-      }}
+      style={{ background: dup ? "rgba(180,83,9,0.10)" : conf.tint || undefined }}
     >
       <div className="flow-eitem-name">
         <Autocomplete
@@ -1559,6 +1594,14 @@ function EditableItem({ docId, item }: { docId: string; item: DocumentItemData }
         />
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <ConfidenceBadge item={item} />
+          {dup && (
+            <span
+              className="flow-eitem-code flow-eitem-dup"
+              title={`SKU นี้อยู่ ${dupCount} บรรทัดในใบเดียว — อ่านผิด หรือบิลลงซ้ำจริง เทียบกับรูป`}
+            >
+              <IconCopy size={11} style={{ verticalAlign: "-1px" }} /> SKU ซ้ำ ×{dupCount}
+            </span>
+          )}
           {/* Show what the AI READ from the paper (raw) — lets the rep compare
               line-by-line with the image — instead of the internal SKU code. */}
           {item.product_name_raw && item.product_name_raw !== name && (

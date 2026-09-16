@@ -1121,6 +1121,18 @@
   color: var(--warn) !important;
   font-weight: 600;
 }
+.flow-eitem-dup {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+  color: #fff !important;
+  background: var(--warn);
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 999px;
+  cursor: default;
+}
 .flow-eitem-name .mantine-Autocomplete-input {
   font-family: inherit;
   font-weight: 600;

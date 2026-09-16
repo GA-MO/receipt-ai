@@ -24,6 +24,7 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Copy,
   Eye,
   HelpCircle,
   Plus,
@@ -58,6 +59,16 @@ const STATUS_LABEL: Record<string, { color: string; label: string }> = {
   error: { color: "red", label: "ผิดพลาด" },
 };
 
+/** product_code → number of lines carrying it, for codes that appear on 2+ lines. */
+function duplicateCodes(items: DocumentItemData[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const it of items) {
+    if (it.product_code) counts.set(it.product_code, (counts.get(it.product_code) ?? 0) + 1);
+  }
+  for (const [code, n] of counts) if (n < 2) counts.delete(code);
+  return counts;
+}
+
 export default function VisitReviewPage() {
   const { visitId, docId } = useParams<{ visitId: string; docId: string }>();
   const navigate = useNavigate();
@@ -74,6 +85,12 @@ export default function VisitReviewPage() {
     currentIndex >= 0 && currentIndex < docs.length - 1
       ? docs[currentIndex + 1]
       : null;
+
+  // Same SKU on 2+ lines is almost always one misread line, not a real
+  // repeat. Computed client-side from the live items so the flag clears the
+  // moment the reviewer fixes a line — the backend warning in doc.notes is a
+  // snapshot from extraction time.
+  const dupCodes = useMemo(() => duplicateCodes(doc?.items ?? []), [doc?.items]);
 
   const goPrev = () =>
     prevDoc && navigate(`/visits/${visitId}/review/${prevDoc.id}`);
@@ -250,7 +267,19 @@ export default function VisitReviewPage() {
           </Text>
         </Alert>
       )}
+      {dupCodes.size > 0 && (
+        <Alert
+          icon={<Copy size={18} />}
+          color="yellow"
+          variant="light"
+          mb="sm"
+          title={`SKU ซ้ำ ${dupCodes.size} รายการ`}
+        >
+          <Text size="sm">ดูแถวสีเหลืองในตาราง — อ่านผิด หรือบิลลงซ้ำจริง เทียบกับรูป</Text>
+        </Alert>
+      )}
       {currentSummary?.needs_review
+        && dupCodes.size === 0
         && !currentSummary?.period_mismatch
         && !currentSummary?.store_mismatch && (
         <Alert
@@ -444,6 +473,7 @@ function ItemsTable({
 
   const matchedCount = items.filter((i) => i.product_code).length;
   const unknownCount = items.length - matchedCount;
+  const dupCodes = useMemo(() => duplicateCodes(items), [items]);
 
   const handleSave = async (itemId: string, data: Record<string, unknown>) => {
     try {
@@ -525,6 +555,7 @@ function ItemsTable({
               <ItemRow
                 key={it.id}
                 item={it}
+                dupCount={it.product_code ? dupCodes.get(it.product_code) ?? 0 : 0}
                 onSave={(data) => handleSave(it.id, data)}
                 onDelete={() => handleDelete(it.id)}
               />
@@ -538,10 +569,13 @@ function ItemsTable({
 
 function ItemRow({
   item,
+  dupCount,
   onSave,
   onDelete,
 }: {
   item: DocumentItemData;
+  /** how many lines of this doc share this SKU (0/1 = unique) */
+  dupCount: number;
   onSave: (data: Record<string, unknown>) => void;
   onDelete: () => void;
 }) {
@@ -579,16 +613,16 @@ function ItemRow({
 
   const matched = !!item.product_code;
   const conf = lineConfidenceMeta(item);
+  // Duplicate SKU outranks the confidence tint: the reviewer must find these
+  // rows at a glance in a long bill, not by reading every badge.
+  const dup = dupCount > 1;
 
   const numOrNull = (v: number | string) =>
     typeof v === "string" && v === "" ? null : Number(v);
 
   return (
     <Table.Tr
-      style={{
-        background: conf.tint,
-        boxShadow: conf.flag ? `inset 3px 0 0 ${conf.color}` : undefined,
-      }}
+      style={{ background: dup ? "rgba(180,83,9,0.10)" : conf.tint }}
     >
       <Table.Td ta="center">
         {matched ? (
@@ -617,6 +651,18 @@ function ItemRow({
         />
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 2 }}>
           <ConfidenceBadge item={item} />
+          {dup && (
+            <Tooltip
+              label={`SKU นี้อยู่ ${dupCount} บรรทัดในใบเดียว — อ่านผิด หรือบิลลงซ้ำจริง เทียบกับรูป`}
+              multiline
+              w={220}
+              withArrow
+            >
+              <Badge size="xs" color="yellow" variant="filled" leftSection={<Copy size={9} />}>
+                SKU ซ้ำ ×{dupCount}
+              </Badge>
+            </Tooltip>
+          )}
           {item.product_name_raw && item.product_name_raw !== item.product_name_normalized && (
             <Text size="xs" c="dimmed">raw: {item.product_name_raw}</Text>
           )}
