@@ -110,24 +110,39 @@ export function ReviewReasonChip({ item }: { item: ConfidenceItem }) {
   );
 }
 
+/** Three states — ✓ known / ? needs a look / ✗ no SKU — with the text-match
+ *  percentage and the reason in the tooltip. Reps do nothing different at
+ *  76% vs 90%, so the digits stay out of the row. */
 export function ConfidenceBadge({ item }: { item: ConfidenceItem }) {
   const m = lineConfidenceMeta(item);
-  if (m.pct == null) return null;
+  const glyph = !item.product_code ? "✗" : item.needs_review ? "?" : "✓";
+  const label = m.pct == null ? m.label : `${m.pct}% — ${m.label}`;
   return (
-    <Tooltip label={m.label} multiline w={240} withArrow position="top" openDelay={150}>
+    <Tooltip label={label} multiline w={260} withArrow position="top" openDelay={150}>
       <span
         style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 16,
+          height: 16,
+          borderRadius: 999,
           fontFamily: "monospace",
           fontSize: 11,
+          fontWeight: 700,
           lineHeight: 1,
           color: m.color,
-          fontVariantNumeric: "tabular-nums",
+          background: !item.product_code
+            ? "rgba(185,28,28,0.12)"
+            : item.needs_review
+              ? "rgba(180,83,9,0.14)"
+              : "rgba(21,128,61,0.10)",
           cursor: "default",
           userSelect: "none",
         }}
-        aria-label={`ตรงกับชื่อ/คำย่อที่ยืนยันแล้ว ${m.pct}%`}
+        aria-label={label}
       >
-        {m.pct}%
+        {glyph}
       </span>
     </Tooltip>
   );

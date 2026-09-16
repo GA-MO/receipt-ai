@@ -1619,9 +1619,7 @@ function EditableItem({
             <span className="flow-eitem-code">อ่านได้: {item.product_name_raw}</span>
           )}
           {!isCatalog && (
-            <span className="flow-eitem-code flow-eitem-unknown">
-              <IconAlertTriangle size={11} style={{ verticalAlign: "-1px" }} /> นอกแคตตาล็อก · ไม่นับ
-            </span>
+            <span className="flow-eitem-code flow-eitem-unknown">นอกแคตตาล็อก · ไม่นับ</span>
           )}
         </div>
       </div>
