@@ -89,3 +89,24 @@ def test_quantity_disagreement_is_reported_per_line():
     assert quantity_disagrees_with_bill(ok) is None
     no_price = DocumentItemBase(product_name_normalized="x", quantity=30, unit="ลัง", amount=1932)
     assert quantity_disagrees_with_bill(no_price) is None
+
+
+# ---------- demo toggle: use learned aliases ----------
+
+def test_toggle_removes_learned_aliases_from_dictionary(db_session):
+    from app.services.app_settings import USE_LEARNED_ALIASES, set_bool
+
+    _seed(db_session)
+    db_session.add(ProductAlias(source_text="สห ใหญ่", canonical_name="เบียร์สิงห์ขวดใหญ่", hit_count=3))
+    db_session.commit()
+    assert "สห ใหญ่" in build_known_forms(db_session)["BEER-L"]
+    set_bool(db_session, USE_LEARNED_ALIASES, False)
+    assert "สห ใหญ่" not in build_known_forms(db_session)["BEER-L"]
+    assert score_line("สห ใหญ่", "BEER-L", build_known_forms(db_session)).needs_review
+
+
+def test_alias_settings_endpoint_round_trips(client):
+    assert client.get("/api/aliases/settings").json() == {"use_learned": True}
+    r = client.put("/api/aliases/settings", json={"use_learned": False})
+    assert r.status_code == 200 and r.json() == {"use_learned": False}
+    assert client.get("/api/aliases/settings").json() == {"use_learned": False}

@@ -66,6 +66,8 @@ import {
   type DocumentResponse,
   type StoreInput,
   type StorePatch,
+  getAliasSettings,
+  putAliasSettings,
 } from "./client";
 
 // ---------- Query keys ----------
@@ -79,6 +81,7 @@ export const qk = {
     list: (limit: number) => ["aliases", "list", limit] as const,
     products: (limit: number) => ["aliases", "products", limit] as const,
     stats: ["aliases", "stats"] as const,
+    settings: ["aliases", "settings"] as const,
   },
   dashboard: (month?: string | null) => ["dashboard", month ?? null] as const,
 };
@@ -302,6 +305,23 @@ export function useDeleteAlias() {
   return useMutation({
     mutationFn: (id: string) => deleteAlias(id),
     onSuccess: () => invalidate(),
+  });
+}
+
+export function useAliasSettings() {
+  return useQuery({ queryKey: qk.aliases.settings, queryFn: getAliasSettings });
+}
+
+export function useSetAliasSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (use_learned: boolean) => putAliasSettings({ use_learned }),
+    onSuccess: (data) => {
+      qc.setQueryData(qk.aliases.settings, data);
+      // Extraction results and per-line flags depend on the toggle.
+      qc.invalidateQueries({ queryKey: ["documents"] });
+      qc.invalidateQueries({ queryKey: ["visits"] });
+    },
   });
 }
 

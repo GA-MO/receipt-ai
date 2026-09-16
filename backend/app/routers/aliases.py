@@ -20,6 +20,8 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models import MerchantAlias, ProductAlias
+from ..services import catalog
+from ..services.app_settings import USE_LEARNED_ALIASES, get_bool, set_bool
 
 router = APIRouter()
 
@@ -70,6 +72,28 @@ def list_aliases(
         )
         for r in rows
     ]
+
+
+class AliasSettings(BaseModel):
+    use_learned: bool
+
+
+@router.get("/settings", response_model=AliasSettings)
+def get_alias_settings(db: Session = Depends(get_db)):
+    return AliasSettings(use_learned=get_bool(db, USE_LEARNED_ALIASES, True))
+
+
+@router.put("/settings", response_model=AliasSettings)
+def put_alias_settings(body: AliasSettings, db: Session = Depends(get_db)):
+    """Demo switch: read receipts with or without the learned shorthand.
+
+    Affects the prompt catalog, the post-extraction alias override and the
+    per-line confidence dictionary. Learning from confirmations stays on.
+    """
+    set_bool(db, USE_LEARNED_ALIASES, body.use_learned)
+    # The prompt catalog is cached in-process and bakes the aliases in.
+    catalog.invalidate_cache()
+    return AliasSettings(use_learned=body.use_learned)
 
 
 @router.get("/stats", response_model=AliasStats)

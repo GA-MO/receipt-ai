@@ -189,6 +189,20 @@ class ProductAlias(Base):
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
 
 
+class AppSetting(Base):
+    """Runtime toggles an admin flips from the UI (e.g. demo switches).
+
+    Env-var config needs a restart; these do not. Keep it to a handful of
+    well-known keys — see ``services/app_settings.py``.
+    """
+
+    __tablename__ = "app_settings"
+
+    key = Column(String, primary_key=True)
+    value = Column(String, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
+
+
 class CatalogGapEvent(Base):
     """One row per Gemini-emitted ``product_code`` that didn't match the
     active products catalog (and where the name wasn't a typo recovery either).

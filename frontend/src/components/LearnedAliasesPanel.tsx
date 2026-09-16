@@ -15,13 +15,16 @@ import {
   Paper,
   ScrollArea,
   Stack,
+  Switch,
   Table,
   Text,
   Tooltip,
 } from "@mantine/core";
 import { Brain, Trash2 } from "lucide-react";
 import {
+  useAliasSettings,
   useAliasStats,
+  useSetAliasSettings,
   useDeleteProductAlias,
   useProductAliases,
 } from "@/api/queries";
@@ -31,23 +34,26 @@ import type { MerchantAliasItem } from "@/api/client";
 export function LearnedAliasesBadge() {
   const [open, setOpen] = useState(false);
   const { data: stats } = useAliasStats();
+  const { data: settings } = useAliasSettings();
   const total = stats?.products.total_aliases ?? 0;
   const hits = stats?.products.total_hits ?? 0;
+  const off = settings?.use_learned === false;
 
   if (total === 0) return null;
 
   return (
     <>
-      <Tooltip label={`${total} สินค้า · ใช้ไป ${hits} ครั้ง`}>
+      <Tooltip label={off ? "ปิดการใช้สิ่งที่เรียนรู้อยู่ — แตะเพื่อเปิด" : `${total} สินค้า · ใช้ไป ${hits} ครั้ง`}>
         <Badge
           leftSection={<Brain size={12} />}
           size="sm"
-          variant="gradient"
+          variant={off ? "outline" : "gradient"}
+          color={off ? "gray" : undefined}
           gradient={{ from: "indigo", to: "violet" }}
           style={{ cursor: "pointer" }}
           onClick={() => setOpen(true)}
         >
-          เรียนรู้แล้ว {total}
+          เรียนรู้แล้ว {total}{off ? " · ปิดอยู่" : ""}
         </Badge>
       </Tooltip>
       <LearnedAliasesModal opened={open} onClose={() => setOpen(false)} />
@@ -83,6 +89,8 @@ export function LearnedAliasesModal({
           </Text>
         </Paper>
 
+        <UseLearnedSwitch />
+
         <ProductList />
 
         <Group justify="flex-end">
@@ -90,6 +98,36 @@ export function LearnedAliasesModal({
         </Group>
       </Stack>
     </Modal>
+  );
+}
+
+/** Demo switch — read receipts with or without what has been learned, so
+ *  the difference is visible on the same image. Learning itself stays on. */
+function UseLearnedSwitch() {
+  const { data } = useAliasSettings();
+  const set = useSetAliasSettings();
+  const on = data?.use_learned ?? true;
+  return (
+    <Paper withBorder p="sm">
+      <Group justify="space-between" wrap="nowrap">
+        <div>
+          <Text size="sm" fw={600}>ใช้สิ่งที่เรียนรู้ตอนอ่านใบเสร็จ</Text>
+          <Text size="xs" c="dimmed">
+            {on
+              ? "เปิดอยู่ — AI เห็นคำย่อเหล่านี้ตอนอ่าน และบรรทัดที่ตรงจะขึ้น ✓"
+              : "ปิดอยู่ — AI อ่านจาก catalog ล้วน ๆ (ไว้เทียบให้เห็นความต่าง) ระบบยังจำสิ่งที่คุณแก้ต่อไป"}
+          </Text>
+        </div>
+        <Switch
+          checked={on}
+          disabled={set.isPending || data == null}
+          onChange={(e) => set.mutate(e.currentTarget.checked)}
+          size="md"
+          onLabel="เปิด"
+          offLabel="ปิด"
+        />
+      </Group>
+    </Paper>
   );
 }
 

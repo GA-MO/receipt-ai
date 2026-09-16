@@ -359,5 +359,12 @@ def apply_alias_to_item(db: Session, item: DocumentItemBase) -> ProductAlias | N
 
 
 def apply_aliases_to_items(db: Session, items: list[DocumentItemBase]) -> int:
-    """Bulk-apply; returns the number of items that matched an alias."""
+    """Bulk-apply; returns the number of items that matched an alias.
+
+    A no-op while the learned dictionary is switched off (demo toggle).
+    """
+    from .app_settings import use_learned_aliases
+
+    if not use_learned_aliases(db):
+        return 0
     return sum(1 for it in items if apply_alias_to_item(db, it) is not None)

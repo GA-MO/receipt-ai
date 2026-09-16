@@ -18,7 +18,7 @@ they were not part of the real workflow.
 - **Frontend** — React 19 + Vite + Mantine v9 + Tailwind v4 at `frontend/`
 - **AI** — Gemini 3 Flash (default) via OpenRouter using the OpenAI SDK,
   vision-only. Swap model via `OPENROUTER_MODEL`.
-- **DB** — SQLite via SQLAlchemy + Alembic (head: `0027`)
+- **DB** — SQLite via SQLAlchemy + Alembic (head: `0028`)
 - **Worker** — arq + Redis, opt-in via `USE_ARQ=true`; default falls back
   to FastAPI `BackgroundTasks` guarded by a `threading.Semaphore(1)`
 
@@ -122,6 +122,11 @@ Duplicate-SKU is computed live in the UI, not persisted.
   is the source of truth for merchants)
 - `catalog_gap_events`, `typo_recovery_events`, `document_events` — audit
   trail surfaces
+- `app_settings` — key/value runtime toggles (`services/app_settings.py`).
+  `use_learned_aliases` (demo switch, `GET/PUT /api/aliases/settings`)
+  turns the learned shorthand off in the prompt catalog, the post-extract
+  alias override and the confidence dictionary — learning itself stays on.
+  Toggling invalidates the catalog prompt cache.
 
 ## Extraction details
 

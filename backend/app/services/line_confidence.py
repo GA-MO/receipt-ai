@@ -40,6 +40,7 @@ from rapidfuzz import fuzz
 from sqlalchemy.orm import Session
 
 from ..models import Product, ProductAlias
+from .app_settings import use_learned_aliases
 from .catalog import _norm, _parse_seed_aliases
 
 # A line at/above this blended score is treated as trusted (no per-line flag).
@@ -97,9 +98,12 @@ def build_known_forms(db: Session) -> dict[str, set[str]]:
                 tags.setdefault(key, set()).add(p.code)
 
     learned: dict[str, set[str]] = {}
-    for a in db.query(ProductAlias).filter(
-        ProductAlias.hit_count >= CONFIRM_CORROBORATION
-    ):
+    alias_rows = (
+        db.query(ProductAlias).filter(ProductAlias.hit_count >= CONFIRM_CORROBORATION)
+        if use_learned_aliases(db)
+        else []
+    )
+    for a in alias_rows:
         code = canon_to_code.get(_norm(a.canonical_name))
         key = _norm(a.source_text)
         if code and key:

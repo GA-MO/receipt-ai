@@ -41,6 +41,7 @@ import {
   useDiscardInboxDoc,
   visitsKey,
   qk,
+  useAliasSettings,
   useAliasStats,
 } from "../api/queries";
 import { getDocumentImageUrl, getVisit, getDocument, deleteItem } from "../api/client";
@@ -637,17 +638,21 @@ function Results({
 function LearnedPill() {
   const [open, setOpen] = useState(false);
   const { data: stats } = useAliasStats();
+  const { data: settings } = useAliasSettings();
   const total = stats?.products.total_aliases ?? 0;
+  const off = settings?.use_learned === false;
   if (total === 0) return null;
   return (
     <>
       <button
         type="button"
         className="flow-ghost-btn flow-learned-pill"
+        data-off={off || undefined}
         onClick={() => setOpen(true)}
-        title="สินค้าที่ AI เรียนรู้จากที่คุณแก้ — แตะเพื่อดู"
+        title={off ? "ปิดการใช้สิ่งที่เรียนรู้อยู่ — แตะเพื่อเปิด" : "สินค้าที่ AI เรียนรู้จากที่คุณแก้ — แตะเพื่อดู"}
       >
         <IconBrain size={15} /> เรียนรู้แล้ว {total}
+        {off && <span className="flow-learned-off">ปิดอยู่</span>}
       </button>
       <LearnedAliasesModal opened={open} onClose={() => setOpen(false)} />
     </>

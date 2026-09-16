@@ -484,6 +484,23 @@ export function deleteAlias(id: string) {
   return request<{ status: string }>(`/aliases/${id}`, { method: "DELETE" });
 }
 
+export interface AliasSettings {
+  /** Demo switch: read receipts with or without the learned shorthand. */
+  use_learned: boolean;
+}
+
+export function getAliasSettings() {
+  return request<AliasSettings>("/aliases/settings");
+}
+
+export function putAliasSettings(body: AliasSettings) {
+  return request<AliasSettings>("/aliases/settings", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
 export function deleteProductAlias(id: string) {
   return request<{ status: string }>(`/aliases/products/${id}`, { method: "DELETE" });
 }

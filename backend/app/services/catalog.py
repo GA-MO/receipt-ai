@@ -413,8 +413,13 @@ def _build_prompt_entries(db: Session) -> list[dict[str, Any]]:
         .all()
     )
 
-    # Pre-load learned aliases keyed by canonical_name (lowercased).
-    alias_rows: list[ProductAlias] = db.query(ProductAlias).all()
+    # Pre-load learned aliases keyed by canonical_name (lowercased) — unless
+    # the demo toggle has switched the learned dictionary off.
+    from .app_settings import use_learned_aliases
+
+    alias_rows: list[ProductAlias] = (
+        db.query(ProductAlias).all() if use_learned_aliases(db) else []
+    )
     learned_by_canon: dict[str, list[str]] = defaultdict(list)
     for row in alias_rows:
         if row.canonical_name and row.source_text:
