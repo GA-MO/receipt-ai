@@ -1362,6 +1362,11 @@ function ReceiptDetail({
         transition={{ type: "spring", stiffness: 340, damping: 32 }}
       >
         <div className="flow-rcpt-img">
+          {/* Filename over the image so the rep can match this preview to
+              the photo on their phone / in the upload folder. */}
+          <span className="flow-rcpt-filename" title={meta.filename}>
+            {meta.filename}
+          </span>
           <ImageCanvas
             src={getDocumentImageUrl(meta.id)}
             alt={meta.filename}
