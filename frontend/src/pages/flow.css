@@ -423,6 +423,25 @@
   color: var(--ink-soft);
   margin-top: 4px;
 }
+.flow-kpi-btn {
+  appearance: none;
+  border: 0;
+  background: none;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.flow-kpi-btn .flow-kpi-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.flow-kpi-btn:hover .flow-kpi-num,
+.flow-kpi-btn:hover .flow-kpi-label {
+  color: var(--accent);
+}
 
 .flow-grid {
   display: grid;

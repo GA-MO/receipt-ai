@@ -13,6 +13,7 @@ import {
   IconX,
   IconCheck,
   IconAlertTriangle,
+  IconBrain,
   IconCopy,
   IconReceipt,
   IconPhotoOff,
@@ -38,9 +39,11 @@ import {
   useDiscardInboxDoc,
   visitsKey,
   qk,
+  useAliasStats,
 } from "../api/queries";
 import { getDocumentImageUrl, getVisit, getDocument, deleteItem } from "../api/client";
 import { ImageCanvas } from "@/components/ImageCanvas";
+import { LearnedAliasesModal } from "@/components/LearnedAliasesPanel";
 import { ConfidenceBadge, ReviewReasonChip, lineConfidenceMeta } from "@/components/ConfidenceBadge";
 import type {
   DashboardVisit,
@@ -551,6 +554,7 @@ function Results({
             <div className="flow-kpi-num">{storeCount}</div>
             <div className="flow-kpi-label">ร้าน</div>
           </div>
+          <LearnedKpi />
         </div>
       </div>
 
@@ -618,6 +622,31 @@ function Results({
         </div>
       )}
     </div>
+  );
+}
+
+/** Third KPI: shorthand the system has learned from reviewer corrections.
+ *  Same modal as the Layout header badge — the flow page has no header. */
+function LearnedKpi() {
+  const [open, setOpen] = useState(false);
+  const { data: stats } = useAliasStats();
+  const total = stats?.products.total_aliases ?? 0;
+  if (total === 0) return null;
+  return (
+    <>
+      <button
+        type="button"
+        className="flow-kpi-btn"
+        onClick={() => setOpen(true)}
+        title="สินค้าที่ AI เรียนรู้จากที่คุณแก้ — แตะเพื่อดู"
+      >
+        <div className="flow-kpi-num">{total}</div>
+        <div className="flow-kpi-label">
+          <IconBrain size={12} /> เรียนรู้แล้ว
+        </div>
+      </button>
+      <LearnedAliasesModal opened={open} onClose={() => setOpen(false)} />
+    </>
   );
 }
 

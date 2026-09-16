@@ -55,7 +55,7 @@ export function LearnedAliasesBadge() {
   );
 }
 
-function LearnedAliasesModal({
+export function LearnedAliasesModal({
   opened,
   onClose,
 }: {
