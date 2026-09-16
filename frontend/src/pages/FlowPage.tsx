@@ -269,6 +269,7 @@ export default function FlowPage() {
       <Link to="/" className="flow-ghost-btn flow-home-btn" aria-label="กลับหน้าแรก">
         <IconArrowLeft size={15} /> หน้าแรก
       </Link>
+      <LearnedPill />
       <div className="flow-wrap">
         <AnimatePresence mode="wait">
           <motion.div
@@ -560,7 +561,6 @@ function Results({
             <div className="flow-kpi-num">{storeCount}</div>
             <div className="flow-kpi-label">ร้าน</div>
           </div>
-          <LearnedKpi />
         </div>
       </div>
 
@@ -631,9 +631,10 @@ function Results({
   );
 }
 
-/** Third KPI: shorthand the system has learned from reviewer corrections.
- *  Same modal as the Layout header badge — the flow page has no header. */
-function LearnedKpi() {
+/** Shorthand the system has learned from reviewer corrections — a quiet
+ *  pill in the corner (the flow page has no Layout header), kept away from
+ *  the receipt/store counts so it doesn't read as a third total. */
+function LearnedPill() {
   const [open, setOpen] = useState(false);
   const { data: stats } = useAliasStats();
   const total = stats?.products.total_aliases ?? 0;
@@ -642,14 +643,11 @@ function LearnedKpi() {
     <>
       <button
         type="button"
-        className="flow-kpi-btn"
+        className="flow-ghost-btn flow-learned-pill"
         onClick={() => setOpen(true)}
         title="สินค้าที่ AI เรียนรู้จากที่คุณแก้ — แตะเพื่อดู"
       >
-        <div className="flow-kpi-num">{total}</div>
-        <div className="flow-kpi-label">
-          <IconBrain size={12} /> เรียนรู้แล้ว
-        </div>
+        <IconBrain size={15} /> เรียนรู้แล้ว {total}
       </button>
       <LearnedAliasesModal opened={open} onClose={() => setOpen(false)} />
     </>

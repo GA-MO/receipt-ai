@@ -423,26 +423,6 @@
   color: var(--ink-soft);
   margin-top: 4px;
 }
-.flow-kpi-btn {
-  appearance: none;
-  border: 0;
-  background: none;
-  padding: 0;
-  text-align: left;
-  font: inherit;
-  cursor: pointer;
-}
-.flow-kpi-btn .flow-kpi-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  white-space: nowrap;
-}
-.flow-kpi-btn:hover .flow-kpi-num,
-.flow-kpi-btn:hover .flow-kpi-label {
-  color: var(--accent);
-}
-
 .flow-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(248px, 1fr));
@@ -1503,6 +1483,17 @@
   left: 16px;
   z-index: 60;
   text-decoration: none;
+}
+.flow-learned-pill {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 60;
+  color: var(--accent);
+  border-color: rgba(79, 70, 229, 0.25);
+}
+.flow-learned-pill:hover {
+  color: var(--accent-600);
 }
 .flow-ghost-btn:hover {
   color: var(--ink);
