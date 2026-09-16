@@ -83,45 +83,17 @@ export function ConfidenceBadge({ item }: { item: ConfidenceItem }) {
     <Tooltip label={m.label} multiline w={240} withArrow position="top" openDelay={150}>
       <span
         style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 5,
+          fontFamily: "monospace",
+          fontSize: 11,
+          lineHeight: 1,
+          color: m.color,
+          fontVariantNumeric: "tabular-nums",
           cursor: "default",
           userSelect: "none",
         }}
         aria-label={`ตรงกับชื่อ/คำย่อที่ยืนยันแล้ว ${m.pct}%`}
       >
-        <span
-          style={{
-            width: 26,
-            height: 5,
-            borderRadius: 3,
-            background: "rgba(0,0,0,0.08)",
-            overflow: "hidden",
-            display: "inline-block",
-          }}
-        >
-          <span
-            style={{
-              display: "block",
-              height: "100%",
-              width: `${m.pct}%`,
-              background: m.color,
-            }}
-          />
-        </span>
-        <span
-          style={{
-            fontFamily: "monospace",
-            fontSize: 11,
-            lineHeight: 1,
-            color: m.color,
-            fontVariantNumeric: "tabular-nums",
-            minWidth: 24,
-          }}
-        >
-          {m.pct}%
-        </span>
+        {m.pct}%
       </span>
     </Tooltip>
   );
