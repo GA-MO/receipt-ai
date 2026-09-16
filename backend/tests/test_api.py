@@ -202,3 +202,34 @@ class TestDeleteDocument:
 
 
 
+
+
+# ---------------------------------------------------------------------------
+# Per-line review flag lifecycle
+# ---------------------------------------------------------------------------
+
+
+class TestItemReviewReason:
+    def test_editing_a_flagged_line_clears_its_reason(self, client, db_session):
+        from app.models import DocumentItem
+
+        doc_id = _upload_document(client).json()["id"]
+        item = DocumentItem(
+            document_id=doc_id,
+            product_name_normalized="เบียร์ลีโอขวดใหญ่",
+            quantity=30,
+            unit="ลัง",
+            needs_review=True,
+            review_reason="น่าจะเป็น 3 ตามตัวเลขบนบิล — อ่านได้ 30",
+        )
+        db_session.add(item)
+        db_session.commit()
+
+        got = client.get(f"/api/documents/{doc_id}").json()["items"][0]
+        assert got["needs_review"] is True and "น่าจะเป็น 3" in got["review_reason"]
+
+        resp = client.put(f"/api/documents/{doc_id}/items/{item.id}", json={"quantity": 3})
+        assert resp.status_code == 200
+        got = resp.json()["items"][0]
+        assert got["quantity"] == 3
+        assert got["needs_review"] is False and got["review_reason"] is None

@@ -87,6 +87,10 @@ class DocumentItem(Base):
     unit = Column(String, nullable=True)
     confidence = Column(Float, nullable=True)
     needs_review = Column(Boolean, default=False)
+    # Why this line is flagged (Thai, one short sentence) so the review UI
+    # can say it on the row instead of in a doc-level note. Cleared when a
+    # human edits the line.
+    review_reason = Column(String, nullable=True)
 
     document = relationship("Document", back_populates="items")
 

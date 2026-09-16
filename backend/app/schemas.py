@@ -28,6 +28,7 @@ class DocumentItemResponse(DocumentItemBase):
     document_id: str
     confidence: float | None = None
     needs_review: bool = False
+    review_reason: str | None = None
     # ``amount``/``unit_price`` are transient validation-only inputs on the base
     # model; never expose them on the API (no price fields leave the server
     # post-pivot).

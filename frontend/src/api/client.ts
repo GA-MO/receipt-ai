@@ -521,6 +521,8 @@ export interface DocumentItemData {
   unit: string | null;
   confidence: number | null;
   needs_review: boolean;
+  /** Why the line is flagged (server-side, Thai). Null when it isn't. */
+  review_reason: string | null;
 }
 
 export interface DocumentResponse {

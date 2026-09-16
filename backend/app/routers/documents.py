@@ -164,7 +164,7 @@ def _is_primary_product_category(category: str | None) -> bool:
 
 
 from ..services.storage import save_bytes, validate_and_hash
-from ..services.validation import validate_extraction
+from ..services.validation import quantity_disagrees_with_bill, validate_extraction
 
 logger = logging.getLogger(__name__)
 
@@ -327,6 +327,16 @@ def _run_processing(doc_id: str, file_path: str) -> None:
             if code is None and _is_primary_product_category(item_data.category):
                 has_catalog_gap = True
             line = score_line(raw_name, code, known_forms)
+            # Row-level reason, strongest first: the bill's own arithmetic
+            # contradicting the quantity beats any doubt about the name —
+            # quantity is the only field the rollup depends on.
+            implied = quantity_disagrees_with_bill(item_data)
+            if implied is not None:
+                flag, reason = True, (
+                    f"น่าจะเป็น {implied:g} ตามตัวเลขบนบิล — อ่านได้ {item_data.quantity:g}"
+                )
+            else:
+                flag, reason = line.needs_review, (line.reason if line.needs_review else None)
             item = DocumentItem(
                 id=str(uuid.uuid4()),
                 document_id=doc_id,
@@ -337,10 +347,11 @@ def _run_processing(doc_id: str, file_path: str) -> None:
                 unit=item_data.unit,
                 category=item_data.category,
                 confidence=line.confidence,
-                needs_review=line.needs_review,
+                needs_review=flag,
+                review_reason=reason,
             )
             db.add(item)
-            if line.needs_review:
+            if flag:
                 # Any unproven line should pull the whole doc into the queue.
                 doc.needs_review = True
 
@@ -810,6 +821,12 @@ def update_item(
 
     for field, value in incoming.items():
         setattr(item, field, value)
+
+    # The reviewer has looked at this line and changed what was flagged —
+    # the flag has done its job.
+    if incoming.keys() & {"quantity", "product_code", "product_name_normalized"}:
+        item.needs_review = False
+        item.review_reason = None
 
     # Re-resolve product_code whenever the name changed, unless the caller
     # explicitly passed one (UI picking from the autocomplete).

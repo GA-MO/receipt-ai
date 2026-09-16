@@ -74,3 +74,18 @@ def test_unfamiliar_and_unmatched_lines_still_flag(db_session):
     kf = build_known_forms(db_session)
     assert score_line("สัวเล็ก", "BEER-L", kf).needs_review
     assert score_line("อะไรก็ได้", None, kf).confidence == 0.3
+
+
+# ---------- per-line quantity reason ----------
+
+def test_quantity_disagreement_is_reported_per_line():
+    from app.schemas import DocumentItemBase
+    from app.services.validation import quantity_disagrees_with_bill
+
+    # 09.jpeg: "3 ลัง" read as 30 while หน่วยละ 644 × amount 1932 says 3.
+    item = DocumentItemBase(product_name_normalized="x", quantity=30, unit="ลัง", unit_price=644, amount=1932)
+    assert quantity_disagrees_with_bill(item) == 3
+    ok = DocumentItemBase(product_name_normalized="x", quantity=3, unit="ลัง", unit_price=644, amount=1932)
+    assert quantity_disagrees_with_bill(ok) is None
+    no_price = DocumentItemBase(product_name_normalized="x", quantity=30, unit="ลัง", amount=1932)
+    assert quantity_disagrees_with_bill(no_price) is None

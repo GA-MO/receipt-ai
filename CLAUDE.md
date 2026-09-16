@@ -18,7 +18,7 @@ they were not part of the real workflow.
 - **Frontend** — React 19 + Vite + Mantine v9 + Tailwind v4 at `frontend/`
 - **AI** — Gemini 3 Flash (default) via OpenRouter using the OpenAI SDK,
   vision-only. Swap model via `OPENROUTER_MODEL`.
-- **DB** — SQLite via SQLAlchemy + Alembic (head: `0026`)
+- **DB** — SQLite via SQLAlchemy + Alembic (head: `0027`)
 - **Worker** — arq + Redis, opt-in via `USE_ARQ=true`; default falls back
   to FastAPI `BackgroundTasks` guarded by a `threading.Semaphore(1)`
 
@@ -85,13 +85,33 @@ make docker-up     # docker compose
   visit aggregate from mixing ขวด with ลัง. Backfill old rows with
   `scripts/backfill_units.py`.
 
+## Per-line confidence (`services/line_confidence.py`)
+
+Server-side, verifiable — never the model's self-grade. `confidence` is
+"how well the read text matches a form of the picked SKU" (1.0 exact
+dictionary hit, else rapidfuzz). `needs_review` is set by, strongest first:
+
+1. bill arithmetic — `qty × unit_price ≉ amount` → reason
+   "น่าจะเป็น N ตามตัวเลขบนบิล" (`validation.quantity_disagrees_with_bill`)
+2. ambiguity — another SKU holds the exact form, or a fuzzy rival scores
+   ≥ the picked SKU (bare "น้ำสิงห์" fits three water SKUs) → flagged even
+   at 100%
+3. unfamiliar — fuzzy score < 0.80
+
+The dictionary resolves ownership per form: reviewer-confirmed alias
+(hit_count ≥ 2) > the SKU's own name > seed tag; a tie at the strongest
+tier drops the form ("เบียร์" is a tag of 17 SKUs, so it vouches for none).
+Duplicate-SKU is computed live in the UI, not persisted.
+
 ## Data model
 
 - `documents` — id, file path/hash, status, raw extraction JSON,
   merchant_name/_normalized, document_number/_date, category, notes,
   confidence, needs_review, visit_id FK
 - `document_items` — product_name_raw/_normalized, product_code, category,
-  quantity, unit
+  quantity, unit, confidence, needs_review, review_reason (Thai, why the
+  line is flagged — shown as a chip on the row; cleared when a human edits
+  quantity/name/code)
 - `visits` — store_id FK, store_key (normalized merchant), store_label,
   report_period (`YYYY-MM`), rep_name, last_reviewed_at
 - `stores` — name, code (unique), normalized_name, address, active

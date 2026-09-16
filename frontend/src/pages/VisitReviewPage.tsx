@@ -49,7 +49,7 @@ import {
 } from "../api/queries";
 import { useToast } from "@/components/Toast";
 import { ImageCanvas } from "@/components/ImageCanvas";
-import { ConfidenceBadge, lineConfidenceMeta } from "@/components/ConfidenceBadge";
+import { ConfidenceBadge, ReviewReasonChip, lineConfidenceMeta } from "@/components/ConfidenceBadge";
 
 const STATUS_LABEL: Record<string, { color: string; label: string }> = {
   pending: { color: "gray", label: "รอ" },
@@ -91,6 +91,8 @@ export default function VisitReviewPage() {
   // moment the reviewer fixes a line — the backend warning in doc.notes is a
   // snapshot from extraction time.
   const dupCodes = useMemo(() => duplicateCodes(doc?.items ?? []), [doc?.items]);
+  const flaggedCount = (doc?.items ?? []).filter((it) => it.needs_review).length;
+  const unmatchedCount = (doc?.items ?? []).filter((it) => !it.product_code).length;
 
   const goPrev = () =>
     prevDoc && navigate(`/visits/${visitId}/review/${prevDoc.id}`);
@@ -287,11 +289,14 @@ export default function VisitReviewPage() {
           color="yellow"
           variant="light"
           mb="sm"
-          title="เอกสารนี้ต้องตรวจ"
+          title={flaggedCount > 0 ? `มี ${flaggedCount} รายการที่ควรตรวจ` : "เอกสารนี้ต้องตรวจ"}
         >
           <Text size="sm">
-            AI อ่านเสร็จแล้วแต่มีสินค้าอย่างน้อย 1 รายการที่ไม่ตรงกับ catalog — ดูว่า
-            ควรเพิ่ม SKU ใหม่หรือแก้ชื่อสินค้าให้ตรง catalog
+            {flaggedCount > 0
+              ? "ดูแถวสีเหลืองในตาราง — เหตุผลอยู่ใต้ชื่อสินค้า"
+              : unmatchedCount > 0
+                ? "มีสินค้าที่ไม่ตรงกับ catalog — ดูว่าควรเพิ่ม SKU ใหม่หรือแก้ชื่อสินค้าให้ตรง catalog"
+                : "เทียบรายการกับรูปแล้วกด \"บันทึกว่าตรวจสอบแล้ว\""}
           </Text>
         </Alert>
       )}
@@ -651,6 +656,7 @@ function ItemRow({
         />
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 2 }}>
           <ConfidenceBadge item={item} />
+          <ReviewReasonChip item={item} />
           {dup && (
             <Tooltip
               label={`SKU นี้อยู่ ${dupCount} บรรทัดในใบเดียว — อ่านผิด หรือบิลลงซ้ำจริง เทียบกับรูป`}

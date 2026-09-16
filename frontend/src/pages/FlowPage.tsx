@@ -41,7 +41,7 @@ import {
 } from "../api/queries";
 import { getDocumentImageUrl, getVisit, getDocument, deleteItem } from "../api/client";
 import { ImageCanvas } from "@/components/ImageCanvas";
-import { ConfidenceBadge, lineConfidenceMeta } from "@/components/ConfidenceBadge";
+import { ConfidenceBadge, ReviewReasonChip, lineConfidenceMeta } from "@/components/ConfidenceBadge";
 import type {
   DashboardVisit,
   DocumentListItem,
@@ -109,7 +109,7 @@ function duplicateCodes(items: { product_code: string | null }[]): Map<string, n
 function reviewReasons(d: {
   notes: string | null;
   confidence: number | null;
-  items: { product_code: string | null }[];
+  items: { product_code: string | null; needs_review: boolean; review_reason: string | null }[];
 }): string[] {
   const reasons: string[] = [];
   if (d.notes) {
@@ -118,15 +118,20 @@ function reviewReasons(d: {
     for (const line of d.notes.split("\n")) {
       if (!line.includes("⚠️")) continue;
       const t = line.replace(/^⚠️\s*/, "").trim();
-      // Duplicate-SKU is re-derived live below and shown on the rows
-      // themselves; the extraction-time note would go stale after an edit.
-      if (!t || t.includes("SKU ซ้ำ")) continue;
+      // Duplicate-SKU and quantity-vs-bill are re-derived live below and
+      // shown on the rows themselves; the extraction-time note would go
+      // stale after an edit.
+      if (!t || t.includes("SKU ซ้ำ") || t.includes("ไม่ตรงตัวเลขบนบิล")) continue;
       reasons.push(t);
     }
   }
   const dups = duplicateCodes(d.items);
   if (dups.size > 0) {
     reasons.push(`SKU ซ้ำ ${dups.size} รายการ (แถวสีเหลือง) — อ่านผิด หรือบิลลงซ้ำจริง เทียบกับรูป`);
+  }
+  const qtyOff = d.items.filter((it) => it.needs_review && it.review_reason?.includes("ตามตัวเลขบนบิล")).length;
+  if (qtyOff > 0) {
+    reasons.push(`จำนวนไม่ตรงตัวเลขบนบิล ${qtyOff} รายการ (แถวสีเหลือง) — ค่าที่บิลบอกอยู่ใต้ชื่อสินค้า`);
   }
   const offCatalog = d.items.filter((it) => !it.product_code).length;
   if (offCatalog > 0) {
@@ -1599,6 +1604,7 @@ function EditableItem({
         />
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <ConfidenceBadge item={item} />
+          <ReviewReasonChip item={item} />
           {dup && (
             <span
               className="flow-eitem-code flow-eitem-dup"

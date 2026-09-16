@@ -14,6 +14,7 @@ export interface ConfidenceItem {
   confidence: number | null;
   needs_review: boolean;
   product_code: string | null;
+  review_reason?: string | null;
 }
 
 export interface ConfidenceMeta {
@@ -44,6 +45,21 @@ export function lineConfidenceMeta(item: ConfidenceItem): ConfidenceMeta {
       flag: true,
     };
   }
+  // A server-side flag outranks a perfect text match: the text can match
+  // the picked SKU 100% and still be ambiguous with a sibling, or the bill's
+  // own arithmetic can contradict the quantity.
+  if (item.needs_review) {
+    return {
+      pct,
+      color: AMBER,
+      tint: "rgba(180,83,9,0.07)",
+      label:
+        item.review_reason ??
+        `ตัวย่อ/ชื่อนี้ยังไม่เคยถูกยืนยันกับ SKU นี้ — ตรงกับชื่อในระบบแค่ ${pct}% ` +
+          "จึงควรเทียบกับรูปก่อนยืนยัน (พอยืนยันแล้ว ครั้งหน้าจะขึ้นเขียวเอง ไม่ใช่ 'โอกาสถูก')",
+      flag: true,
+    };
+  }
   const exact = item.confidence != null && item.confidence >= 0.999;
   if (exact) {
     return {
@@ -54,26 +70,44 @@ export function lineConfidenceMeta(item: ConfidenceItem): ConfidenceMeta {
       flag: false,
     };
   }
-  if (!item.needs_review) {
-    return {
-      pct,
-      color: GREEN,
-      tint: "transparent",
-      label:
-        `ใกล้เคียงชื่อใน catalog — คำที่อ่านได้ตรงกับชื่อสินค้า ${pct}% ` +
-        "(เป็น 'ความตรงของข้อความ' ไม่ใช่ 'โอกาสถูก')",
-      flag: false,
-    };
-  }
   return {
     pct,
-    color: AMBER,
-    tint: "rgba(180,83,9,0.07)",
+    color: GREEN,
+    tint: "transparent",
     label:
-      `ตัวย่อ/ชื่อนี้ยังไม่เคยถูกยืนยันกับ SKU นี้ — ตรงกับชื่อในระบบแค่ ${pct}% ` +
-      "จึงควรเทียบกับรูปก่อนยืนยัน (พอยืนยันแล้ว ครั้งหน้าจะขึ้นเขียวเอง ไม่ใช่ 'โอกาสถูก')",
-    flag: true,
+      `ใกล้เคียงชื่อใน catalog — คำที่อ่านได้ตรงกับชื่อสินค้า ${pct}% ` +
+      "(เป็น 'ความตรงของข้อความ' ไม่ใช่ 'โอกาสถูก')",
+    flag: false,
   };
+}
+
+/** Short row chip for a flagged line: the server's reason, trimmed to the
+ *  part before the em-dash so it fits next to the score. Full text in the
+ *  badge tooltip. */
+export function ReviewReasonChip({ item }: { item: ConfidenceItem }) {
+  if (!item.needs_review || !item.review_reason || !item.product_code) return null;
+  const short = item.review_reason.split(" — ")[0];
+  return (
+    <Tooltip label={item.review_reason} multiline w={240} withArrow position="top" openDelay={150}>
+      <span
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          whiteSpace: "nowrap",
+          fontSize: 11,
+          fontWeight: 600,
+          lineHeight: 1.3,
+          padding: "1px 6px",
+          borderRadius: 999,
+          background: "rgba(180,83,9,0.12)",
+          color: AMBER,
+          cursor: "default",
+        }}
+      >
+        {short}
+      </span>
+    </Tooltip>
+  );
 }
 
 export function ConfidenceBadge({ item }: { item: ConfidenceItem }) {

@@ -40,6 +40,22 @@ def _implied_quantity(item) -> float | None:
     return implied
 
 
+def quantity_disagrees_with_bill(item) -> float | None:
+    """The bill's implied quantity when it contradicts the read one, else None.
+
+    Per line on purpose: the review UI puts this on the row so the reviewer
+    sees "น่าจะเป็น 3" next to the 30, instead of hunting for it from a
+    doc-level note.
+    """
+    q = item.quantity
+    if q is None or q <= 0:
+        return None
+    implied = _implied_quantity(item)
+    if implied is None or abs(implied - q) / max(q, implied) <= _LINE_TOLERANCE:
+        return None
+    return implied
+
+
 def validate_extraction(result: ExtractionResult) -> list[str]:
     """Run business-rule checks and return Thai-language warnings."""
     warnings: list[str] = []
@@ -81,13 +97,10 @@ def validate_extraction(result: ExtractionResult) -> list[str]:
         # dropped. Prices stay out of the message — the reviewer is told the
         # quantity to check and what the bill implies it should be, never a
         # baht figure.
-        implied = _implied_quantity(item)
-        if implied is not None and abs(implied - q) / max(q, implied) > _LINE_TOLERANCE:
+        implied = quantity_disagrees_with_bill(item)
+        if implied is not None:
             name = item.product_name_normalized or item.product_name_raw or f"รายการที่ {i}"
-            warnings.append(
-                f"{name}: จำนวน {q:g} ไม่สอดคล้องกับตัวเลขบนบิล — น่าจะเป็น {implied:g} "
-                "ตรวจสอบก่อนอนุมัติ"
-            )
+            warnings.append(f"จำนวนไม่ตรงตัวเลขบนบิล: {name} {q:g} → น่าจะเป็น {implied:g} — ตรวจสอบ")
 
     # Same catalog SKU on 2+ lines of one receipt is almost always a misread
     # (the model mapped a different line to the wrong code), not a real
