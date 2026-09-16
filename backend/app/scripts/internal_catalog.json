@@ -272,7 +272,7 @@
         "price": null,
         "productType": "AL",
         "activate": "Y",
-        "manufacturer": "Asahi Breweries"
+        "manufacturer": "Boonrawd"
       },
       {
         "productCode": "INT-BEER-ASAHI-S",
@@ -293,7 +293,7 @@
         "price": null,
         "productType": "AL",
         "activate": "Y",
-        "manufacturer": "Asahi Breweries"
+        "manufacturer": "Boonrawd"
       },
       {
         "productCode": "INT-BEER-ASAHI-CAN",
@@ -315,7 +315,7 @@
         "price": null,
         "productType": "AL",
         "activate": "Y",
-        "manufacturer": "Asahi Breweries"
+        "manufacturer": "Boonrawd"
       },
       {
         "productCode": "INT-BEER-HEINEKEN-L",
