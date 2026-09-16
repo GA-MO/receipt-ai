@@ -1497,6 +1497,13 @@
   cursor: pointer;
   transition: all 0.15s ease;
 }
+.flow-home-btn {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 60;
+  text-decoration: none;
+}
 .flow-ghost-btn:hover {
   color: var(--ink);
   border-color: rgba(0, 0, 0, 0.18);

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { Link } from "react-router-dom";
 import { useDropzone } from "react-dropzone";
 import { motion, AnimatePresence } from "motion/react";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
@@ -13,6 +14,7 @@ import {
   IconX,
   IconCheck,
   IconAlertTriangle,
+  IconArrowLeft,
   IconBrain,
   IconCopy,
   IconReceipt,
@@ -263,6 +265,10 @@ export default function FlowPage() {
 
   return (
     <div className="flow-root">
+      {/* Full-screen page with no Layout sidebar — this is the only way back. */}
+      <Link to="/" className="flow-ghost-btn flow-home-btn" aria-label="กลับหน้าแรก">
+        <IconArrowLeft size={15} /> หน้าแรก
+      </Link>
       <div className="flow-wrap">
         <AnimatePresence mode="wait">
           <motion.div
