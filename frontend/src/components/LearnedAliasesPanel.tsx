@@ -117,7 +117,6 @@ function AliasTable({
           <Table.Tr>
             <Table.Th>AI อ่านได้</Table.Th>
             <Table.Th>คุณแก้เป็น</Table.Th>
-            <Table.Th w={100}>หมวดหมู่</Table.Th>
             <Table.Th w={60} ta="right">ใช้ไป</Table.Th>
             <Table.Th w={40} />
           </Table.Tr>
@@ -130,13 +129,6 @@ function AliasTable({
               </Table.Td>
               <Table.Td>
                 <Text size="sm" fw={500} lineClamp={1}>{a.canonical_name}</Text>
-              </Table.Td>
-              <Table.Td>
-                {a.category ? (
-                  <Badge size="xs" variant="light">{a.category}</Badge>
-                ) : (
-                  <Text size="xs" c="dimmed">-</Text>
-                )}
               </Table.Td>
               <Table.Td ta="right">
                 <Text size="xs" ff="monospace">{a.hit_count}x</Text>
