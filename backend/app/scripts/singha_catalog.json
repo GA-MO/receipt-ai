@@ -1,6 +1,6 @@
 {
   "result": {
-    "totalResult": 222,
+    "totalResult": 12,
     "products": [
       {
         "activate": "Y",
@@ -154,6 +154,87 @@
         "unitNameTH": "PAC",
         "unitNumerator": null,
         "updatedAt": "24/03/2026 10:01:24",
+        "variantType": null,
+        "vatRate": 0.07,
+        "vdoUrl": null,
+        "warehouseCode": null,
+        "warehouseLocationCode": null
+      },
+      {
+        "activate": "Y",
+        "adjustedPrice": 955,
+        "brandCode": "010105",
+        "brandNameEN": "FIJI Water",
+        "brandNameTH": "น้ำแร่ฟิจิ",
+        "brandSlug": "fiji-water",
+        "categoryCodes": [
+          "010105"
+        ],
+        "channelCode": null,
+        "channelProductCode": null,
+        "channelUnitCode": null,
+        "contentEN": "",
+        "contentTH": "",
+        "expired": false,
+        "expiryDate": null,
+        "flashSalePrice": null,
+        "guarantee": null,
+        "hotPrice": 1006,
+        "imageIconUrl": "https://sol-storage.sbpds-dev.com/sol/Product/1000168/1000168_482_482.webp",
+        "imageUrl": "https://sol-storage.sbpds-dev.com/sol/Product/1000168/1000168_482_482.webp",
+        "images": null,
+        "inStock": null,
+        "inWishList": null,
+        "interfaceType": null,
+        "keyword": null,
+        "marketingCodes": [],
+        "marketingCodesOrdering": null,
+        "masterVariantCode": null,
+        "nameEN": "FIJI Water (500 ml x 24 bottles)",
+        "nameTH": "น้ำแร่ฟิจิ (500 มล. x 24 ขวด)",
+        "orderTypes": [
+          "NORMAL"
+        ],
+        "pathCategoryNameEN": [
+          "Products/Beverages/FIJI Water"
+        ],
+        "pathCategoryNameTH": [
+          "สินค้า/เครื่องดื่ม/น้ำแร่ฟิจิ"
+        ],
+        "pathCategorySlug": [
+          "products/beverages/fiji-water"
+        ],
+        "paymentMethods": [
+          "CREDIT_CARD",
+          "QR_CODE"
+        ],
+        "percentDiscount": 7,
+        "price": 1032,
+        "productCode": "10001680100",
+        "productType": "NON_AL",
+        "promotionTag": null,
+        "relatedProducts": null,
+        "releasedDate": "2024-03-09T00:00:00+07:00",
+        "saletoolDiscounts": null,
+        "saletoolPromotionIds": null,
+        "sizeEN": "500 ml x 24 bottles / Total 1 carton",
+        "sizeTH": "500 มล. x 24 ขวด / จำนวน 1 ลัง",
+        "slug": "fiji-water-10001680100",
+        "standardDiscount": 0,
+        "tag": "น้ำแร่;น้ำ;mineral;ฟิจิ;fiji",
+        "tags": [
+          "ฟิจิ 500",
+          "น้ำแร่ฟิจิ 500",
+          "น้ำฟิจิ 500",
+          "ฟิจิ 500ml",
+          "FIJI 500",
+          "Fiji 500ml"
+        ],
+        "unitCode": "CV",
+        "unitNameEN": "CV",
+        "unitNameTH": "CV",
+        "unitNumerator": null,
+        "updatedAt": "26/06/2024 16:42:28",
         "variantType": null,
         "vatRate": 0.07,
         "vdoUrl": null,
