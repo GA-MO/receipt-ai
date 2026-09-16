@@ -69,10 +69,13 @@ make docker-up     # docker compose
   `document_date` (ค.ศ.), `category`, `items[]` with
   `product_name_raw`, `product_code`, `quantity`, `unit`.
   **Price features (VAT, discount, unit_price) are not extracted** — removed
-  from schema/prompt/DB. *Exception:* per-line `amount` + bill `validation_total`
-  are read transiently in the same call (no extra cost) **for a completeness
-  cross-check only** — never stored, never returned by the API (excluded from
+  from schema/prompt/DB. *Exception:* per-line `amount` + `unit_price` are read
+  transiently in the same call (no extra cost) **for a per-line quantity
+  cross-check only** (`qty × unit_price ≈ amount` flags a digit misread on
+  that exact line) — never stored, never returned by the API (excluded from
   `DocumentItemResponse`), never shown. See `services/validation.py`.
+  The bill grand total is deliberately *not* read or checked: a whole-bill
+  mismatch can't say which line is wrong, so it was dropped.
 - **Unit is catalog-driven, not model-driven.** The shop sells by
   ลัง/ถาด/แพ็ค (never a single ขวด), so for a catalog match the parser
   overrides the model's per-document `unit` guess with the SKU's selling
@@ -186,8 +189,8 @@ If a doc/comment references any of these, it's stale:
 - **Fraud detection** (`services/fraud.py`, `extraction_combined.py`,
   `fraud_flags` column) — removed.
 - **Price fields** (`subtotal`, `discount`, `vat`, `unit_price`) — dropped from
-  DB, schema, and prompt. (`amount`/`grand_total` are read back transiently for
-  a validation-only completeness cross-check — not stored, not in the API.)
+  DB, schema, and prompt. (per-line `amount`/`unit_price` are read back transiently
+  for a per-line quantity cross-check — not stored, not in the API.)
 - **`extraction_combined`** mode and `use_combined_extraction` setting —
   removed.
 - **8-category taxonomy** (เบียร์/น้ำดื่ม/โซดา/…) — replaced with 4
@@ -210,6 +213,9 @@ If a doc/comment references any of these, it's stale:
   `push_subscriptions` table, `VAPID_*` env vars, `pywebpush` dep) — removed
   (migration `0026`). The toast feedback (`@mantine/notifications`) and the
   SSE live-progress streams are unrelated and stay.
+- **Bill grand-total check** (`validation_total`, "ยอดรวมรายการไม่ตรงยอดท้ายบิล"
+  warning) — removed Sep 2026; only the per-line `qty × unit_price` check
+  remains, because a whole-bill mismatch doesn't point at the bad line.
 - **Dark mode / color-scheme toggle** (Moon/Sun button, `useMantineColorScheme`,
   `dark:` Tailwind classes, `light-dark()` CSS) — removed; the app is
   light-only.

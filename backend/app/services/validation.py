@@ -6,9 +6,6 @@ _DISCRETE_UNITS = {"ลัง", "ขวด", "แพ็ค", "กระป๋อ
 # A single line larger than this is implausible for one store-visit order and
 # usually a digit misread (e.g. "30" for "3", "600" for "60"). Soft flag only.
 _QTY_SANITY_MAX = 2000
-# Allowed gap between summed line amounts and the printed total before we flag
-# (covers rounding / a small unread line). 2%.
-_TOTAL_TOLERANCE = 0.02
 # Same tolerance for quantity x unit_price vs the line's own amount. Bills round
 # odd satang and reps scribble discounts, so only a real digit error (10x, a
 # swapped pair) should trip this — 5% leaves the small stuff alone.
@@ -76,13 +73,14 @@ def validate_extraction(result: ExtractionResult) -> list[str]:
             warnings.append(
                 f"รายการที่ {i}: จำนวน {q:g} สูงผิดปกติ — อาจอ่านเลขเกิน ตรวจสอบก่อนอนุมัติ"
             )
-        # Quantity cross-check. Quantity is the only field the rollup depends on
-        # and nothing else on the bill contradicts it, so a digit misread (3 as
-        # 30) is silent: the bill's own amounts still sum to its printed total,
-        # because those are read off the paper, not computed. The หน่วยละ column
-        # closes that: quantity * unit_price should be the line's amount. Prices
-        # stay out of the message — the reviewer is told the quantity to check
-        # and what the bill implies it should be, never a baht figure.
+        # Quantity cross-check, per line. Quantity is the only field the rollup
+        # depends on, and a digit misread (3 as 30) is silent unless something
+        # on the same line contradicts it: quantity * unit_price should be the
+        # line's amount. This is deliberately per-line — a bill-level total
+        # check only says "something is off" without naming the line, so it was
+        # dropped. Prices stay out of the message — the reviewer is told the
+        # quantity to check and what the bill implies it should be, never a
+        # baht figure.
         implied = _implied_quantity(item)
         if implied is not None and abs(implied - q) / max(q, implied) > _LINE_TOLERANCE:
             name = item.product_name_normalized or item.product_name_raw or f"รายการที่ {i}"
@@ -106,24 +104,9 @@ def validate_extraction(result: ExtractionResult) -> list[str]:
         code_names.setdefault(code, item.product_name_normalized or code)
     for code, count in code_counts.items():
         if count > 1:
-            warnings.append(
-                f"พบ SKU ซ้ำใน {code_names[code]!r} {count} บรรทัด — "
-                "อาจอ่านบางบรรทัดผิด ตรวจสอบก่อนอนุมัติ"
-            )
-
-    # Completeness cross-check (validation-only amounts, no extra LLM cost):
-    # if the bill's printed total and every line amount were legible, their sum
-    # should match. A gap means a line was missed, doubled, or a quantity was
-    # misread — exactly the silent errors confidence can't catch.
-    total = result.validation_total
-    line_amounts = [it.amount for it in result.items if it.amount is not None]
-    if total and total > 0 and len(line_amounts) == len(result.items) and line_amounts:
-        summed = sum(line_amounts)
-        diff = abs(summed - total)
-        if diff / total > _TOTAL_TOLERANCE:
-            warnings.append(
-                f"ยอดรวมรายการ ({summed:,.0f}) ไม่ตรงยอดท้ายบิล ({total:,.0f}) — "
-                "อาจมีบรรทัดขาด/เกิน หรืออ่านจำนวนผิด ตรวจสอบก่อนอนุมัติ"
-            )
+            # Short on purpose: the review page highlights the exact rows,
+            # so the note only needs to name the SKU. Keep "ตรวจสอบ" — it is
+            # what routes the doc into the review queue.
+            warnings.append(f"SKU ซ้ำ: {code_names[code]} ({count} บรรทัด) — ตรวจสอบ")
 
     return warnings

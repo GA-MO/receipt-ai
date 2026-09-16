@@ -1,6 +1,6 @@
 """Tests for the silent-error accuracy guards added to close rollup gaps:
 mixed-unit split, semantic dedup, store-match confidence, quantity sanity,
-and the validation-only amount cross-check. All zero extra LLM cost.
+and the per-line quantity x unit_price cross-check. All zero extra LLM cost.
 """
 
 from app.models import Document, Store
@@ -40,33 +40,13 @@ def test_absurd_qty_flagged():
     assert any("สูงผิดปกติ" in m for m in w)
 
 
-# ---------- amount cross-check (#5) ----------
-
-def test_amount_total_mismatch_flagged():
-    items = [_item(quantity=2, amount=5600), _item(product_code="INT-BEER-LEO-L", amount=9300)]
-    w = validate_extraction(_result(items, validation_total=24700))
-    assert any("ไม่ตรงยอดท้ายบิล" in m for m in w)
-
-
-def test_amount_total_match_ok():
-    items = [_item(amount=5600), _item(product_code="INT-BEER-LEO-L", amount=9300)]
-    w = validate_extraction(_result(items, validation_total=14900))
-    assert not any("ไม่ตรงยอดท้ายบิล" in m for m in w)
-
-
-def test_amount_check_skipped_when_amounts_missing():
-    # No amounts read → no false positive
-    w = validate_extraction(_result([_item(amount=None)], validation_total=5600))
-    assert not any("ไม่ตรงยอดท้ายบิล" in m for m in w)
-
-
 # ---------- quantity x unit_price cross-check (#6) ----------
 
 def test_quantity_digit_misread_flagged():
-    # The 09.jpeg case: "3ลัง" read as 30. Line amount and bill total still
-    # agree (both read off the paper), so only the หน่วยละ column catches it.
+    # The 09.jpeg case: "3ลัง" read as 30. The line amount is read off the
+    # paper (not computed), so only the หน่วยละ column catches it.
     items = [_item(quantity=30, unit_price=644, amount=1932)]
-    w = validate_extraction(_result(items, validation_total=1932))
+    w = validate_extraction(_result(items))
     assert any("น่าจะเป็น 3" in m for m in w)
 
 

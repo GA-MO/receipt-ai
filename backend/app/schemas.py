@@ -243,7 +243,3 @@ class ExtractionResult(BaseModel):
     confidence: float = 0.0
     notes: str | None = None
     needs_review_fields: list[str] = []
-    # Transient, validation-ONLY: the bill's printed grand total. Compared to
-    # the sum of line amounts to catch missed / extra / duplicated lines. Not
-    # persisted — see DocumentItemBase.amount.
-    validation_total: float | None = None

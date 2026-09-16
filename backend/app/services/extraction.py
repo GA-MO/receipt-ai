@@ -73,14 +73,13 @@ _SYSTEM_INSTRUCTION_TAIL_TEMPLATE = """
   ],
   "confidence": 0.85,
   "notes": "หมายเหตุเพิ่มเติม",
-  "needs_review_fields": ["field ที่ไม่มั่นใจ"],
-  "validation_total": "ยอดรวมสุทธิท้ายบิล (number | null) — อ่านเพื่อ **ตรวจทานเท่านั้น** ถ้าเห็นชัด"
+  "needs_review_fields": ["field ที่ไม่มั่นใจ"]
 }
 
 ## โจทย์: ดึง **ชื่อสินค้า + จำนวน + หน่วย** เป็นหลัก
 ระบบไม่เก็บข้อมูลราคา — **ห้าม emit** `subtotal`, `discount`, `vat`.
-ข้อยกเว้นเดียว: ใส่ `amount` (ยอดรวมบรรทัด), `unit_price` (คอลัมน์ "หน่วยละ") และ
-`validation_total` (ยอดท้ายบิล) **ถ้าเห็นชัด** เพื่อให้ระบบ **ตรวจทานว่าอ่านครบ/ถูก** เท่านั้น — ถ้าอ่านยากให้ใส่ null อย่าเดา และอย่าเสียเวลากับมัน.
+ข้อยกเว้นเดียว: ใส่ `amount` (ยอดรวมบรรทัด) และ `unit_price` (คอลัมน์ "หน่วยละ") **ของแต่ละบรรทัด ถ้าเห็นชัด**
+เพื่อให้ระบบ **ตรวจทานจำนวนทีละบรรทัด** เท่านั้น — ไม่ต้องอ่านยอดรวมท้ายบิล; ถ้าอ่านยากให้ใส่ null อย่าเดา และอย่าเสียเวลากับมัน.
 โฟกัสหลักยังอยู่ที่ map สินค้าเข้า catalog และนับจำนวนให้ถูก.
 
 ## กฎสำคัญ
@@ -394,7 +393,6 @@ def parse_extraction_payload(data: object) -> ExtractionResult:
         confidence=data.get("confidence", 0.0),
         notes=data.get("notes"),
         needs_review_fields=data.get("needs_review_fields", []),
-        validation_total=_coerce_number(data.get("validation_total")),
     )
 
 
